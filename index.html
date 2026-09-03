@@ -108,6 +108,7 @@ textarea.fi{height:75px;resize:vertical}
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
@@ -594,7 +595,6 @@ function renderChamados(){
       '<span class="badge '+bg+'">'+c.status+'</span>'+
     '</div>';
   }).join('');
-}
 
 // ===== ORÇAMENTOS =====
 var orcamentos=[
@@ -1246,12 +1246,28 @@ function initPafreDB(){
   dbPafre=firebase.firestore(appPafre);
   return dbPafre;
 }
+var spFileAtual=null;
+function onSpFileChange(input){
+  var file=input.files[0];
+  if(!file) return;
+  if(file.size>5*1024*1024){alert('Arquivo muito grande. Máximo 5MB.');input.value='';return;}
+  spFileAtual=file;
+  document.getElementById('sp-file-name').textContent='✅ '+file.name;
+  document.getElementById('sp-upload-area').style.borderColor='#2d7a3a';
+  document.getElementById('sp-upload-area').style.background='#e8f5e9';
+}
 function abrirRelatarProblema(){
   document.getElementById('suporte-overlay').style.display='flex';
   document.getElementById('suporte-msg').textContent='';
+  spFileAtual=null;
+  document.getElementById('sp-file-name').textContent='';
+  document.getElementById('sp-upload-area').style.borderColor='#e4e4dc';
+  document.getElementById('sp-upload-area').style.background='#fafafa';
 }
 function fecharRelatarProblema(){
   document.getElementById('suporte-overlay').style.display='none';
+  document.getElementById('sp-file').value='';
+  spFileAtual=null;
 }
 function enviarRelatarProblema(){
   var titulo=document.getElementById('sp-titulo').value.trim();
@@ -1261,18 +1277,43 @@ function enviarRelatarProblema(){
   if(!titulo||!desc){msg.textContent='Preencha título e descrição.';msg.style.color='#c0392b';return;}
   var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
   msg.textContent='Enviando...';msg.style.color='#1565c0';
-  initPafreDB().collection('chamados_suporte').add({
-    condominio:'Altos Santa Izabel',
-    uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
-    titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
-    criadoEm:firebase.firestore.FieldValue.serverTimestamp(),mensagens:[]
-  }).then(function(){
-    msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
-    msg.style.color='#2d7a3a';
-    document.getElementById('sp-titulo').value='';
-    document.getElementById('sp-desc').value='';
-    setTimeout(fecharRelatarProblema,2500);
-  }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
+  function salvarChamado(anexoUrl,anexoNome){
+    initPafreDB().collection('chamados_suporte').add({
+      condominio:'Altos Santa Izabel',
+      uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+      titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
+      criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
+      mensagens:[],
+      anexo:anexoUrl?{url:anexoUrl,nome:anexoNome}:null
+    }).then(function(){
+      msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
+      msg.style.color='#2d7a3a';
+      document.getElementById('sp-titulo').value='';
+      document.getElementById('sp-desc').value='';
+      setTimeout(fecharRelatarProblema,2500);
+    }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
+  }
+  if(spFileAtual){
+    msg.textContent='Enviando arquivo...';msg.style.color='#1565c0';
+    var pafreApp=firebase.apps.find(function(a){return a.name==='pafre';});
+    if(!pafreApp) pafreApp=firebase.initializeApp({
+      apiKey:'AIzaSyB2raYjyu5lOEuHAtXHrFyFBdASBf48ljI',
+      authDomain:'pafre-gestao.firebaseapp.com',
+      projectId:'pafre-gestao',
+      storageBucket:'pafre-gestao.firebasestorage.app',
+      messagingSenderId:'305254099508',
+      appId:'1:305254099508:web:a6e9cf360a858d87c8f861'
+    },'pafre');
+    var storage=firebase.storage(pafreApp);
+    var ref=storage.ref('chamados/'+Date.now()+'_'+spFileAtual.name);
+    ref.put(spFileAtual).then(function(snap){
+      return snap.ref.getDownloadURL();
+    }).then(function(url){
+      salvarChamado(url,spFileAtual.name);
+    }).catch(function(e){msg.textContent='Erro no upload: '+e.message;msg.style.color='#c0392b';});
+  } else {
+    salvarChamado(null,null);
+  }
 }
 // ===== FIM SUPORTE =====
 
@@ -1302,11 +1343,17 @@ window.addEventListener('beforeinstallprompt',function(e){
       <select id="sp-sev" class="fi">
         <option value="Baixa">🟢 Baixa — dúvida ou melhoria</option>
         <option value="Média" selected>🟡 Média — funcionalidade com problema</option>
-        <option value="Alta">🟠 Alta — impacto nos usuários</option>
-        <option value="Crítica">🔴 Crítica — sistema fora do ar</option>
+        <option value="Alta">🟠 Alta — bloqueando uso</option>
       </select>
       <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Descrição <span style="color:#c0392b">*</span></label>
       <textarea id="sp-desc" class="fi" style="height:100px;resize:vertical" placeholder="Descreva o problema em detalhes..."></textarea>
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Anexar evidência <span style="font-size:11px;font-weight:400;color:#999">(imagem ou PDF, máx. 5MB)</span></label>
+      <div id="sp-upload-area" onclick="document.getElementById('sp-file').click()" style="border:2px dashed #e4e4dc;border-radius:10px;padding:14px;text-align:center;cursor:pointer;margin-bottom:10px;background:#fafafa">
+        <div style="font-size:24px;margin-bottom:4px">📎</div>
+        <div style="font-size:12px;color:#888">Clique para selecionar arquivo</div>
+        <div id="sp-file-name" style="font-size:11px;color:#1a3a5c;margin-top:4px;font-weight:600"></div>
+      </div>
+      <input type="file" id="sp-file" accept="image/*,.pdf,.txt" style="display:none" onchange="onSpFileChange(this)">
       <button onclick="enviarRelatarProblema()" style="width:100%;padding:11px;border-radius:9px;background:#1a3a5c;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px">📤 Enviar para o suporte</button>
     </div>
   </div>
