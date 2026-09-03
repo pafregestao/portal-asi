@@ -1,1 +1,1316 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Portal Altos Santa Izabel">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Portal Altos Santa Izabel</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--azul:#1a3a5c;--ok:#2d7a3a;--warn:#b8630a;--bad:#c0392b;--bg:#f4f4ef;--card:#fff;--border:#e4e4dc;--txt:#1a1a1a;--txt2:#666;--txt3:#999}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--txt);min-height:100vh}
+.hdr{background:var(--azul);color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:10px}
+.hdr-logo{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.hdr-title{flex:1}.hdr-title h1{font-size:15px;font-weight:700}.hdr-title p{font-size:11px;opacity:.65;margin-top:1px}
+.hdr-ico{width:34px;height:34px;background:rgba(255,255,255,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;position:relative}
+.notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;background:#e74c3c;border-radius:50%;border:2px solid var(--azul)}
+.nav-wrap{background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:62px;z-index:99;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nav-wrap::-webkit-scrollbar{display:none}
+.nav{display:flex;padding:0 8px;min-width:max-content}
+.nb{font-size:13px;padding:11px 14px;border:none;background:transparent;color:var(--txt2);cursor:pointer;border-bottom:2px solid transparent;font-weight:500;white-space:nowrap}
+.nb.on{color:var(--azul);border-bottom-color:var(--azul)}
+.pg{display:none;padding:14px;max-width:900px;margin:0 auto;padding-bottom:80px}
+.pg.on{display:block}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.mc{background:var(--card);border-radius:12px;padding:12px 14px;border:1px solid var(--border)}
+.mc-lbl{font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.mc-val{font-size:20px;font-weight:700;color:var(--azul)}
+.mc-val.ok{color:var(--ok)}.mc-val.warn{color:var(--warn)}.mc-val.bad{color:var(--bad)}
+.sec{font-size:10px;font-weight:700;color:var(--txt3);letter-spacing:.08em;text-transform:uppercase;margin:16px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:8px}
+.card.clickable{cursor:pointer}.card.clickable:active{transform:scale(.98)}
+.row{display:flex;align-items:center;gap:10px}
+.badge{font-size:11px;padding:3px 9px;border-radius:99px;font-weight:600;flex-shrink:0}
+.badge.ok{background:#e8f5e9;color:#2d7a3a}.badge.warn{background:#fff3e0;color:#b8630a}
+.badge.bad{background:#fdecea;color:#c0392b}.badge.blue{background:#e3f0fb;color:#1565c0}.badge.gray{background:#f0efe8;color:#555}.badge.purple{background:#f3e8ff;color:#7c3aed}.badge.construction{background:#fff3e0;color:#d97706}.badge.approved{background:#e8f5e9;color:#2d7a3a}.badge.canceled{background:#f1f1f1;color:#666}
+.pl{display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);margin-bottom:3px}
+.bw{height:7px;background:#f0efe8;border-radius:99px;overflow:hidden}
+.br{height:100%;border-radius:99px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;background:#f8f8f4;font-weight:600;color:#555;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #f4f4ef;color:#333;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.gcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.gcard:active{background:#f4f4ef}
+.gico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.alert{padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;border:1px solid;display:flex;gap:10px;align-items:flex-start}
+.alert.bad{background:#fdecea;border-color:#ffcdd2;color:#c0392b}
+.alert.warn{background:#fff3e0;border-color:#ffe0b2;color:#b8630a}
+.alert.ok{background:#e8f5e9;border-color:#c8e6c9;color:#2d7a3a}
+.alert.blue{background:#e3f0fb;border-color:#bbdefb;color:#1565c0}
+.fl{display:block;font-size:12px;color:var(--txt2);font-weight:600;margin-bottom:3px}
+.fi{width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:9px;font-size:13px;font-family:inherit;background:#fafafa;margin-bottom:11px}
+textarea.fi{height:75px;resize:vertical}
+.btn{padding:10px 18px;border-radius:9px;border:none;font-size:13px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--azul);color:#fff}.btn.success{background:#25D366;color:#fff}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--border);color:var(--txt2);display:inline-block;margin:2px 2px 0 0}
+.file-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f4f4ef}
+.file-row:last-child{border-bottom:none}
+.file-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.chamado{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f4f4ef}
+.chamado:last-child{border-bottom:none}
+.sdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.drive-btn{display:flex;align-items:center;gap:10px;background:#e3f0fb;border:1px solid #bbdefb;border-radius:10px;padding:11px 14px;margin-bottom:14px;text-decoration:none}
+/* ADMIN */
+.admin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center}
+.admin-overlay.on{display:flex}
+.admin-box{background:var(--card);border-radius:16px;padding:24px;width:92%;max-width:560px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.admin-box h2{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--azul);flex-shrink:0}
+.admin-tabs{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;padding-bottom:6px;scroll-behavior:smooth}
+.admin-tabs::-webkit-scrollbar{height:3px}
+.admin-tabs::-webkit-scrollbar-track{background:#f0f0f0;border-radius:99px}
+.admin-tabs::-webkit-scrollbar-thumb{background:#1a3a5c;border-radius:99px}
+.at{font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;white-space:nowrap}
+.at.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+.admin-sec{display:none}.admin-sec.on{display:block}
+.item-edit{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid #f4f4ef;flex-wrap:wrap}
+.item-edit:last-child{border-bottom:none}
+.item-edit input,.item-edit select{font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit;background:#fafafa}
+.item-edit .ordem-btns{display:flex;gap:2px;flex-shrink:0}
+.item-edit .ordem-btns button{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:#f8f8f4;cursor:pointer;font-size:11px;line-height:1}
+.ie-txt{flex:1;min-width:100px}.ie-sub{width:110px}.ie-sel{width:110px}
+.del-btn{width:28px;height:28px;border-radius:7px;border:none;background:#fdecea;color:#c0392b;cursor:pointer;font-size:14px;flex-shrink:0}
+.add-btn{width:100%;padding:8px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--azul);cursor:pointer;font-size:13px;margin-top:8px}
+.save-btn{width:100%;padding:11px;border-radius:9px;background:var(--azul);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;margin-top:12px}
+.close-btn{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt3);margin-top:-4px}
+.orc-status-sel{font-size:11px;padding:3px 6px;border:1px solid #ddd;border-radius:6px;font-family:inherit;cursor:pointer}
+/* BOTTOM NAV */
+.bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:200}
+.bnav-items{display:flex;justify-content:space-around}
+.bni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 8px;cursor:pointer;border:none;background:transparent;color:var(--txt3);font-size:10px;font-weight:500;min-width:56px}
+.bni.on{color:var(--azul)}.bni-ico{font-size:20px}
+@media(max-width:600px){
+  .bnav{display:block}
+  .pg{padding:12px 12px 90px}
+  .metrics{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr 1fr}
+  .mc-val{font-size:18px}
+}
+</style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">🏢</div>
+  <div class="hdr-title"><h1>Portal Altos Santa Izabel</h1><p id="hdr-usuario">Condomínio Altos Santa Izabel</p></div>
+  <div class="hdr-ico" onclick="nav('defeitos')">🔔<div class="notif-dot"></div></div>
+  <div class="hdr-ico" onclick="abrirAdmin()" id="btn-admin" style="display:none">⚙️</div>
+  <div class="hdr-ico" id="btn-usuarios" onclick="window.open('usuarios.html','_blank')" style="display:none;position:relative">👥<span id="badge-usuarios" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></div>
+  <div class="hdr-ico" onclick="abrirRelatarProblema()" title="Relatar problema ao suporte">🐛</div>
+  <div class="hdr-ico" onclick="fazerLogout()" title="Sair">🚪</div>
+</div>
+
+<div class="nav-wrap"><div class="nav">
+  <button class="nb on" onclick="nav('inicio')">Início</button>
+  <button class="nb" onclick="nav('projetos')">Projetos</button>
+  <button class="nb admin-only" id="nav-orcamentos" style="display:none" onclick="nav('orcamentos')">Orçamentos</button>
+  <button class="nb" onclick="nav('contratos')">Contratos</button>
+  <button class="nb" onclick="nav('churrasqueira')">Churrasqueira</button>
+  <button class="nb" onclick="nav('financeiro')">Financeiro</button>
+  <button class="nb admin-only" id="nav-documentos" style="display:none" onclick="nav('documentos')">Documentos</button>
+  <button class="nb" onclick="nav('prestadores')">Prestadores</button>
+  <button class="nb admin-only" id="nav-assembleias" style="display:none" onclick="nav('assembleias')">Assembleias</button>
+  <button class="nb" onclick="nav('defeitos')">Defeitos</button>
+  <button class="nb" id="nav-mapa" style="display:none" onclick="nav('mapa')">🏢 Mapa</button>
+</div></div>
+
+<!-- INÍCIO -->
+<div id="pg-inicio" class="pg on">
+  <div class="alert bad"><span>🚨</span><div><strong>AVCB vencido</strong> — Renovar com urgência (venceu Mar/2026).</div></div>
+  <div class="sec">Acesso rápido</div>
+  <div class="grid2" id="grid-acesso-rapido">
+    <div class="gcard" onclick="nav('projetos')"><div class="gico" style="background:#fff3e0">🔨</div><div><div style="font-weight:600;font-size:13px">Projetos</div><div style="font-size:11px;color:var(--txt3)">Em andamento</div></div></div>
+    <div class="gcard admin-only" style="display:none" onclick="nav('orcamentos')"><div class="gico" style="background:#e8f5e9">💰</div><div><div style="font-weight:600;font-size:13px">Orçamentos</div><div style="font-size:11px;color:var(--txt3)">Propostas e cotações</div></div></div>
+    <div class="gcard" onclick="nav('contratos')"><div class="gico" style="background:#e3f0fb">📋</div><div><div style="font-weight:600;font-size:13px">Contratos</div><div style="font-size:11px;color:var(--txt3)">Vigentes e vencimentos</div></div></div>
+    <div class="gcard" onclick="nav('churrasqueira')"><div class="gico" style="background:#fdecea">🍖</div><div><div style="font-weight:600;font-size:13px">Churrasqueira</div><div style="font-size:11px;color:var(--txt3)">Reservas e histórico</div></div></div>
+    <div class="gcard" onclick="nav('financeiro')"><div class="gico" style="background:#f0eeff">📊</div><div><div style="font-weight:600;font-size:13px">Financeiro</div><div style="font-size:11px;color:var(--txt3)">Histórico anual</div></div></div>
+    <div class="gcard" onclick="nav('defeitos')"><div class="gico" style="background:#fdecea">🔧</div><div><div style="font-weight:600;font-size:13px">Reportar defeito</div><div style="font-size:11px;color:var(--txt3)">Formulário rápido</div></div></div>
+    <div class="gcard admin-only" style="display:none" onclick="nav('documentos')"><div class="gico" style="background:#e8f5e9">📁</div><div><div style="font-weight:600;font-size:13px">Documentos</div><div style="font-size:11px;color:var(--txt3)">Plantas, regimento...</div></div></div>
+    <div class="gcard admin-only" style="display:none" onclick="nav('assembleias')"><div class="gico" style="background:#e3f0fb">🏛</div><div><div style="font-weight:600;font-size:13px">Assembleias</div><div style="font-size:11px;color:var(--txt3)">Atas registradas</div></div></div>
+  </div>
+  <div class="sec">Alertas e pendências</div>
+  <div class="card" id="lista-alertas"></div>
+  <div class="sec">Realizações recentes</div>
+  <div class="card" id="lista-realizacoes"></div>
+  <div class="sec">Contato da administração</div>
+  <div class="card row">
+    <div class="gico" style="background:#e8f5e9">📞</div>
+    <div style="flex:1"><div style="font-weight:600">Gabriel — Síndico</div><div style="font-size:12px;color:var(--txt3)">(19) 98936-0523</div></div>
+    <button class="btn success" onclick="chamarWA()">WhatsApp</button>
+  </div>
+  <div class="card row">
+    <div class="gico" style="background:#e3f0fb">🏢</div>
+    <div style="flex:1"><div style="font-weight:600">Phoenix Global — Administradora/Boletos</div><div style="font-size:12px;color:var(--txt3)">(19) 99269-6889</div></div>
+    <button class="btn success" onclick="window.open('https://wa.me/5519992696889?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'))">WhatsApp</button>
+  </div>
+  <div style="text-align:center;padding:16px 0 4px;font-size:11px;color:var(--txt3)">Portal Altos Santa Izabel · v1.12.0 · Mai/2026</div>
+</div>
+
+<!-- PROJETOS -->
+<div id="pg-projetos" class="pg">
+  <input class="fi" id="busca-proj" placeholder="🔍  Buscar projeto ou tarefa..." oninput="renderTarefas()" style="margin-bottom:12px">
+  <div class="metrics">
+    <div class="mc"><div class="mc-lbl">Projetos</div><div class="mc-val" id="proj-total-proj">0</div></div>
+    <div class="mc"><div class="mc-lbl">Total ações</div><div class="mc-val" id="proj-total">0</div></div>
+    <div class="mc"><div class="mc-lbl">Concluídas</div><div class="mc-val ok" id="proj-conc">0</div></div>
+    <div class="mc"><div class="mc-lbl">Pendentes</div><div class="mc-val warn" id="proj-pend">0</div></div>
+  </div>
+  <div class="sec">Projetos maiores 2026</div>
+  <div id="lista-projetos-admin"></div>
+  <div class="sec">Todas as ações / tarefas</div>
+  <div id="proj-lista"></div>
+</div>
+
+<!-- ORÇAMENTOS -->
+<div id="pg-orcamentos" class="pg">
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="filtros-orc"></div>
+  <div id="orc-lista"></div>
+</div>
+
+<!-- CONTRATOS -->
+<div id="pg-contratos" class="pg">
+  <div class="sec">Prazos e vencimentos</div>
+  <div class="card" style="padding:0"><div class="tw"><table>
+    <thead><tr><th>Documento</th><th>Ramo</th><th>Emissão</th><th>Validade</th><th>Status</th></tr></thead>
+    <tbody id="tbody-contratos"></tbody>
+  </table></div></div>
+</div>
+
+<!-- CHURRASQUEIRA -->
+<div id="pg-churrasqueira" class="pg">
+  <div class="metrics">
+    <div class="mc"><div class="mc-lbl">Total locações</div><div class="mc-val" id="churr-total-loc">—</div></div>
+    <div class="mc"><div class="mc-lbl">Receita total</div><div class="mc-val ok" id="churr-total-rec">—</div></div>
+    <div class="mc"><div class="mc-lbl">Média/mês</div><div class="mc-val" id="churr-media">—</div></div>
+    <div class="mc"><div class="mc-lbl">Fonte</div><div class="mc-val" style="font-size:11px;margin-top:6px;color:var(--txt3)" id="churr-fonte">Demonstrativo</div></div>
+  </div>
+  <div class="sec">Histórico de uso</div>
+  <div id="churr-historico"></div>
+</div>
+
+<!-- FINANCEIRO -->
+<div id="pg-financeiro" class="pg">
+  <div style="text-align:center;padding:40px 20px">
+    <div style="font-size:48px;margin-bottom:12px">📊</div>
+    <div style="font-weight:700;font-size:18px;color:var(--azul);margin-bottom:8px">Painel Financeiro</div>
+    <div style="font-size:13px;color:var(--txt3);margin-bottom:24px">Histórico, saldos, gráficos e análise detalhada</div>
+    <a href="financeiro.html" style="display:inline-flex;align-items:center;gap:10px;background:var(--azul);color:#fff;border-radius:12px;padding:14px 28px;text-decoration:none;font-weight:600;font-size:15px">
+      Abrir Financeiro →
+    </a>
+  </div>
+</div>
+
+<!-- DOCUMENTOS -->
+<div id="pg-documentos" class="pg">
+  <div class="alert bad"><span>🚨</span><div>AVCB vencido em Mar/2026 — renovar urgentemente.</div></div>
+  <div class="sec">Documentos</div>
+  <div class="card" style="padding:0 15px" id="lista-documentos"></div>
+  <div class="sec" style="margin-top:16px">Plantas e projetos técnicos</div>
+  <div class="card" style="padding:0 15px" id="lista-plantas"></div>
+</div>
+
+<!-- PRESTADORES -->
+<div id="pg-prestadores" class="pg">
+  <input class="fi" id="busca-prest" placeholder="🔍  Buscar por nome, atividade ou indicação..." oninput="renderPrestadores()" style="margin-bottom:12px">
+  <div class="metrics">
+    <div class="mc"><div class="mc-lbl">Total</div><div class="mc-val" id="prest-total">13</div></div>
+    <div class="mc"><div class="mc-lbl">Categorias</div><div class="mc-val">8</div></div>
+    <div class="mc"><div class="mc-lbl">Com indicação</div><div class="mc-val ok" id="prest-com-ind">8</div></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="filtros-cat">
+    <button class="tag" style="cursor:pointer;background:var(--azul);color:#fff;border-color:var(--azul)" onclick="filtrarCatPrest('todos',this)">Todos</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Eletricista',this)">Eletricista</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Jardinagem',this)">Jardinagem</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Portaria / Cameras',this)">Portaria</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Ar Condicionado',this)">Ar Condicionado</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Placa Solar',this)">Placa Solar</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('FoodTruck',this)">Food Truck</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Advogado',this)">Advogado</button>
+    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Smart Store',this)">Smart Store</button>
+  </div>
+  <div id="lista-prest-dyn"></div>
+</div>
+
+<!-- ASSEMBLEIAS -->
+<div id="pg-assembleias" class="pg">
+  <div class="sec">Atas disponíveis</div>
+  <div class="card" style="padding:0 15px">
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e8f5e9">📋</div><div style="flex:1"><div style="font-weight:500">AGE — Eleição de Síndico</div><div style="font-size:11px;color:var(--txt3)">Dez/2024 · Registrada</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 16/01/2024</div><div style="font-size:11px;color:var(--txt3)">Jan/2024</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 10/04/2023</div><div style="font-size:11px;color:var(--txt3)">Abr/2023</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 29/11/2022</div><div style="font-size:11px;color:var(--txt3)">Nov/2022</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 23/06/2022</div><div style="font-size:11px;color:var(--txt3)">Jun/2022</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 10/11/2020</div><div style="font-size:11px;color:var(--txt3)">Nov/2020</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">AGO — Eleição (por e-mail)</div><div style="font-size:11px;color:var(--txt3)">Ago/2020</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#f0efe8">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia Abril 2019</div><div style="font-size:11px;color:var(--txt3)">Abr/2019</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Retificação AGI 27/10/2018</div><div style="font-size:11px;color:var(--txt3)">Out/2018</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e8f5e9">📄</div><div style="flex:1"><div style="font-weight:500">Convenção do Condomínio</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
+  </div>
+</div>
+
+<!-- MAPA -->
+<div id="pg-mapa" class="pg">
+  <iframe src="mapa.html" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:12px" title="Mapa de Apartamentos"></iframe>
+</div>
+
+<!-- DEFEITOS -->
+<div id="pg-defeitos" class="pg">
+  <div class="metrics">
+    <div class="mc"><div class="mc-lbl">Abertos</div><div class="mc-val bad" id="cnt-ab">0</div></div>
+    <div class="mc"><div class="mc-lbl">Em análise</div><div class="mc-val warn" id="cnt-an">0</div></div>
+    <div class="mc"><div class="mc-lbl">Resolvidos</div><div class="mc-val ok" id="cnt-re">0</div></div>
+  </div>
+  <div class="sec">Registrar defeito</div>
+  <div class="card">
+    <label class="fl">Apartamento / local</label><input class="fi" id="f-apto" placeholder="Ex: Ap. 1121 ou Garagem B">
+    <label class="fl">Categoria</label>
+    <select class="fi" id="f-cat"><option>Hidráulica</option><option>Elétrica</option><option>Estrutural</option><option>Portões / acessos</option><option>Iluminação</option><option>Área de lazer</option><option>Outro</option></select>
+    <label class="fl">Descrição detalhada</label>
+    <textarea class="fi" id="f-desc" placeholder="Descreva o problema..."></textarea>
+    <label class="fl">Urgência</label>
+    <select class="fi" id="f-urg"><option>Normal</option><option>Urgente</option><option>Emergência</option></select>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="registrar()">Registrar defeito</button>
+    </div>
+  </div>
+  <div class="sec">Chamados registrados</div>
+  <div class="card" id="lista-chamados"><div style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhum chamado nesta sessão.</div></div>
+</div>
+
+<!-- ADMIN OVERLAY -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-box">
+    <button class="close-btn" onclick="fecharAdmin()">✕</button>
+    <h2>⚙️ Área de Administração</h2>
+    <div id="adminLogin">
+      <div class="alert blue" style="margin-bottom:14px"><span>🔒</span><div>Digite a senha de administrador.</div></div>
+      <label class="fl">Senha</label>
+      <input class="fi" type="password" id="adminSenha" placeholder="Senha..." onkeydown="if(event.key==='Enter')verificarSenha()">
+      <button class="save-btn" onclick="verificarSenha()">Entrar</button>
+      <div id="erroSenha" style="color:#c0392b;font-size:12px;margin-top:8px;display:none">Senha incorreta.</div>
+    </div>
+    <div id="adminPainel" style="display:none">
+      <div class="admin-tabs">
+        <button class="at on" onclick="adminTab('alertas',this)">🔴 Alertas</button>
+        <button class="at" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
+        <button class="at" onclick="adminTab('projetos',this)">🔨 Projetos</button>
+        <button class="at" onclick="adminTab('tarefas',this)">📌 Tarefas</button>
+        <button class="at" onclick="adminTab('contratos',this)">📋 Contratos</button>
+        <button class="at" onclick="adminTab('prestadores',this)">👤 Prestadores</button>
+        <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
+        <button class="at" onclick="adminTab('documentos',this)">📁 Documentos</button>
+      </div>
+      <div class="admin-sec on" id="asec-alertas">
+        <div id="edit-alertas"></div>
+        <button class="add-btn" onclick="addAlerta()">+ Adicionar alerta</button>
+        <button class="save-btn" onclick="salvarAlertas()">💾 Salvar alertas</button>
+      </div>
+      <div class="admin-sec" id="asec-realizacoes">
+        <div id="edit-realizacoes"></div>
+        <button class="add-btn" onclick="addRealizacao()">+ Adicionar realização</button>
+        <button class="save-btn" onclick="salvarRealizacoes()">💾 Salvar realizações</button>
+      </div>
+      <div class="admin-sec" id="asec-projetos">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Projetos principais com barra de progresso.</div>
+        <div id="edit-projetos"></div>
+        <button class="add-btn" onclick="addProjeto()">+ Adicionar projeto</button>
+        <button class="save-btn" onclick="salvarProjetos()">💾 Salvar projetos</button>
+      </div>
+      <div class="admin-sec" id="asec-tarefas">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Lista de tarefas e ações da aba Projetos.</div>
+        <div id="edit-tarefas"></div>
+        <button class="add-btn" onclick="addTarefa()">+ Adicionar tarefa</button>
+        <button class="save-btn" onclick="salvarTarefas()">💾 Salvar tarefas</button>
+      </div>
+      <div class="admin-sec" id="asec-contratos">
+        <div id="edit-contratos"></div>
+        <button class="add-btn" onclick="addContrato()">+ Adicionar contrato</button>
+        <button class="add-btn" onclick="addRamoContrato()" style="background:#f0eeff;color:#7c3aed">+ Ramo</button>
+        <button class="save-btn" onclick="salvarContratos()">💾 Salvar contratos</button>
+      </div>
+      <div class="admin-sec" id="asec-prestadores">
+        <div id="edit-prestadores"></div>
+        <button class="add-btn" onclick="addPrestador()">+ Adicionar prestador</button>
+        <button class="save-btn" onclick="salvarPrestadores();renderPrestadores();alert('✅ Prestadores salvos!')">💾 Salvar prestadores</button>
+      </div>
+      <div class="admin-sec" id="asec-orcamentos">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Adicione ou remova orçamentos. Status pode ser alterado diretamente na aba.</div>
+        <div id="edit-orcamentos"></div>
+        <button class="add-btn" onclick="addOrcamentoAdmin()">+ Adicionar orçamento</button>
+        <button class="save-btn" onclick="salvarOrcamentos();renderOrcamentos();alert('✅ Orçamentos salvos!')">💾 Salvar orçamentos</button>
+      </div>
+      <div class="admin-sec" id="asec-documentos">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Gerencie os documentos. Cole o link do Drive de cada arquivo.</div>
+        <div id="edit-documentos"></div>
+        <button class="add-btn" onclick="addDocumento()">+ Adicionar documento</button>
+        <button class="save-btn" onclick="salvarDocumentos()">&#x1F4BE; Salvar documentos</button>
+      </div>
+      <button onclick="fecharAdmin()" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--txt2);cursor:pointer;font-size:13px;margin-top:8px">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="bnav"><div class="bnav-items">
+  <button class="bni on" onclick="nav('inicio')"><span class="bni-ico">🏠</span>Início</button>
+  <button class="bni" onclick="nav('projetos')"><span class="bni-ico">🔨</span>Projetos</button>
+  <button class="bni" onclick="nav('prestadores')"><span class="bni-ico">👤</span>Prestadores</button>
+  <button class="bni" onclick="nav('financeiro')"><span class="bni-ico">📊</span>Financeiro</button>
+  <button class="bni" onclick="nav('defeitos')"><span class="bni-ico">🔧</span>Defeitos</button>
+</div></div>
+
+<script>
+// ===== FIREBASE AUTH =====
+firebase.initializeApp({
+  apiKey:"AIzaSyAxifeD5tvV3A4s4SE6d5-P-HyI1Pf0h8s",
+  authDomain:"portal-altos-santa-izabel.firebaseapp.com",
+  projectId:"portal-altos-santa-izabel",
+  storageBucket:"portal-altos-santa-izabel.firebasestorage.app",
+  messagingSenderId:"314879065622",
+  appId:"1:314879065622:web:76be1b38e018a0cbed3f37"
+});
+var auth=firebase.auth();
+var db=firebase.firestore();
+var usuarioAtual=null;
+
+auth.onAuthStateChanged(function(user){
+  if(!user){
+    window.location.href='auth.html';
+    return;
+  }
+  // Verificar se ainda tem acesso
+  db.collection('usuarios').doc(user.uid).get().then(function(doc){
+    if(!doc.exists||!['aprovado','Aprovado'].includes(doc.data().status)){
+      auth.signOut();
+      localStorage.removeItem('asi_usuario');
+      window.location.href='auth.html';
+      return;
+    }
+    usuarioAtual=Object.assign({uid:user.uid},doc.data());
+    localStorage.setItem('asi_usuario',JSON.stringify(usuarioAtual));
+    // Atualizar header
+    var hdr=document.getElementById('hdr-usuario');
+    if(hdr) hdr.textContent=usuarioAtual.nome+' · '+usuarioAtual.unidade;
+    // Mostrar botão admin se for admin
+    if(usuarioAtual.perfil==='admin'){
+      var btnAdmin=document.getElementById('btn-admin');
+      if(btnAdmin) btnAdmin.style.display='flex';
+      var navMapa=document.getElementById('nav-mapa');
+      if(navMapa) navMapa.style.display='block';
+      // Mostrar itens exclusivos de admin (nav e acesso rápido)
+      document.querySelectorAll('.admin-only').forEach(function(el){el.style.display='';});
+      adminLogado=true;
+      var btnUsu=document.getElementById('btn-usuarios');
+      if(btnUsu) btnUsu.style.display='flex';
+      verificarPendentes();
+      // Adicionar link gerenciar usuários no admin
+      var tabsEl=document.querySelector('.admin-tabs');
+      if(tabsEl&&!document.getElementById('tab-usuarios')){
+        var btn=document.createElement('button');
+        btn.className='at'; btn.id='tab-usuarios';
+        btn.innerHTML='👥 Usuários';
+        btn.onclick=function(){window.open('usuarios.html','_blank');};
+        tabsEl.appendChild(btn);
+      }
+    }
+    // Inicializar portal — carrega dados do Firestore
+    carregarTodosOsDados(function(){
+      renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
+      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();carregarChamados();
+    });
+    // Preencher unidade do morador no campo de defeito
+    var aptoField=document.getElementById('f-apto');
+    if(aptoField&&usuarioAtual&&usuarioAtual.unidade) aptoField.value=usuarioAtual.unidade;
+  }).catch(function(e){
+    console.error('Erro ao verificar usuario:',e);
+    // Nao redirecionar em erro de rede — manter na pagina
+    document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif"><p style="color:#c0392b">Erro ao carregar o portal.</p><p style="margin-top:8px;font-size:13px;color:#666">Verifique sua conexão e <a href="index.html">tente novamente</a>.</p></div>';
+  });
+});
+
+function fazerLogout(){
+  if(!confirm('Deseja sair do portal?')) return;
+  auth.signOut().then(function(){
+    localStorage.removeItem('asi_usuario');
+    window.location.href='auth.html';
+  });
+}
+// ===== FIM AUTH =====
+
+var WA='5519989360523';
+var NAV_IDS=['inicio','projetos','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','mapa'];
+var BNAV_IDS=['inicio','projetos','prestadores','','defeitos'];
+var adminLogado=false;
+
+function nav(id){
+  // Financeiro redireciona direto
+  if(id==='financeiro'){window.location.href='financeiro.html';return;}
+  // Bloquear documentos e assembleias para não-admin
+  if((id==='documentos'||id==='assembleias'||id==='orcamentos')&&!adminLogado) return;
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('.bni').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('pg-'+id).classList.add('on');
+  var i=NAV_IDS.indexOf(id); if(i>=0) document.querySelectorAll('.nb')[i].classList.add('on');
+  var j=BNAV_IDS.indexOf(id); if(j>=0) document.querySelectorAll('.bni')[j].classList.add('on');
+  window.scrollTo(0,0);
+}
+
+function chamarWA(){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'));}
+
+// ===== RESERVAS =====
+var reservas=[];
+function fazerReserva(){
+  var a=document.getElementById('res-apto').value.trim(), d=document.getElementById('res-data').value;
+  if(!a||!d){alert('Preencha apartamento e data');return;}
+  reservas.push({apto:a,data:d,hora:document.getElementById('res-hora').value,pess:document.getElementById('res-pessoas').value});
+  document.getElementById('res-apto').value='';document.getElementById('res-data').value='';document.getElementById('res-pessoas').value='';
+  renderReservas();alert('Reserva registrada!');
+}
+function renderReservas(){
+  var el=document.getElementById('lista-reservas');
+  if(!reservas.length){el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhuma reserva ainda.</div>';return;}
+  el.innerHTML=reservas.slice().reverse().map(function(r){return '<div class="file-row"><div class="file-ico" style="background:#e8f5e9">🍖</div><div style="flex:1"><div style="font-weight:500">Ap. '+r.apto+'</div><div style="font-size:11px;color:var(--txt3)">'+r.data+' · '+r.hora+(r.pess?' · '+r.pess+' pessoas':'')+'</div></div><span class="badge ok">Reservado</span></div>';}).join('');
+}
+function reservaWA(){
+  var msg='*Reserva Churrasqueira — Altos de Santa Izabel*\n\nApartamento: '+(document.getElementById('res-apto').value||'(não informado)')+'\nData: '+(document.getElementById('res-data').value||'(não informada)')+'\nHorário: '+document.getElementById('res-hora').value;
+  window.open('https://wa.me/'+WA+'?text='+encodeURIComponent(msg));
+}
+
+// ===== DEFEITOS =====
+// ===== DEFEITOS / CHAMADOS =====
+var chamados=[];
+
+function carregarChamados(){
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  var query=db.collection('chamados').orderBy('criadoEm','desc').limit(50);
+  // Morador ve apenas os chamados da sua unidade
+  if(!adminLogado&&u.unidade){
+    var unidadeNum=(u.unidade||'').toString().replace(/[^0-9]/g,'');
+    query=db.collection('chamados').where('apto','==',unidadeNum).orderBy('criadoEm','desc').limit(50);
+  }
+  query.get().then(function(snap){
+    chamados=[];
+    snap.forEach(function(doc){chamados.push(Object.assign({id:doc.id},doc.data()));});
+    // Ordenar por data desc no cliente
+    chamados.sort(function(a,b){
+      var ta=a.criadoEm&&a.criadoEm.toDate?a.criadoEm.toDate():new Date(0);
+      var tb=b.criadoEm&&b.criadoEm.toDate?b.criadoEm.toDate():new Date(0);
+      return tb-ta;
+    });
+    renderChamados();
+  }).catch(function(e){console.log('Erro chamados:',e);});
+}
+
+function registrar(){
+  var apto=document.getElementById('f-apto').value.trim();
+  if(!apto){alert('Informe o apartamento ou local');return;}
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  var cat=document.getElementById('f-cat').value;
+  var desc=document.getElementById('f-desc').value.trim()||'Sem descrição';
+  var urg=document.getElementById('f-urg').value;
+  var data=new Date().toLocaleDateString('pt-BR');
+  var chamado={
+    apto:apto,cat:cat,desc:desc,urg:urg,data:data,
+    status:'Aberto',
+    usuario:u.nome||'',
+    unidade:u.unidade||'',
+    criadoEm:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  db.collection('chamados').add(chamado).then(function(ref){
+    chamado.id=ref.id;
+    chamados.unshift(chamado);
+    document.getElementById('f-apto').value='';
+    document.getElementById('f-desc').value='';
+    renderChamados();
+    alert('✅ Chamado registrado! O síndico receberá uma notificação.');
+    // Enviar email
+    var assunto=encodeURIComponent('[Defeito '+urg+'] '+cat+' — '+apto);
+    var corpo=encodeURIComponent('Registro de defeito\n\nLocal: '+apto+'\nCategoria: '+cat+'\nUrgência: '+urg+'\nData: '+data+'\nDescrição: '+desc+'\n\nEnviado pelo Portal Altos Santa Izabel.');
+    window.open('mailto:altosdesantaizabelcondominio@gmail.com?subject='+assunto+'&body='+corpo);
+  }).catch(function(e){alert('Erro ao registrar: '+e.message);});
+}
+
+function atualizarStatus(id,novoStatus){
+  db.collection('chamados').doc(id).update({status:novoStatus}).then(function(){
+    var c=chamados.find(function(x){return x.id===id;});
+    if(c) c.status=novoStatus;
+    renderChamados();
+  });
+}
+
+function renderChamados(){
+  var ab=chamados.filter(function(c){return c.status==='Aberto';}).length;
+  var an=chamados.filter(function(c){return c.status==='Em análise';}).length;
+  var re=chamados.filter(function(c){return c.status==='Resolvido';}).length;
+  document.getElementById('cnt-ab').textContent=ab;
+  document.getElementById('cnt-an').textContent=an;
+  document.getElementById('cnt-re').textContent=re;
+  var el=document.getElementById('lista-chamados');
+  if(!chamados.length){
+    el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhum chamado registrado.</div>';
+    return;
+  }
+  var corMap={Aberto:'#c0392b','Em análise':'#b8630a',Resolvido:'#2d7a3a'};
+  var bgMap={Aberto:'bad','Em análise':'warn',Resolvido:'ok'};
+  el.innerHTML=chamados.map(function(c){
+    var cor=corMap[c.status]||'#888';
+    var bg=bgMap[c.status]||'gray';
+    return '<div class="chamado">'+
+      '<div class="sdot" style="background:'+cor+'"></div>'+
+      '<div style="flex:1">'+
+        '<div style="font-weight:600">'+c.cat+' — '+c.apto+'</div>'+
+        '<div style="font-size:12px;color:var(--txt3);margin-top:2px">'+c.desc.substring(0,80)+(c.desc.length>80?'...':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+c.data+(c.usuario?' · '+c.usuario:'')+'</div>'+
+        (adminLogado
+          ?'<div style="margin-top:6px;display:flex;gap:6px">'+
+            ['Aberto','Em análise','Resolvido'].map(function(s){
+              return '<button onclick="atualizarStatus(\''+(c.id||'')+'\',\''+s+'\')" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:'+(c.status===s?'var(--azul)':'transparent')+';color:'+(c.status===s?'#fff':'var(--txt2)')+';cursor:pointer">'+s+'</button>';
+            }).join('')+
+          '</div>'
+          :''
+        )+
+      '</div>'+
+      '<span class="badge '+bg+'">'+c.status+'</span>'+
+    '</div>';
+  }).join('');
+}
+
+// ===== ORÇAMENTOS =====
+var orcamentos=[
+  {nome:'Projeto Quiosque / Área Gourmet',cat:'Quiosque',status:'warn',arquivos:['Proposta Comercial 151225-00','Relatório Orçamento Quiosque','Prestação Serviço Reforma (assinado)','Proposta Comercial 02240']},
+  {nome:'Car Wash',cat:'Car Wash',status:'warn',arquivos:['Relatório Orçamento Car Wash','Prestação Serviço Car Wash (assinado)']},
+  {nome:'Pintura Predial',cat:'Pintura',status:'gray',arquivos:['Proposta Pintura (assinado)','Proposta Comercial 02239','Proposta Técnica Abr/2026']},
+  {nome:'Facial ADM — Portaria',cat:'Portaria',status:'gray',arquivos:['Orçamento Facial Concierge','Orçamento Facial MTC']},
+  {nome:'TAG Veicular',cat:'Portaria',status:'gray',arquivos:['Orçamento TAG Veicular Concierge','Orçamento TAG Veicular MTC']},
+  {nome:'AVCB — Renovação',cat:'Documentação',status:'bad',arquivos:[]},
+  {nome:'Limpeza Caixa d\'gua',cat:'Limpeza',status:'gray',arquivos:[]},
+  {nome:'Placa Solar — Cotação',cat:'Pl. Solar',status:'gray',arquivos:[]},
+  {nome:'Jardinagem — Paisagismo áreas comuns',cat:'Jardinagem',status:'gray',arquivos:[]},
+  {nome:'Portaria Virtual — Cotação',cat:'Portaria',status:'gray',arquivos:[]},
+  {nome:'Manutenção Câmeras',cat:'Câmeras',status:'gray',arquivos:[]}
+];
+function salvarOrcamentos(){salvarNoFirestore('orcamentos',orcamentos,function(){});}
+var orcStatusTxt={warn:'Em análise',bad:'Urgente',blue:'Novo',ok:'Concluído',gray:'Cotação'};
+
+var CATS_ORC=['Quiosque','Car Wash','Pintura','Portaria','Documentação','Limpeza','Jardinagem','Pl. Solar','Câmeras','Outros'];
+var filtroAtualOrc='todos';
+function renderFiltrosOrc(){
+  var el=document.getElementById('filtros-orc');if(!el)return;
+  var usadas=CATS_ORC.filter(function(c){return orcamentos.some(function(o){return o.cat===c;});});
+  var cats=['todos'].concat(usadas);
+  el.innerHTML=cats.map(function(c){
+    var on=filtroAtualOrc===c;
+    return '<button onclick="filtrarOrc(\''+c+'\')" style="font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid '+(on?'var(--azul)':'var(--border)')+';background:'+(on?'var(--azul)':'transparent')+';color:'+(on?'#fff':'var(--txt2)')+';cursor:pointer">'+(c==='todos'?'Todos':c)+'</button>';
+  }).join('');
+}
+function filtrarOrc(cat){
+  filtroAtualOrc=cat;
+  renderFiltrosOrc();
+  renderOrcamentos();
+}
+function renderOrcamentos(){
+  var el=document.getElementById('orc-lista');if(!el)return;
+  renderFiltrosOrc();
+  var filtrados=filtroAtualOrc==='todos'?orcamentos:orcamentos.filter(function(o){return o.cat===filtroAtualOrc;});
+  el.innerHTML=filtrados.map(function(o){
+    var i=orcamentos.indexOf(o);
+    return '<div class="card" style="margin-bottom:8px">'+
+      '<div class="row">'+
+        '<div style="flex:1"><div style="font-weight:600">'+o.nome+'</div><div style="font-size:11px;color:var(--txt3)">'+o.cat+'</div></div>'+
+        '<select class="orc-status-sel badge '+o.status+'" onchange="orcamentos['+i+'].status=this.value;this.className=\'orc-status-sel badge \'+this.value;salvarOrcamentos()">'+
+          ['warn','bad','blue','ok','gray'].map(function(s){return '<option value="'+s+'"'+(o.status===s?' selected':'')+'>'+orcStatusTxt[s]+'</option>';}).join('')+
+        '</select>'+
+        (adminLogado?'<button class="del-btn" style="margin-left:4px" onclick="orcamentos.splice('+i+',1);salvarOrcamentos();renderFiltrosOrc();renderOrcamentos()">&#x2715;</button>':'')+
+      '</div>'+
+      (o.arquivos&&o.arquivos.length?'<div style="margin-top:8px">'+o.arquivos.map(function(a){return '<span class="tag">📄 '+a+'</span>';}).join('')+'</div>':'')+
+    '</div>';
+  }).join('')+(adminLogado?'<button class="add-btn" onclick="addOrcamento()">+ Adicionar orçamento</button>':'');
+}
+function addOrcamento(){
+  var n=prompt('Nome do orçamento:');if(!n)return;
+  var c=prompt('Categoria (Quiosque, Car Wash, Pintura, Portaria, Documentação, Limpeza, Jardinagem, Pl. Solar, Câmeras, Outros):')||'Outros';
+  if(!CATS_ORC.includes(c)) c='Outros';
+  orcamentos.push({nome:n,cat:c,status:'gray',arquivos:[]});
+  salvarOrcamentos();renderFiltrosOrc();renderOrcamentos();
+}
+function renderOrcamentosAdmin(){
+  var el=document.getElementById('edit-orcamentos');if(!el)return;
+  el.innerHTML=orcamentos.map(function(o,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(orcamentos,'+i+',-1,renderOrcamentosAdmin)').replace('{DOWN}','moverItem(orcamentos,'+i+',1,renderOrcamentosAdmin)')+
+      '<input class="ie-txt" value="'+esc(o.nome)+'" onchange="orcamentos['+i+'].nome=this.value" placeholder="Nome">'+
+      '<select style="width:110px;font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:6px" onchange="orcamentos['+i+'].cat=this.value">'+
+        CATS_ORC.map(function(c){return '<option value="'+c+'"'+(o.cat===c?' selected':'')+'>'+c+'</option>';}).join('')+
+      '</select>'+
+      '<button class="del-btn" onclick="orcamentos.splice('+i+',1);renderOrcamentosAdmin();renderFiltrosOrc();renderOrcamentos()">&#x2715;</button>'+
+    '</div>';
+  }).join('');
+}
+function addOrcamentoAdmin(){orcamentos.push({nome:'Novo orçamento',cat:'Outros',status:'gray',arquivos:[]});renderOrcamentosAdmin();}
+
+// ===== PRESTADORES =====
+var CATS_PREST=['Eletricista','Jardinagem','Portaria / Cameras','Ar Condicionado','Placa Solar','FoodTruck','Smart Store','Advogado'];
+var prestadores=[
+  {nome:'Jeová',cat:'Eletricista',tel:'(19) 99228-3082',ind:''},
+  {nome:'Wendel',cat:'Eletricista',tel:'(19) 98166-3208',ind:'Apto 1121 — Wilson'},
+  {nome:'Luis Fernando',cat:'Eletricista',tel:'(19) 99369-9529',ind:'Roberto Concierge'},
+  {nome:'Mauricio',cat:'Eletricista',tel:'(19) 98800-5082',ind:'Morador Gui Bedon'},
+  {nome:'Wagner',cat:'Eletricista',tel:'(19) 99824-5455',ind:'Moradora Cris 1114'},
+  {nome:'Rodrigo',cat:'Eletricista',tel:'(19) 99199-6448',ind:'Morador Victor'},
+  {nome:'Horto Plantas',cat:'Jardinagem',tel:'(19) 3819-9187',ind:''},
+  {nome:'MTC — Christian',cat:'Portaria / Cameras',tel:'(19) 98235-0001',ind:'Cunhado Edvaldo'},
+  {nome:'Rubens',cat:'FoodTruck',tel:'(19) 97821-3922',ind:''},
+  {nome:'Daniel',cat:'Ar Condicionado',tel:'(19) 97406-5063',ind:''},
+  {nome:'Everton',cat:'Placa Solar',tel:'(19) 99979-0550',ind:'Instalou as placas'},
+  {nome:'Robson',cat:'Smart Store',tel:'(11) 95741-5192',ind:''},
+  {nome:'Amanda Amaral',cat:'Advogado',tel:'(19) 3054-6196',ind:'Débitos / Garantidora'}
+];
+function salvarPrestadores(){salvarNoFirestore('prestadores',prestadores,function(){});}
+var filtroAtualPrest='todos';
+var catIcos={Eletricista:'⚡',Jardinagem:'🌿','Portaria / Cameras':'📷','Ar Condicionado':'❄️','Placa Solar':'☀️',FoodTruck:'🚚','Smart Store':'🛒',Advogado:'⚖️'};
+var catBg={Eletricista:'#fff3e0',Jardinagem:'#e8f5e9','Portaria / Cameras':'#e3f0fb','Ar Condicionado':'#e3f0fb','Placa Solar':'#fff3e0',FoodTruck:'#fff3e0','Smart Store':'#e8f5e9',Advogado:'#fdecea'};
+function renderPrestadores(){
+  var el=document.getElementById('lista-prest-dyn');if(!el)return;
+  var q=(document.getElementById('busca-prest')||{}).value||''; q=q.toLowerCase();
+  var filtrados=prestadores.filter(function(p){return (filtroAtualPrest==='todos'||p.cat===filtroAtualPrest)&&(p.nome+p.cat+p.ind).toLowerCase().includes(q);});
+  var grupos={};
+  filtrados.forEach(function(p){if(!grupos[p.cat])grupos[p.cat]=[];grupos[p.cat].push(p);});
+  var html='';
+  Object.keys(grupos).forEach(function(cat){
+    html+='<div class="card" style="padding:0 15px;margin-bottom:8px">';
+    html+='<div style="padding:10px 0 6px;font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em">'+cat+'</div>';
+    grupos[cat].forEach(function(p){
+      var idx=prestadores.indexOf(p);
+      var tel=p.tel.replace(/[^0-9]/g,''); if(tel.length>=10) tel='55'+tel;
+      html+='<div class="file-row">'+
+        '<div class="file-ico" style="background:'+(catBg[cat]||'#f0f0f0')+'">'+(catIcos[cat]||'👤')+'</div>'+
+        '<div style="flex:1"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+p.ind:'')+'</div></div>'+
+        '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:4px">Ligar</a>'+
+        (adminLogado?'<button class="del-btn" onclick="removerPrestador('+idx+')">✕</button>':'')+
+      '</div>';
+    });
+    html+='</div>';
+  });
+  if(adminLogado) html+='<button class="btn primary" style="width:100%;margin-top:4px" onclick="addPrestador()">+ Adicionar prestador</button>';
+  el.innerHTML=html;
+  var e1=document.getElementById('prest-total'); if(e1) e1.textContent=prestadores.length;
+  var e2=document.getElementById('prest-com-ind'); if(e2) e2.textContent=prestadores.filter(function(p){return p.ind;}).length;
+}
+function removerPrestador(idx){if(!confirm('Remover '+prestadores[idx].nome+'?'))return;prestadores.splice(idx,1);salvarPrestadores();renderPrestadores();}
+function addPrestador(){
+  var n=prompt('Nome do prestador:');if(!n)return;
+  var c=prompt('Categoria:\n'+CATS_PREST.join('\n'));if(!c)return;
+  var t=prompt('Telefone:')||'';
+  var ind=prompt('Indicação (opcional):')||'';
+  prestadores.push({nome:n,cat:c,tel:t,ind:ind});salvarPrestadores();renderPrestadores();
+}
+function filtrarCatPrest(cat,btn){
+  filtroAtualPrest=cat;
+  document.querySelectorAll('#filtros-cat button').forEach(function(b){b.style.background='';b.style.color='';b.style.borderColor='';});
+  btn.style.background='var(--azul)';btn.style.color='#fff';btn.style.borderColor='var(--azul)';
+  renderPrestadores();
+}
+function renderPrestadoresAdmin(){
+  var el=document.getElementById('edit-prestadores');if(!el)return;
+  el.innerHTML=prestadores.map(function(p,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      '<input class="ie-txt" style="min-width:100px" value="'+esc(p.nome)+'" onchange="prestadores['+i+'].nome=this.value">'+
+      '<select class="ie-sel" style="width:130px" onchange="prestadores['+i+'].cat=this.value">'+CATS_PREST.map(function(c){return '<option value="'+c+'"'+(p.cat===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>'+
+      '<input style="width:120px" value="'+esc(p.tel)+'" onchange="prestadores['+i+'].tel=this.value" placeholder="Telefone">'+
+      '<input class="ie-sub" value="'+esc(p.ind)+'" onchange="prestadores['+i+'].ind=this.value" placeholder="Indicação">'+
+      '<button class="del-btn" onclick="prestadores.splice('+i+',1);salvarPrestadores();renderPrestadoresAdmin();renderPrestadores()">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+// ===== TAREFAS =====
+var tarefas=[
+  {txt:'Revisar câmeras',sub:'Jan/2025',status:'warn'},
+  {txt:'Avaliar árvores da Quadra',sub:'Fev/2025',status:'gray'},
+  {txt:'Comprar bebedouro da Quadra',sub:'Fev/2025',status:'gray'},
+  {txt:'Disponibilizar regras do condômino aos moradores',sub:'Enviado parcialmente',status:'warn'},
+  {txt:'Alterar abertura do portão',sub:'Fev/2025',status:'ok'},
+  {txt:'Acesso ao e-mail do condomínio',sub:'Priscila acompanhando',status:'ok'}
+];
+var stLabel={ok:'Concluído',warn:'Parcial',gray:'Pendente',bad:'Urgente',blue:'Andamento'};
+function salvarTarefas(){localStorage.setItem('asi_tarefas',JSON.stringify(tarefas));}
+function renderTarefas(){
+  var el=document.getElementById('proj-lista');if(!el)return;
+  var q=((document.getElementById('busca-proj')||{}).value||'').toLowerCase();
+  var icoMap={ok:'✅',warn:'📦',gray:'📌',bad:'🔴',blue:'📌'};
+  var fil=tarefas.filter(function(t){return (t.txt+t.sub).toLowerCase().includes(q);});
+  el.innerHTML='<div class="card" style="padding:0 15px">'+fil.map(function(t){
+    return '<div class="file-row">'+
+      '<div class="file-ico" style="background:'+(t.status==='ok'?'#e8f5e9':'#fff3e0')+'">'+icoMap[t.status]+'</div>'+
+      '<div style="flex:1"><div style="font-weight:500">'+t.txt+'</div><div style="font-size:11px;color:var(--txt3)">'+t.sub+'</div></div>'+
+      '<span class="badge '+t.status+'">'+stLabel[t.status]+'</span></div>';
+  }).join('')+'</div>';
+  var tot=document.getElementById('proj-total'),conc=document.getElementById('proj-conc'),pend=document.getElementById('proj-pend'),totalProj=document.getElementById('proj-total-proj');
+  if(tot) tot.textContent=tarefas.length;
+  if(conc) conc.textContent=tarefas.filter(function(t){return t.status==='ok';}).length;
+  if(pend) pend.textContent=tarefas.filter(function(t){return t.status!=='ok';}).length;
+  if(totalProj) totalProj.textContent=dadosAdmin.projetos.length;
+}
+function renderTarefasAdmin(){
+  var el=document.getElementById('edit-tarefas');if(!el)return;
+  el.innerHTML=tarefas.map(function(t,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(tarefas,'+i+',-1,renderTarefasAdmin)').replace('{DOWN}','moverItem(tarefas,'+i+',1,renderTarefasAdmin)')+
+      '<input class="ie-txt" style="min-width:140px" value="'+esc(t.txt)+'" onchange="tarefas['+i+'].txt=this.value">'+
+      '<input class="ie-sub" value="'+esc(t.sub)+'" onchange="tarefas['+i+'].sub=this.value" placeholder="Detalhe">'+
+      '<select class="ie-sel" onchange="onStatusChange(tarefas,'+i+',this.value,renderTarefasAdmin)">'+['ok','warn','gray','bad','blue'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+'</select>'+
+      '<button class="del-btn" onclick="tarefas.splice('+i+',1);renderTarefasAdmin()">✕</button></div>';
+  }).join('');
+}
+function addTarefa(){tarefas.push({txt:'Nova tarefa',sub:'',status:'gray'});renderTarefasAdmin();}
+
+// ===== DADOS ADMIN — carregados do Firestore =====
+var dadosAdmin={
+  alertas:[
+    {txt:'AVCB — renovação urgente',sub:'Venceu Mar/2026 - Em Renovação',status:'bad'}
+  ],
+  realizacoes:[
+    {data:'Abr/2026',txt:'Jardim - Área do Play - 01/04'},
+    {data:'Mar/2026',txt:"Limpeza Caixa D'agua 31/03 e 01/04"},
+    {data:'Mar/2026',txt:'Revisão da Central de Alarme 31/03'},
+    {data:'Mar/2026',txt:'Desinsetização - Agricamp 30/03'},
+    {data:'Mar/2026',txt:'Troca Motor(NOVO) do Portão de Veiculos'},
+    {data:'Mar/2026',txt:"Limpeza telhado das Caixas D'agua"},
+    {data:'Mar/2026',txt:'Food Truck 14/03'},
+    {data:'Fev/2026',txt:'Jardim - Frente Condomínio - 24/02'},
+    {data:'Fev/2026',txt:'Limpeza Caixa de Gordura e Desentupimento'},
+    {data:'Fev/2026',txt:'Projeto do Quiosque finalizado'},
+    {data:'Jan/2026',txt:'Compra das redes da Quadra'},
+    {data:'Dez/2025',txt:'Compra TV Quiosque'},
+    {data:'Nov/2025',txt:'Food Truck'},
+    {data:'Out/2025',txt:'Festa das Crianças'},
+    {data:'Jul/2025',txt:'Cinema na Quadra'}
+  ],
+  projetos:[
+    {nome:'Reforma do Quiosque',sub:'Quiosque',pct:5,status:'approved'},
+    {nome:'Pintura Predial',sub:'Condominio',pct:5,status:'approved'},
+    {nome:'Paisagismo — áreas comuns',sub:'Play, Sacadas',pct:40,status:'ok'},
+    {nome:'Reforma PISOS e ADM',sub:'9 Halls e Sala ADM',pct:50,status:'ok'},
+    {nome:'Criação Car Wash',sub:'Não Aprovado',pct:0,status:'canceled'}
+  ],
+  contratos:[
+    {doc:'AVCB',emissao:'Mar/2021',validade:'Mar/2026',status:'bad',ramo:'Juridico'},
+    {doc:'Seguro',emissao:'Fev/2026',validade:'Fev/2027',status:'ok',ramo:'Administrativo'},
+    {doc:'Contrato Jardinagem',emissao:'Mai/2026',validade:'Abr/2027',status:'ok',ramo:'Jardinagem'},
+    {doc:'Contrato Concierge',emissao:'—',validade:'A verificar',status:'canceled',ramo:'Portaria Remota'}
+  ]
+};
+
+function verificarPendentes(){
+  db.collection('usuarios').where('status','==','pendente').get().then(function(snap){
+    var badge=document.getElementById('badge-usuarios');
+    if(!badge) return;
+    if(snap.size>0){badge.textContent=snap.size;badge.style.display='block';}
+    else{badge.style.display='none';}
+  }).catch(function(){});
+}
+
+// Carrega TODOS os dados do Firestore na inicialização
+function carregarTodosOsDados(callback){
+  var secoes={
+    alertas:   function(d){dadosAdmin.alertas=d;},
+    realizacoes:function(d){dadosAdmin.realizacoes=d;},
+    projetos:  function(d){dadosAdmin.projetos=d;},
+    contratos: function(d){dadosAdmin.contratos=d;},
+    tarefas:   function(d){tarefas=d;},
+    orcamentos:function(d){orcamentos=d;},
+    documentos:function(d){documentos=d;},
+    prestadores:function(d){prestadores=d;}
+  };
+  var keys=Object.keys(secoes);
+  var pendentes=keys.length;
+  keys.forEach(function(sec){
+    db.collection('portal').doc(sec).get().then(function(doc){
+      if(doc.exists && doc.data().items && doc.data().items.length>0){
+        secoes[sec](doc.data().items);
+      }
+      pendentes--;
+      if(pendentes===0 && callback) callback();
+    }).catch(function(){
+      pendentes--;
+      if(pendentes===0 && callback) callback();
+    });
+  });
+}
+// ===== ADMIN =====
+var SENHA='altos2026';
+var RAMOS_CONTRATO=JSON.parse(localStorage.getItem('asi_ramos_contrato')||'null')||['Portaria Remota','Jardinagem','Facilities','Juridico','Administrativo','Manutenção'];
+function salvarRamosContrato(){localStorage.setItem('asi_ramos_contrato',JSON.stringify(RAMOS_CONTRATO));}
+var stContratoOpts=[
+  {v:'ok',l:'🟢 Vigente'},
+  {v:'bad',l:'🔴 Vencido'},
+  {v:'warn',l:'🟡 Em Renovação'},
+  {v:'blue',l:'🔵 Em Cotação'},
+  {v:'purple',l:'🟣 Finalizado'},
+  {v:'canceled',l:'🚫 Cancelado'}
+];
+var stContratoMap={ok:'Vigente',bad:'Vencido',warn:'Em Renovação',blue:'Em Cotação',purple:'Finalizado',canceled:'Cancelado'};
+var stOpts=[{v:'bad',l:'🔴 Urgente'},{v:'warn',l:'🟡 Pend. Aprovação'},{v:'blue',l:'🔵 Em Orçamento'},{v:'ok',l:'🟢 Em Andamento'},{v:'construction',l:'🟠 Em Construção'},{v:'approved',l:'✅ Aprovado'},{v:'purple',l:'🟣 Concluído'},{v:'canceled',l:'🚫 Cancelado'},{v:'gray',l:'⚪ Não Aprovado'}];
+var stMap={bad:'Urgente',warn:'Pend. Aprovação',blue:'Em Orçamento',ok:'Em Andamento',construction:'Em Construção',approved:'Aprovado',purple:'Concluído',canceled:'Cancelado',gray:'Não Aprovado'};
+function esc(s){return (s||'').replace(/"/g,'&quot;');}
+function moverItem(arr,i,dir,renderFn){var j=i+dir;if(j<0||j>=arr.length)return;var tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;renderFn();}
+function onStatusChange(arr,i,val,renderFn){
+  arr[i].status=val;
+  // Se concluído ou cancelado, mover para o final
+  if(val==='purple'||val==='canceled'||val==='gray'){
+    var item=arr.splice(i,1)[0];
+    arr.push(item);
+  }
+  renderFn();
+}
+var ordemBtns='<div class="ordem-btns"><button onclick="{UP}">▲</button><button onclick="{DOWN}">▼</button></div>';
+function selOpts(val){return stOpts.map(function(o){return '<option value="'+o.v+'"'+(o.v===val?' selected':'')+'>'+o.l+'</option>';}).join('');}
+
+function abrirAdmin(){
+  if(!adminLogado){
+    alert('Acesso restrito ao administrador.');
+    return;
+  }
+  document.getElementById('adminOverlay').classList.add('on');
+  document.getElementById('adminLogin').style.display='none';
+  document.getElementById('adminPainel').style.display='block';
+  // Resetar para aba Alertas
+  document.querySelectorAll('.admin-sec').forEach(function(s){s.classList.remove('on');});
+  document.querySelectorAll('.at').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('asec-alertas').classList.add('on');
+  document.querySelector('.at').classList.add('on');
+  renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderDocumentosAdmin();
+  // Adicionar aba Usuários se ainda não existe
+  if(!document.getElementById('tab-usuarios')){
+    var tabsEl=document.querySelector('.admin-tabs');
+    var btn=document.createElement('button');
+    btn.className='at'; btn.id='tab-usuarios';
+    btn.innerHTML='👥 Usuários';
+    btn.onclick=function(){window.open('usuarios.html','_blank');};
+    tabsEl.appendChild(btn);
+  }
+}
+function fecharAdmin(){document.getElementById('adminOverlay').classList.remove('on');}
+function verificarSenha(){
+  if(document.getElementById('adminSenha').value===SENHA){
+    adminLogado=true;
+    document.getElementById('adminLogin').style.display='none';
+    document.getElementById('adminPainel').style.display='block';
+    renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();
+  } else {document.getElementById('erroSenha').style.display='block';}
+}
+function adminTab(id,btn){
+  document.querySelectorAll('.admin-sec').forEach(function(s){s.classList.remove('on');});
+  document.querySelectorAll('.at').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('asec-'+id).classList.add('on');btn.classList.add('on');
+}
+function renderAdmin(){
+  var ea=document.getElementById('edit-alertas');
+  ea.innerHTML=dadosAdmin.alertas.map(function(a,i){
+    return '<div class="item-edit">'+
+      ordemBtns.replace('{UP}','moverItem(dadosAdmin.alertas,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.alertas,'+i+',1,renderAdmin)')+
+      '<select class="ie-sel" onchange="onStatusChange(dadosAdmin.alertas,'+i+',this.value,renderAdmin)">'+selOpts(a.status)+'</select>'+
+      '<input class="ie-txt" value="'+esc(a.txt)+'" onchange="dadosAdmin.alertas['+i+'].txt=this.value" placeholder="Título">'+
+      '<input class="ie-sub" value="'+esc(a.sub)+'" onchange="dadosAdmin.alertas['+i+'].sub=this.value" placeholder="Detalhe">'+
+      '<button class="del-btn" onclick="dadosAdmin.alertas.splice('+i+',1);renderAdmin()">✕</button></div>';
+  }).join('');
+
+  var er=document.getElementById('edit-realizacoes');
+  er.innerHTML=dadosAdmin.realizacoes.map(function(r,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(dadosAdmin.realizacoes,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.realizacoes,'+i+',1,renderAdmin)')+
+      '<input style="width:75px" value="'+esc(r.data)+'" onchange="dadosAdmin.realizacoes['+i+'].data=this.value" placeholder="Data">'+
+      '<input class="ie-txt" value="'+esc(r.txt)+'" onchange="dadosAdmin.realizacoes['+i+'].txt=this.value" placeholder="Descrição">'+
+      '<input style="width:100%;margin-top:4px;font-size:11px" value="'+esc(r.foto||'')+'" onchange="dadosAdmin.realizacoes['+i+'].foto=this.value" placeholder="🖼️ Link da foto no Drive (opcional)">'+
+      '<button class="del-btn" onclick="dadosAdmin.realizacoes.splice('+i+',1);renderAdmin()">&#x2715;</button></div>';
+  }).join('');
+
+  var ep=document.getElementById('edit-projetos');
+  ep.innerHTML=dadosAdmin.projetos.map(function(p,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(dadosAdmin.projetos,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.projetos,'+i+',1,renderAdmin)')+
+      '<input class="ie-txt" style="min-width:130px" value="'+esc(p.nome)+'" onchange="dadosAdmin.projetos['+i+'].nome=this.value">'+
+      '<input class="ie-sub" value="'+esc(p.sub)+'" onchange="dadosAdmin.projetos['+i+'].sub=this.value" placeholder="Detalhe">'+
+      '<input style="width:55px" type="number" min="0" max="100" value="'+p.pct+'" onchange="dadosAdmin.projetos['+i+'].pct=+this.value" placeholder="%">'+
+      '<select class="ie-sel" onchange="onStatusChange(dadosAdmin.projetos,'+i+',this.value,renderAdmin)">'+selOpts(p.status)+'</select>'+
+      '<button class="del-btn" onclick="dadosAdmin.projetos.splice('+i+',1);renderAdmin()">✕</button></div>';
+  }).join('');
+
+  var ec=document.getElementById('edit-contratos');
+  ec.innerHTML=dadosAdmin.contratos.map(function(c,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(dadosAdmin.contratos,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.contratos,'+i+',1,renderAdmin)')+
+      '<input class="ie-txt" style="min-width:110px" value="'+esc(c.doc)+'" onchange="dadosAdmin.contratos['+i+'].doc=this.value" placeholder="Documento">'+
+      '<select style="width:130px;font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:6px" onchange="dadosAdmin.contratos['+i+'].ramo=this.value">'+
+        RAMOS_CONTRATO.map(function(r){return '<option value="'+r+'"'+(r===(c.ramo||'')?' selected':'')+'>'+r+'</option>';}).join('')+
+        '<option value=""'+(!(c.ramo||'')?' selected':'')+'>— Sem ramo —</option>'+
+      '</select>'+
+      '<input style="width:75px" value="'+esc(c.emissao)+'" onchange="dadosAdmin.contratos['+i+'].emissao=this.value" placeholder="Emissão">'+
+      '<input style="width:85px" value="'+esc(c.validade)+'" onchange="dadosAdmin.contratos['+i+'].validade=this.value" placeholder="Validade">'+
+      '<select class="ie-sel" onchange="dadosAdmin.contratos['+i+'].status=this.value;renderAdmin()">'+stContratoOpts.map(function(o){return '<option value="'+o.v+'"'+(o.v===c.status?' selected':'')+'>'+o.l+'</option>';}).join('')+'</select>'+
+      '<button class="del-btn" onclick="dadosAdmin.contratos.splice('+i+',1);renderAdmin()">✕</button></div>';
+  }).join('');
+}
+function addAlerta(){dadosAdmin.alertas.push({txt:'Novo alerta',sub:'',status:'warn'});renderAdmin();}
+function addRealizacao(){dadosAdmin.realizacoes.unshift({data:'Abr/2026',txt:'Nova realização'});renderAdmin();}
+function addProjeto(){dadosAdmin.projetos.push({nome:'Novo projeto',sub:'',pct:0,status:'blue'});renderAdmin();}
+function addContrato(){dadosAdmin.contratos.push({doc:'Novo documento',emissao:'—',validade:'—',status:'ok',ramo:''});renderAdmin();}
+function addRamoContrato(){
+  var r=prompt('Nome do novo ramo de atividade:');
+  if(!r||!r.trim()) return;
+  r=r.trim();
+  if(RAMOS_CONTRATO.indexOf(r)>=0){alert('Ramo já existe.');return;}
+  RAMOS_CONTRATO.push(r);
+  salvarRamosContrato();
+  renderAdmin();
+  alert('✅ Ramo "'+r+'" adicionado!');
+}
+function salvarNoFirestore(colecao,dados,callback){
+  db.collection('portal').doc(colecao).set({items:dados}).then(function(){
+    if(callback) callback();
+  }).catch(function(e){alert('Erro ao salvar: '+e.message);});
+}
+function salvarAlertas(){salvarNoFirestore('alertas',dadosAdmin.alertas,function(){renderAlertas();alert('✅ Alertas salvos!');});}
+function salvarRealizacoes(){salvarNoFirestore('realizacoes',dadosAdmin.realizacoes,function(){renderRealizacoes();alert('✅ Realizações salvas!');});}
+function salvarProjetos(){salvarNoFirestore('projetos',dadosAdmin.projetos,function(){renderProjetosAdmin();alert('✅ Projetos salvos!');});}
+function salvarContratos(){salvarNoFirestore('contratos',dadosAdmin.contratos,function(){renderContratosAdmin();alert('✅ Contratos salvos!');});}
+function salvarTarefas(){salvarNoFirestore('tarefas',tarefas,function(){renderTarefas();alert('✅ Tarefas salvas!');});}
+
+function renderAlertas(){
+  var el=document.getElementById('lista-alertas');if(!el)return;
+  var cor={bad:'#fdecea',warn:'#fff3e0',blue:'#e3f0fb',ok:'#e8f5e9'};
+  var ico={bad:'🔴',warn:'🟡',blue:'🔵',ok:'🟢'};
+  el.innerHTML=dadosAdmin.alertas.map(function(a){return '<div class="file-row"><div class="file-ico" style="background:'+(cor[a.status]||'#f0efe8')+'">'+ico[a.status]+'</div><div style="flex:1"><div style="font-weight:600">'+a.txt+'</div><div style="font-size:12px;color:var(--txt3)">'+a.sub+'</div></div><span class="badge '+a.status+'">'+stMap[a.status]+'</span></div>';}).join('');
+}
+function renderRealizacoes(){
+  var el=document.getElementById('lista-realizacoes');if(!el)return;
+  var grupos={};
+  dadosAdmin.realizacoes.forEach(function(r){
+    var ano=(r.data||'').split('/')[1]||'Outros';
+    if(ano.length===2) ano='20'+ano;
+    if(!grupos[ano]) grupos[ano]=[];
+    grupos[ano].push(r);
+  });
+  var anos=Object.keys(grupos).sort(function(a,b){return b-a;});
+  el.innerHTML=anos.map(function(ano,idx){
+    var aberto=idx===0;
+    var itens=grupos[ano].map(function(r){
+      var fotoUrl=r.foto?driveUrl(r.foto):null;
+      return '<div class="file-row" style="align-items:flex-start">'+
+        (fotoUrl
+          ?'<img src="'+fotoUrl+'" onclick="abrirFoto(\''+(r.foto||'')+'\')" style="width:56px;height:56px;border-radius:8px;object-fit:cover;cursor:pointer;flex-shrink:0" onerror="this.style.display=\'none\'">'
+          :'<div class="file-ico" style="background:#e8f5e9">✅</div>'
+        )+
+        '<div style="flex:1"><div style="font-size:12px;color:var(--txt3)">'+r.data+'</div><div style="font-weight:500">'+r.txt+'</div></div>'+
+        '<span class="badge ok">✓</span></div>';
+    }).join('');
+    return '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">'+
+      '<div onclick="toggleAno(this)" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:'+(aberto?'#f0f5fb':'var(--card)')+'">'+
+      '<span style="font-weight:700;font-size:14px;color:var(--azul)">'+ano+'</span>'+
+      '<span style="font-size:13px;color:var(--txt3)">'+grupos[ano].length+' realizações <span class="chevron-ano" style="display:inline-block;transition:transform .2s;transform:'+(aberto?'rotate(90deg)':'rotate(0deg)')+'">›</span></span>'+
+      '</div>'+
+      '<div class="ano-content" style="display:'+(aberto?'block':'none')+';padding:0 15px">'+itens+'</div>'+
+      '</div>';
+  }).join('');
+}
+function toggleChurrAno(header){
+  var content=header.nextElementSibling;
+  var chevron=header.querySelector('.chevron-churr');
+  var aberto=content.style.display==='block';
+  content.style.display=aberto?'none':'block';
+  chevron.style.transform=aberto?'rotate(0deg)':'rotate(90deg)';
+  header.style.background=aberto?'var(--card)':'#f0f5fb';
+}
+function toggleAno(header){
+  var content=header.nextElementSibling;
+  var chevron=header.querySelector('.chevron-ano');
+  var aberto=content.style.display==='block';
+  content.style.display=aberto?'none':'block';
+  chevron.style.transform=aberto?'rotate(0deg)':'rotate(90deg)';
+  header.style.background=aberto?'var(--card)':'#f0f5fb';
+}
+
+function driveUrl(link){
+  if(!link) return null;
+  var m=link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(m) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';
+  return link;
+}
+
+function abrirFoto(link){
+  var m=link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  var url=m?'https://drive.google.com/file/d/'+m[1]+'/view':link;
+  window.open(url,'_blank');
+}
+function renderProjetosAdmin(){
+  var el=document.getElementById('lista-projetos-admin');if(!el)return;
+  var corBar={bad:'var(--bad)',warn:'var(--warn)',blue:'#1565c0',ok:'var(--ok)',purple:'#7c3aed',gray:'#888',construction:'#d97706',approved:'#2d7a3a',canceled:'#999'};
+  var lblBar=stMap;
+  el.innerHTML=dadosAdmin.projetos.map(function(p){return '<div class="card clickable" style="margin-bottom:8px"><div class="row" style="margin-bottom:9px"><div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.sub+'</div></div><span class="badge '+p.status+'">'+(lblBar[p.status]||p.status)+'</span></div><div class="pl"><span>Andamento</span><span>'+p.pct+'%</span></div><div class="bw"><div class="br" style="width:'+p.pct+'%;background:'+(corBar[p.status]||'#888')+'"></div></div></div>';}).join('');
+}
+function renderContratosAdmin(){
+  var el=document.getElementById('tbody-contratos');if(!el)return;
+  el.innerHTML=dadosAdmin.contratos.map(function(c){return '<tr><td>'+c.doc+'</td><td><span style="font-size:11px;background:#f0efe8;padding:2px 8px;border-radius:99px;color:#555">'+(c.ramo||'—')+'</span></td><td>'+c.emissao+'</td><td>'+c.validade+'</td><td><span class="badge '+c.status+'">'+(stContratoMap[c.status]||c.status)+'</span></td></tr>';}).join('');
+}
+
+// ===== CHURRASQUEIRA SINCRONIZADA COM FIRESTORE =====
+function sincronizarFinanceiro(){
+  db.collection('financeiro').orderBy('periodo').get().then(function(snap){
+    if(snap.empty) return;
+    var allChurr={}; // mes -> valor (sem duplicata)
+    var totalChurr=0;
+    var allMeses=[];
+    snap.forEach(function(doc){
+      var p=doc.data();
+      if(!p.mes) return;
+      // Prioridade: 16A > 11A > 20C para mesmo mes
+      var PRIO={'16A':3,'11A':2,'20C':1};
+      if(allChurr[p.mes]!==undefined){
+        // ja existe — so substitui se novo tem maior prioridade
+        if((PRIO[p.tipo]||0)<=(PRIO[allChurr[p.mes].tipo]||0)) return;
+      }
+      allChurr[p.mes]={v:p.churr||0,tipo:p.tipo};
+      if(!allMeses.includes(p.mes)) allMeses.push(p.mes);
+    });
+    allMeses.sort(function(a,b){
+      var mMap={Jan:1,Fev:2,Mar:3,Abr:4,Mai:5,Jun:6,Jul:7,Ago:8,Set:9,Out:10,Nov:11,Dez:12};
+      var pa=a.split('/'),pb=b.split('/');
+      var ya=pa[1].length===2?parseInt('20'+pa[1]):parseInt(pa[1]);
+      var yb=pb[1].length===2?parseInt('20'+pb[1]):parseInt(pb[1]);
+      if(ya!==yb)return ya-yb;
+      return(mMap[pa[0]]||0)-(mMap[pb[0]]||0);
+    });
+    totalChurr=allMeses.reduce(function(acc,m){return acc+(allChurr[m]?allChurr[m].v:0);},0);
+    var mesesComValor=allMeses.filter(function(m){return allChurr[m]&&allChurr[m].v>0;});
+    if(totalChurr>0){
+      var e1=document.getElementById('churr-total-rec');
+      var e2=document.getElementById('churr-media');
+      var e3=document.getElementById('churr-fonte');
+      var e4=document.getElementById('churr-total-loc');
+      if(e1) e1.textContent='R$ '+totalChurr.toLocaleString('pt-BR',{minimumFractionDigits:2});
+      if(e2) e2.textContent='R$ '+Math.round(totalChurr/(allMeses.length||1));
+      if(e3) e3.textContent='Demonstrativo ('+allMeses[0]+' a '+allMeses[allMeses.length-1]+')';
+      if(e4) e4.textContent=mesesComValor.length+'x';
+      // Renderizar histórico agrupado por ano
+      var el=document.getElementById('churr-historico');
+      if(el){
+        var totalLocacoes=0;
+        var mesesComValor=allMeses.filter(function(m){return allChurr[m]&&allChurr[m].v>0;});
+        // Agrupar por ano
+        var grupos={};
+        mesesComValor.forEach(function(m){
+          var ano=m.split('/')[1];
+          if(ano&&ano.length===2) ano='20'+ano;
+          if(!grupos[ano]) grupos[ano]=[];
+          grupos[ano].push(m);
+        });
+        var anos=Object.keys(grupos).sort(function(a,b){return b-a;});
+        el.innerHTML=anos.map(function(ano,idx){
+          var aberto=idx===0;
+          var locAno=0;
+          var recAno=0;
+          var rows=grupos[ano].map(function(m){
+            var receita=allChurr[m].v;
+            var locacoes=Math.round(receita/30);
+            locAno+=locacoes; recAno+=receita; totalLocacoes+=locacoes;
+            return '<tr><td>'+m+'</td><td>'+locacoes+'x</td><td>R$ '+receita.toFixed(2).replace('.',',')+'</td></tr>';
+          }).join('');
+          rows+='<tr style="font-weight:700;background:#f8f8f5"><td>Total '+ano+'</td><td>'+locAno+'x</td><td>R$ '+recAno.toFixed(2).replace('.',',')+'</td></tr>';
+          return '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">'+
+            '<div onclick="toggleChurrAno(this)" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:'+(aberto?'#f0f5fb':'var(--card)')+'">'+
+            '<span style="font-weight:700;font-size:14px;color:var(--azul)">'+ano+'</span>'+
+            '<span style="font-size:13px;color:var(--txt3)">'+locAno+'x &nbsp;·&nbsp; R$ '+recAno.toFixed(2).replace('.',',')+' <span class="chevron-churr" style="display:inline-block;transition:transform .2s;transform:'+(aberto?'rotate(90deg)':'rotate(0deg)')+'">›</span></span>'+
+            '</div>'+
+            '<div class="churr-ano-content" style="display:'+(aberto?'block':'none')+'">'+
+            '<div class="tw"><table><thead><tr><th>Mês</th><th>Locações</th><th>Receita</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+            '</div></div>';
+        }).join('');
+        // Atualizar métrica total locações
+        var e4=document.getElementById('churr-total-loc');
+        if(e4) e4.textContent=totalLocacoes+'x';
+      }
+    }
+  }).catch(function(e){console.log('Erro ao sincronizar churrasqueira:',e);});
+}
+
+// ===== DOCUMENTOS =====
+var documentos=[
+  {nome:'AVCB — Auto de Vistoria Bombeiros',sub:'Emitido Mar/2021 · Vencido Mar/2026',status:'bad',link:'',secao:'docs'},
+  {nome:'Seguro do Condomínio',sub:'Validade não verificada',status:'warn',link:'',secao:'docs'},
+  {nome:'Convenção do Condomínio',sub:'PDF registrado',status:'ok',link:'',secao:'docs'},
+  {nome:'Regimento Interno',sub:'PDF',status:'ok',link:'',secao:'docs'},
+  {nome:'CNPJ — Inscrição Cadastral',sub:'PDF',status:'ok',link:'',secao:'docs'},
+  {nome:'Planta Hidráulica',sub:'11 folhas',status:'ok',link:'',secao:'plantas'},
+  {nome:'Planta Elétrica',sub:'22 folhas',status:'ok',link:'',secao:'plantas'},
+  {nome:'Planta Arquitetura',sub:'',status:'ok',link:'',secao:'plantas'}
+];
+
+function salvarDocumentos(){
+  salvarNoFirestore('documentos',documentos,function(){renderDocumentos();alert('✅ Documentos salvos!');});
+}
+
+var docIco={bad:'📄',warn:'📄',ok:'📄',blue:'📄'};
+var docBg={bad:'#fdecea',warn:'#fff3e0',ok:'#e3f0fb',blue:'#e3f0fb'};
+
+function renderDocumentos(){
+  ['docs','plantas'].forEach(function(secao){
+    var elId=secao==='docs'?'lista-documentos':'lista-plantas';
+    var el=document.getElementById(elId);if(!el)return;
+    var filtrados=documentos.filter(function(d){return d.secao===secao;});
+    if(!filtrados.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhum documento cadastrado.</div>';return;}
+    el.innerHTML=filtrados.map(function(d){
+      var inner='<div class="file-ico" style="background:'+(docBg[d.status]||'#e3f0fb')+'">📄</div>'+
+        '<div style="flex:1"><div style="font-weight:500">'+d.nome+'</div>'+
+        (d.sub?'<div style="font-size:11px;color:var(--txt3)">'+d.sub+'</div>':'')+
+        '</div>'+
+        '<span class="badge '+d.status+'">'+stMap[d.status]+'</span>';
+      if(d.link){
+        return '<a href="'+driveLink(d.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:12px;margin-left:6px">🔗</span></a>';
+      }
+      return '<div class="file-row">'+inner+'</div>';
+    }).join('');
+  });
+}
+
+function driveLink(link){
+  if(!link) return '#';
+  var m=link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(m) return 'https://drive.google.com/file/d/'+m[1]+'/view';
+  var mf=link.match(/folders\/([a-zA-Z0-9_-]+)/);
+  if(mf) return 'https://drive.google.com/drive/folders/'+mf[1];
+  return link;
+}
+
+function renderDocumentosAdmin(){
+  var el=document.getElementById('edit-documentos');if(!el)return;
+  el.innerHTML=documentos.map(function(d,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(documentos,'+i+',-1,renderDocumentosAdmin)').replace('{DOWN}','moverItem(documentos,'+i+',1,renderDocumentosAdmin)')+
+      '<input class="ie-txt" value="'+esc(d.nome)+'" onchange="documentos['+i+'].nome=this.value" placeholder="Nome">'+
+      '<input class="ie-sub" value="'+esc(d.sub||'')+'" onchange="documentos['+i+'].sub=this.value" placeholder="Detalhe">'+
+      '<select class="ie-sel" onchange="documentos['+i+'].status=this.value">'+selOpts(d.status)+'</select>'+
+      '<select style="width:80px;font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:6px" onchange="documentos['+i+'].secao=this.value">'+
+        '<option value="docs"'+(d.secao==='docs'?' selected':'')+'>Docs</option>'+
+        '<option value="plantas"'+(d.secao==='plantas'?' selected':'')+'>Plantas</option>'+
+      '</select>'+
+      '<input style="width:100%;margin-top:4px;font-size:11px" value="'+esc(d.link||'')+'" onchange="documentos['+i+'].link=this.value" placeholder="🔗 Link do Drive (opcional)">'+
+      '<button class="del-btn" onclick="documentos.splice('+i+',1);renderDocumentosAdmin()">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function addDocumento(){
+  documentos.push({nome:'Novo documento',sub:'',status:'ok',link:'',secao:'docs'});
+  renderDocumentosAdmin();
+}
+
+// ===== FIM DOCUMENTOS =====
+
+
+
+
+// ===== SUPORTE PAFRE =====
+var dbPafre=null;
+function initPafreDB(){
+  if(dbPafre) return dbPafre;
+  var appPafre=firebase.apps.find(function(a){return a.name==='pafre';});
+  if(!appPafre) appPafre=firebase.initializeApp({
+    apiKey:"AIzaSyB2raYjyu5lOEuHAtXHrFyFBdASBf48ljI",
+    authDomain:"pafre-gestao.firebaseapp.com",
+    projectId:"pafre-gestao",
+    storageBucket:"pafre-gestao.firebasestorage.app",
+    messagingSenderId:"305254099508",
+    appId:"1:305254099508:web:a6e9cf360a858d87c8f861"
+  },'pafre');
+  dbPafre=firebase.firestore(appPafre);
+  return dbPafre;
+}
+function abrirRelatarProblema(){
+  document.getElementById('suporte-overlay').style.display='flex';
+  document.getElementById('suporte-msg').textContent='';
+}
+function fecharRelatarProblema(){
+  document.getElementById('suporte-overlay').style.display='none';
+}
+function enviarRelatarProblema(){
+  var titulo=document.getElementById('sp-titulo').value.trim();
+  var desc=document.getElementById('sp-desc').value.trim();
+  var sev=document.getElementById('sp-sev').value;
+  var msg=document.getElementById('suporte-msg');
+  if(!titulo||!desc){msg.textContent='Preencha título e descrição.';msg.style.color='#c0392b';return;}
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  msg.textContent='Enviando...';msg.style.color='#1565c0';
+  initPafreDB().collection('chamados_suporte').add({
+    condominio:'Altos Santa Izabel',
+    uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+    titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
+    criadoEm:firebase.firestore.FieldValue.serverTimestamp(),mensagens:[]
+  }).then(function(){
+    msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
+    msg.style.color='#2d7a3a';
+    document.getElementById('sp-titulo').value='';
+    document.getElementById('sp-desc').value='';
+    setTimeout(fecharRelatarProblema,2500);
+  }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
+}
+// ===== FIM SUPORTE =====
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();var d=e;
+  var btn=document.createElement('button');
+  btn.textContent='📲 Instalar app';
+  btn.style='position:fixed;bottom:80px;right:14px;z-index:999;font-size:12px;padding:8px 14px;border-radius:99px;background:#1a3a5c;color:#fff;border:none;cursor:pointer;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+  btn.onclick=function(){d.prompt();btn.remove();};
+  document.body.appendChild(btn);
+});
+</script>
+
+<!-- MODAL RELATAR PROBLEMA -->
+<div id="suporte-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
+    <div style="padding:18px 20px 14px;border-bottom:1px solid #e4e4dc;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-weight:700;font-size:15px;color:#1a3a5c">🐛 Relatar problema ao suporte</div><div style="font-size:12px;color:#999;margin-top:2px">PAFRE GESTÃO & TECNOLOGIA</div></div>
+      <button onclick="fecharRelatarProblema()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div id="suporte-msg" style="min-height:16px;font-size:12px;margin-bottom:8px"></div>
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Título <span style="color:#c0392b">*</span></label>
+      <input id="sp-titulo" class="fi" placeholder="Resumo do problema...">
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Severidade <span style="color:#c0392b">*</span></label>
+      <select id="sp-sev" class="fi">
+        <option value="Baixa">🟢 Baixa — dúvida ou melhoria</option>
+        <option value="Média" selected>🟡 Média — funcionalidade com problema</option>
+        <option value="Alta">🟠 Alta — impacto nos usuários</option>
+        <option value="Crítica">🔴 Crítica — sistema fora do ar</option>
+      </select>
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Descrição <span style="color:#c0392b">*</span></label>
+      <textarea id="sp-desc" class="fi" style="height:100px;resize:vertical" placeholder="Descreva o problema em detalhes..."></textarea>
+      <button onclick="enviarRelatarProblema()" style="width:100%;padding:11px;border-radius:9px;background:#1a3a5c;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px">📤 Enviar para o suporte</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+ 
