@@ -117,7 +117,7 @@ textarea.fi{height:75px;resize:vertical}
   <div class="hdr-ico" onclick="navNotif()" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4;min-width:16px;text-align:center"></span></div>
   <div class="hdr-ico" onclick="abrirAdmin()" id="btn-admin" style="display:none">⚙️</div>
   <div class="hdr-ico" id="btn-usuarios" onclick="window.location.href='usuarios.html'" style="display:none;position:relative">👥<span id="badge-usuarios" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></div>
-  <div class="hdr-ico" onclick="abrirRelatarProblema()" title="Relatar problema ao suporte">🐛</div>
+  <div class="hdr-ico" onclick="abrirRelatarProblema()" title="Relatar problema ao suporte" style="position:relative">🐛<span id="badge-suporte" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></div>
   <div class="hdr-ico" onclick="fazerLogout()" title="Sair">🚪</div>
 </div>
 
@@ -579,6 +579,7 @@ auth.onAuthStateChanged(function(user){
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();carregarChamados();carregarSugestoes();
     });
+    iniciarMonitorSuporte();
     // Preencher unidade do morador no campo de defeito
     var aptoField=document.getElementById('f-apto');
     if(aptoField&&usuarioAtual&&usuarioAtual.unidade) aptoField.value=usuarioAtual.unidade;
@@ -1810,7 +1811,8 @@ function addDocumento(){
 // ===== FIM DOCUMENTOS =====
 
 // ===== SUPORTE PAFRE =====
-var dbPafre=null,authPafre=null;
+var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null;
+var STATUS_BADGE_SUP={Aberto:'bad','Em análise':'warn','Aguardando cliente':'blue',Resolvido:'ok',Fechado:'gray'};
 function initPafreDB(){
   if(dbPafre) return dbPafre;
   var appPafre=firebase.apps.find(function(a){return a.name==='pafre';});
@@ -1831,12 +1833,104 @@ function garantirAuthPafre(cb,errCb){
   if(authPafre.currentUser){cb();return;}
   authPafre.signInAnonymously().then(function(){cb();}).catch(errCb);
 }
+function iniciarMonitorSuporte(){
+  if(unsubMeusChamados) return;
+  garantirAuthPafre(function(){
+    unsubMeusChamados=dbPafre.collection('chamados_suporte').where('authUid','==',authPafre.currentUser.uid).onSnapshot(function(snap){
+      meusChamados=[];
+      snap.forEach(function(doc){meusChamados.push(Object.assign({id:doc.id},doc.data()));});
+      meusChamados.sort(function(a,b){
+        var ta=a.criadoEm&&a.criadoEm.toDate?a.criadoEm.toDate():new Date(0);
+        var tb=b.criadoEm&&b.criadoEm.toDate?b.criadoEm.toDate():new Date(0);
+        return tb-ta;
+      });
+      renderMeusChamados();
+      atualizarBadgeSuporte();
+    },function(e){console.log('Erro suporte:',e);});
+  },function(e){console.log('Erro auth pafre:',e);});
+}
+function atualizarBadgeSuporte(){
+  var naoLidos=meusChamados.filter(function(c){return c.lidoMorador===false;}).length;
+  var b1=document.getElementById('badge-suporte');
+  if(b1){b1.textContent=naoLidos;b1.style.display=naoLidos>0?'inline-block':'none';}
+  var b2=document.getElementById('sp-badge-meus');
+  if(b2){b2.textContent=naoLidos;b2.style.display=naoLidos>0?'inline-block':'none';}
+}
+function marcarChamadosLidos(){
+  meusChamados.forEach(function(c){
+    if(c.lidoMorador===false){
+      dbPafre.collection('chamados_suporte').doc(c.id).update({lidoMorador:true}).catch(function(){});
+      c.lidoMorador=true;
+    }
+  });
+  atualizarBadgeSuporte();
+}
+function renderMeusChamados(){
+  var el=document.getElementById('sp-meus-lista');if(!el)return;
+  if(!meusChamados.length){el.innerHTML='<div style="color:#999;font-size:13px;padding:8px 0">Você ainda não abriu nenhum chamado.</div>';return;}
+  el.innerHTML=meusChamados.map(function(c){
+    var msgs=c.mensagens||[];
+    var chatHtml=msgs.map(function(m){
+      var isPafre=m.role==='pafre';
+      return '<div style="display:flex;flex-direction:column;align-items:'+(isPafre?'flex-start':'flex-end')+';margin-bottom:6px">'+
+        '<div style="max-width:80%;background:'+(isPafre?'#f0f0eb':'#1a3a5c')+';color:'+(isPafre?'#1a1a1a':'#fff')+';border-radius:12px;padding:8px 12px;font-size:13px">'+escHtml(m.texto)+'</div>'+
+        '<div style="font-size:10px;color:#999;margin-top:2px">'+escHtml(m.autor)+(m.criadoEm?' · '+m.criadoEm:'')+'</div>'+
+      '</div>';
+    }).join('');
+    var dt=c.criadoEm&&c.criadoEm.toDate?c.criadoEm.toDate().toLocaleDateString('pt-BR'):'—';
+    return '<div style="border:1px solid #e4e4dc;border-radius:12px;padding:12px;margin-bottom:10px">'+
+      '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
+        '<span class="badge '+(STATUS_BADGE_SUP[c.status]||'gray')+'">'+escHtml(c.status)+'</span>'+
+        '<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#f0efe8;color:#555">'+escHtml(c.severidade)+'</span>'+
+      '</div>'+
+      '<div style="font-weight:600;font-size:13px">'+escHtml(c.titulo)+'</div>'+
+      '<div style="font-size:11px;color:#999;margin:2px 0 8px">'+dt+'</div>'+
+      (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
+      '<div style="display:flex;gap:6px">'+
+        '<input id="sp-chat-'+c.id+'" autocomplete="off" placeholder="Responder..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid #e4e4dc;border-radius:8px">'+
+        '<button onclick="enviarMensagemSuporte(\''+c.id+'\')" style="font-size:12px;padding:7px 12px;border-radius:8px;border:none;background:#e3f0fb;color:#1565c0;cursor:pointer;font-weight:600">Enviar</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function enviarMensagemSuporte(id){
+  var inp=document.getElementById('sp-chat-'+id);
+  if(!inp) return;
+  var texto=inp.value.trim();
+  if(!texto) return;
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  var c=meusChamados.find(function(x){return x.id===id;});
+  if(!c) return;
+  var msg={texto:texto,autor:u.nome||'Morador',role:'cliente',criadoEm:new Date().toLocaleString('pt-BR')};
+  var msgs=(c.mensagens||[]).concat([msg]);
+  dbPafre.collection('chamados_suporte').doc(id).update({mensagens:msgs,lidoMorador:true}).then(function(){
+    c.mensagens=msgs;c.lidoMorador=true;
+    inp.value='';
+    renderMeusChamados();
+  }).catch(function(e){alert('Erro: '+e.message);});
+}
 function abrirRelatarProblema(){
   document.getElementById('suporte-overlay').style.display='flex';
   document.getElementById('suporte-msg').textContent='';
+  trocarTabSuporte('novo');
+  iniciarMonitorSuporte();
 }
 function fecharRelatarProblema(){
   document.getElementById('suporte-overlay').style.display='none';
+}
+function trocarTabSuporte(tab){
+  var bNovo=document.getElementById('sp-tab-novo'),bMeus=document.getElementById('sp-tab-meus');
+  var sNovo=document.getElementById('sp-sec-novo'),sMeus=document.getElementById('sp-sec-meus');
+  if(tab==='novo'){
+    sNovo.style.display='block';sMeus.style.display='none';
+    bNovo.style.color='#1a3a5c';bNovo.style.borderBottomColor='#1a3a5c';
+    bMeus.style.color='#999';bMeus.style.borderBottomColor='transparent';
+  } else {
+    sNovo.style.display='none';sMeus.style.display='block';
+    bMeus.style.color='#1a3a5c';bMeus.style.borderBottomColor='#1a3a5c';
+    bNovo.style.color='#999';bNovo.style.borderBottomColor='transparent';
+    marcarChamadosLidos();
+  }
 }
 function enviarRelatarProblema(){
   var titulo=document.getElementById('sp-titulo').value.trim();
@@ -1849,16 +1943,16 @@ function enviarRelatarProblema(){
   garantirAuthPafre(function(){
     dbPafre.collection('chamados_suporte').add({
       condominio:'Altos Santa Izabel',
-      uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+      uid:u.uid||'',authUid:authPafre.currentUser.uid,nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
       titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
       criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
-      mensagens:[]
+      mensagens:[],lidoMorador:true
     }).then(function(){
-      msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
+      msg.textContent='✅ Chamado enviado! Acompanhe em "Meus chamados".';
       msg.style.color='#2d7a3a';
       document.getElementById('sp-titulo').value='';
       document.getElementById('sp-desc').value='';
-      setTimeout(fecharRelatarProblema,2500);
+      setTimeout(function(){trocarTabSuporte('meus');},1200);
     }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
   },function(e){
     msg.textContent='Erro de autenticação: '+e.message;
@@ -1888,12 +1982,16 @@ window.addEventListener('beforeinstallprompt',function(e){
 
 <!-- MODAL RELATAR PROBLEMA -->
 <div id="suporte-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
-    <div style="padding:18px 20px 14px;border-bottom:1px solid #e4e4dc;display:flex;align-items:center;justify-content:space-between">
-      <div><div style="font-weight:700;font-size:15px;color:#1a3a5c">🐛 Relatar problema ao suporte</div><div style="font-size:12px;color:#999;margin-top:2px">PAFRE GESTÃO & TECNOLOGIA</div></div>
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="padding:18px 20px 14px;border-bottom:1px solid #e4e4dc;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div><div style="font-weight:700;font-size:15px;color:#1a3a5c">🐛 Suporte PAFRE</div><div style="font-size:12px;color:#999;margin-top:2px">PAFRE GESTÃO & TECNOLOGIA</div></div>
       <button onclick="fecharRelatarProblema()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button>
     </div>
-    <div style="padding:16px 20px">
+    <div style="display:flex;border-bottom:1px solid #e4e4dc;flex-shrink:0">
+      <button id="sp-tab-novo" onclick="trocarTabSuporte('novo')" style="flex:1;padding:11px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#1a3a5c;border-bottom:2px solid #1a3a5c">Novo chamado</button>
+      <button id="sp-tab-meus" onclick="trocarTabSuporte('meus')" style="flex:1;padding:11px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#999;border-bottom:2px solid transparent;position:relative">Meus chamados<span id="sp-badge-meus" style="display:none;position:absolute;top:6px;right:22%;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></button>
+    </div>
+    <div id="sp-sec-novo" style="padding:16px 20px;overflow-y:auto">
       <div id="suporte-msg" style="min-height:16px;font-size:12px;margin-bottom:8px"></div>
       <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Título <span style="color:#c0392b">*</span></label>
       <input id="sp-titulo" class="fi" placeholder="Resumo do problema...">
@@ -1906,6 +2004,9 @@ window.addEventListener('beforeinstallprompt',function(e){
       <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Descrição <span style="color:#c0392b">*</span></label>
       <textarea id="sp-desc" class="fi" style="height:100px;resize:vertical" placeholder="Descreva o problema em detalhes..."></textarea>
       <button onclick="enviarRelatarProblema()" style="width:100%;padding:11px;border-radius:9px;background:#1a3a5c;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px">📤 Enviar para o suporte</button>
+    </div>
+    <div id="sp-sec-meus" style="display:none;padding:16px 20px;overflow-y:auto">
+      <div id="sp-meus-lista"><div style="color:#999;font-size:13px;padding:8px 0">Carregando...</div></div>
     </div>
   </div>
 </div>
