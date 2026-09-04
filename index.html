@@ -1810,7 +1810,7 @@ function addDocumento(){
 // ===== FIM DOCUMENTOS =====
 
 // ===== SUPORTE PAFRE =====
-var dbPafre=null;
+var dbPafre=null,authPafre=null;
 function initPafreDB(){
   if(dbPafre) return dbPafre;
   var appPafre=firebase.apps.find(function(a){return a.name==='pafre';});
@@ -1823,7 +1823,13 @@ function initPafreDB(){
     appId:"1:305254099508:web:a6e9cf360a858d87c8f861"
   },'pafre');
   dbPafre=firebase.firestore(appPafre);
+  authPafre=firebase.auth(appPafre);
   return dbPafre;
+}
+function garantirAuthPafre(cb,errCb){
+  initPafreDB();
+  if(authPafre.currentUser){cb();return;}
+  authPafre.signInAnonymously().then(function(){cb();}).catch(errCb);
 }
 function abrirRelatarProblema(){
   document.getElementById('suporte-overlay').style.display='flex';
@@ -1840,19 +1846,24 @@ function enviarRelatarProblema(){
   if(!titulo||!desc){msg.textContent='Preencha título e descrição.';msg.style.color='#c0392b';return;}
   var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
   msg.textContent='Enviando...';msg.style.color='#1565c0';
-  initPafreDB().collection('chamados_suporte').add({
-    condominio:'Altos Santa Izabel',
-    uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
-    titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
-    criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
-    mensagens:[]
-  }).then(function(){
-    msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
-    msg.style.color='#2d7a3a';
-    document.getElementById('sp-titulo').value='';
-    document.getElementById('sp-desc').value='';
-    setTimeout(fecharRelatarProblema,2500);
-  }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
+  garantirAuthPafre(function(){
+    dbPafre.collection('chamados_suporte').add({
+      condominio:'Altos Santa Izabel',
+      uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+      titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
+      criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
+      mensagens:[]
+    }).then(function(){
+      msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
+      msg.style.color='#2d7a3a';
+      document.getElementById('sp-titulo').value='';
+      document.getElementById('sp-desc').value='';
+      setTimeout(fecharRelatarProblema,2500);
+    }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
+  },function(e){
+    msg.textContent='Erro de autenticação: '+e.message;
+    msg.style.color='#c0392b';
+  });
 }
 // ===== FIM SUPORTE =====
 
