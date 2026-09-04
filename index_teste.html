@@ -114,9 +114,10 @@ textarea.fi{height:75px;resize:vertical}
 <div class="hdr">
   <div class="hdr-logo">🏢</div>
   <div class="hdr-title"><h1>Portal Altos Santa Izabel</h1><p id="hdr-usuario">Condomínio Altos Santa Izabel</p></div>
-  <div class="hdr-ico" onclick="navNotif()" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4;min-width:16px;text-align:center"></span></div>
+  <div class="hdr-ico" onclick="nav('defeitos')">🔔<div class="notif-dot"></div></div>
   <div class="hdr-ico" onclick="abrirAdmin()" id="btn-admin" style="display:none">⚙️</div>
-  <div class="hdr-ico" id="btn-usuarios" onclick="window.location.href='usuarios.html'" style="display:none;position:relative">👥<span id="badge-usuarios" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></div>
+  <div class="hdr-ico" id="btn-usuarios" onclick="window.open('usuarios.html','_blank')" style="display:none;position:relative">👥<span id="badge-usuarios" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></div>
+  <div class="hdr-ico" onclick="abrirRelatarProblema()" title="Relatar problema ao suporte">🐛</div>
   <div class="hdr-ico" onclick="fazerLogout()" title="Sair">🚪</div>
 </div>
 
@@ -131,10 +132,7 @@ textarea.fi{height:75px;resize:vertical}
   <button class="nb" onclick="nav('prestadores')">Prestadores</button>
   <button class="nb admin-only" id="nav-assembleias" style="display:none" onclick="nav('assembleias')">Assembleias</button>
   <button class="nb" onclick="nav('defeitos')">Defeitos</button>
-  <button class="nb" onclick="nav('sugestoes')">Sugestões</button>
   <button class="nb" id="nav-mapa" style="display:none" onclick="nav('mapa')">🏢 Mapa</button>
-  <button class="nb" onclick="window.location.href='vagas.html'">🚗 Vagas</button>
-  <button class="nb admin-only" id="nav-acessos" style="display:none" onclick="window.location.href='acessos.html'">📊 Acessos</button>
 </div></div>
 
 <!-- INÍCIO -->
@@ -147,9 +145,7 @@ textarea.fi{height:75px;resize:vertical}
     <div class="gcard" onclick="nav('contratos')"><div class="gico" style="background:#e3f0fb">📋</div><div><div style="font-weight:600;font-size:13px">Contratos</div><div style="font-size:11px;color:var(--txt3)">Vigentes e vencimentos</div></div></div>
     <div class="gcard" onclick="nav('churrasqueira')"><div class="gico" style="background:#fdecea">🍖</div><div><div style="font-weight:600;font-size:13px">Churrasqueira</div><div style="font-size:11px;color:var(--txt3)">Reservas e histórico</div></div></div>
     <div class="gcard" onclick="nav('financeiro')"><div class="gico" style="background:#f0eeff">📊</div><div><div style="font-weight:600;font-size:13px">Financeiro</div><div style="font-size:11px;color:var(--txt3)">Histórico anual</div></div></div>
-    <div class="gcard" onclick="window.location.href='vagas.html'"><div class="gico" style="background:#e3f0fb">🚗</div><div><div style="font-weight:600;font-size:13px">Vagas</div><div style="font-size:11px;color:var(--txt3)">Garagem por apto</div></div></div>
     <div class="gcard" onclick="nav('defeitos')"><div class="gico" style="background:#fdecea">🔧</div><div><div style="font-weight:600;font-size:13px">Reportar defeito</div><div style="font-size:11px;color:var(--txt3)">Formulário rápido</div></div></div>
-    <div class="gcard" onclick="nav('sugestoes')"><div class="gico" style="background:#f0eeff">💡</div><div><div style="font-weight:600;font-size:13px">Sugestões</div><div style="font-size:11px;color:var(--txt3)">Sugestões e solicitações</div></div></div>
     <div class="gcard admin-only" style="display:none" onclick="nav('documentos')"><div class="gico" style="background:#e8f5e9">📁</div><div><div style="font-weight:600;font-size:13px">Documentos</div><div style="font-size:11px;color:var(--txt3)">Plantas, regimento...</div></div></div>
     <div class="gcard admin-only" style="display:none" onclick="nav('assembleias')"><div class="gico" style="background:#e3f0fb">🏛</div><div><div style="font-weight:600;font-size:13px">Assembleias</div><div style="font-size:11px;color:var(--txt3)">Atas registradas</div></div></div>
   </div>
@@ -168,7 +164,7 @@ textarea.fi{height:75px;resize:vertical}
     <div style="flex:1"><div style="font-weight:600">Phoenix Global — Administradora/Boletos</div><div style="font-size:12px;color:var(--txt3)">(19) 99269-6889</div></div>
     <button class="btn success" onclick="window.open('https://wa.me/5519992696889?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'))">WhatsApp</button>
   </div>
-  <div style="text-align:center;padding:16px 0 4px;font-size:11px;color:var(--txt3)">Portal Altos Santa Izabel · v1.13.0 · Jun/2026</div>
+  <div style="text-align:center;padding:16px 0 4px;font-size:11px;color:var(--txt3)">Portal Altos Santa Izabel · v1.12.0 · Mai/2026</div>
 </div>
 
 <!-- PROJETOS -->
@@ -273,31 +269,6 @@ textarea.fi{height:75px;resize:vertical}
   </div>
 </div>
 
-<!-- SUGESTÕES -->
-<div id="pg-sugestoes" class="pg">
-  <div class="sec">Nova sugestão ou solicitação</div>
-  <div class="card" style="padding:15px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div>
-        <div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px">Tipo</div>
-        <select id="sug-tipo" class="fi" style="margin-bottom:0">
-          <option value="Sugestão">💡 Sugestão</option>
-          <option value="Solicitação">📋 Solicitação</option>
-        </select>
-      </div>
-      <div>
-        <div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px">Assunto</div>
-        <input id="sug-assunto" class="fi" placeholder="Ex: Iluminação do corredor" style="margin-bottom:0">
-      </div>
-    </div>
-    <div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px">Descrição</div>
-    <textarea id="sug-desc" placeholder="Descreva sua sugestão ou solicitação..." style="width:100%;min-height:90px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;margin-bottom:10px"></textarea>
-    <button class="btn primary" onclick="enviarSugestao()" style="width:100%">📤 Enviar</button>
-  </div>
-  <div class="sec" style="display:flex;justify-content:space-between;align-items:center">Histórico<button id="btn-export-sugestoes" style="display:none;font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:#f0f5fb;color:var(--azul);cursor:pointer" onclick="exportarSugestoes()">⬇️ Exportar CSV</button></div>
-  <div id="lista-sugestoes"><div style="color:var(--txt3);font-size:13px;padding:8px">Carregando...</div></div>
-</div>
-
 <!-- MAPA -->
 <div id="pg-mapa" class="pg">
   <iframe src="mapa.html" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:12px" title="Mapa de Apartamentos"></iframe>
@@ -310,7 +281,6 @@ textarea.fi{height:75px;resize:vertical}
     <div class="mc"><div class="mc-lbl">Em análise</div><div class="mc-val warn" id="cnt-an">0</div></div>
     <div class="mc"><div class="mc-lbl">Resolvidos</div><div class="mc-val ok" id="cnt-re">0</div></div>
   </div>
-  <div class="sec" style="display:flex;justify-content:space-between;align-items:center">Chamados<button id="btn-export-chamados" style="display:none;font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:#f0f5fb;color:var(--azul);cursor:pointer" onclick="exportarChamados()">⬇️ Exportar CSV</button></div>
   <div class="sec">Registrar defeito</div>
   <div class="card">
     <label class="fl">Apartamento / local</label><input class="fi" id="f-apto" placeholder="Ex: Ap. 1121 ou Garagem B">
@@ -357,16 +327,8 @@ textarea.fi{height:75px;resize:vertical}
         <button class="save-btn" onclick="salvarAlertas()">💾 Salvar alertas</button>
       </div>
       <div class="admin-sec" id="asec-realizacoes">
-        <!-- Formulário rápido fixo no topo -->
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova realização</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-real-data" placeholder="Ex: Jun/2026" style="width:90px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <input id="nova-real-txt" placeholder="Descrição da realização..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addRealizacaoRapida()">
-            <button onclick="addRealizacaoRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
         <div id="edit-realizacoes"></div>
+        <button class="add-btn" onclick="addRealizacao()">+ Adicionar realização</button>
         <button class="save-btn" onclick="salvarRealizacoes()">💾 Salvar realizações</button>
       </div>
       <div class="admin-sec" id="asec-projetos">
@@ -376,59 +338,26 @@ textarea.fi{height:75px;resize:vertical}
         <button class="save-btn" onclick="salvarProjetos()">💾 Salvar projetos</button>
       </div>
       <div class="admin-sec" id="asec-tarefas">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova tarefa</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-tar-txt" placeholder="Descrição da tarefa..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addTarefaRapida()">
-            <select id="nova-tar-status" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option value="gray">Pendente</option><option value="warn">Parcial</option><option value="ok">Concluído</option><option value="bad">Urgente</option><option value="blue">Andamento</option>
-            </select>
-            <button onclick="addTarefaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Lista de tarefas e ações da aba Projetos.</div>
         <div id="edit-tarefas"></div>
+        <button class="add-btn" onclick="addTarefa()">+ Adicionar tarefa</button>
         <button class="save-btn" onclick="salvarTarefas()">💾 Salvar tarefas</button>
       </div>
       <div class="admin-sec" id="asec-contratos">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo contrato</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-con-doc" placeholder="Nome do documento..." style="flex:1;min-width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <input id="nova-con-val" placeholder="Validade (ex: Fev/2027)" style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addContratoRapido()">
-            <button onclick="addContratoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
         <div id="edit-contratos"></div>
-        <button class="add-btn" onclick="addRamoContrato()" style="background:#f0eeff;color:#7c3aed">+ Ramo de atividade</button>
+        <button class="add-btn" onclick="addContrato()">+ Adicionar contrato</button>
+        <button class="add-btn" onclick="addRamoContrato()" style="background:#f0eeff;color:#7c3aed">+ Ramo</button>
         <button class="save-btn" onclick="salvarContratos()">💾 Salvar contratos</button>
       </div>
       <div class="admin-sec" id="asec-prestadores">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo prestador</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-pre-nome" placeholder="Nome..." style="flex:1;min-width:100px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <input id="nova-pre-tel" placeholder="Telefone..." style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <select id="nova-pre-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option>Eletricista</option><option>Jardinagem</option><option>Portaria / Cameras</option><option>Ar Condicionado</option><option>Placa Solar</option><option>FoodTruck</option><option>Smart Store</option><option>Advogado</option>
-            </select>
-            <button onclick="addPrestadorRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
         <div id="edit-prestadores"></div>
+        <button class="add-btn" onclick="addPrestador()">+ Adicionar prestador</button>
         <button class="save-btn" onclick="salvarPrestadores();renderPrestadores();alert('✅ Prestadores salvos!')">💾 Salvar prestadores</button>
       </div>
       <div class="admin-sec" id="asec-orcamentos">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo orçamento</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-orc-nome" placeholder="Nome do orçamento..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addOrcamentoRapido()">
-            <select id="nova-orc-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option>Quiosque</option><option>Car Wash</option><option>Pintura</option><option>Portaria</option><option>Documentação</option><option>Limpeza</option><option>Jardinagem</option><option>Pl. Solar</option><option>Câmeras</option><option>Outros</option>
-            </select>
-            <button onclick="addOrcamentoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Adicione ou remova orçamentos. Status pode ser alterado diretamente na aba.</div>
         <div id="edit-orcamentos"></div>
+        <button class="add-btn" onclick="addOrcamentoAdmin()">+ Adicionar orçamento</button>
         <button class="save-btn" onclick="salvarOrcamentos();renderOrcamentos();alert('✅ Orçamentos salvos!')">💾 Salvar orçamentos</button>
       </div>
       <div class="admin-sec" id="asec-documentos">
@@ -444,7 +373,7 @@ textarea.fi{height:75px;resize:vertical}
 
 <div class="bnav"><div class="bnav-items">
   <button class="bni on" onclick="nav('inicio')"><span class="bni-ico">🏠</span>Início</button>
-  <button class="bni" onclick="nav('sugestoes')"><span class="bni-ico">💡</span>Sugestões</button>
+  <button class="bni" onclick="nav('projetos')"><span class="bni-ico">🔨</span>Projetos</button>
   <button class="bni" onclick="nav('prestadores')"><span class="bni-ico">👤</span>Prestadores</button>
   <button class="bni" onclick="nav('financeiro')"><span class="bni-ico">📊</span>Financeiro</button>
   <button class="bni" onclick="nav('defeitos')"><span class="bni-ico">🔧</span>Defeitos</button>
@@ -463,69 +392,6 @@ firebase.initializeApp({
 var auth=firebase.auth();
 var db=firebase.firestore();
 var usuarioAtual=null;
-
-// ===== TRACKING DE ACESSOS =====
-var _trackSessao={uid:null,inicio:Date.now(),abaAtual:'inicio',abaInicio:Date.now(),abas:{}};
-function _trackInit(uid){
-  _trackSessao.uid=uid;
-  _trackSessao.abaAtual='inicio';
-  _trackSessao.abaInicio=Date.now();
-  _trackSessao.inicio=Date.now();
-  if(!_trackSessao.abas['inicio']) _trackSessao.abas['inicio']={cliques:1,tempo:0};
-  // Gravar acesso direto sem get() primeiro
-  var ts=new Date().toISOString();
-  var novoReg={ts:ts,abas:[{aba:'inicio',cliques:1,tempo:0}],duracao:0};
-  db.collection('acessos').doc(uid).get().then(function(doc){
-    var regs=doc.exists?(doc.data().registros||[]):[];
-    regs.push(novoReg);
-    if(regs.length>200) regs=regs.slice(-200);
-    return db.collection('acessos').doc(uid).set({uid:uid,registros:regs});
-  }).then(function(){
-    console.log('Track: acesso registrado');
-  }).catch(function(e){
-    console.error('Track init error:',e.code,e.message);
-  });
-  window.addEventListener('beforeunload',function(){_trackSalvar();});
-  window.addEventListener('pagehide',function(){_trackSalvar();});
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden') _trackSalvar();});
-  setInterval(_trackSalvar,60000);
-}
-function _trackAba(novaAba){
-  if(!_trackSessao.uid) return;
-  var agora=Date.now();
-  var ant=_trackSessao.abaAtual;
-  var tempo=Math.round((agora-_trackSessao.abaInicio)/1000);
-  if(!_trackSessao.abas[ant]) _trackSessao.abas[ant]={cliques:0,tempo:0};
-  _trackSessao.abas[ant].cliques++;
-  _trackSessao.abas[ant].tempo+=tempo;
-  _trackSessao.abaAtual=novaAba;
-  _trackSessao.abaInicio=agora;
-  _trackSalvar();
-}
-function _trackSalvar(){
-  if(!_trackSessao.uid) return;
-  var agora=Date.now();
-  var at=_trackSessao.abaAtual;
-  if(!_trackSessao.abas[at]) _trackSessao.abas[at]={cliques:0,tempo:0};
-  _trackSessao.abas[at].tempo+=Math.round((agora-_trackSessao.abaInicio)/1000);
-  _trackSessao.abaInicio=agora;
-  var duracao=Math.round((agora-_trackSessao.inicio)/1000);
-  var abasArr=Object.keys(_trackSessao.abas).map(function(k){
-    return {aba:k,cliques:_trackSessao.abas[k].cliques,tempo:_trackSessao.abas[k].tempo};
-  });
-  var ref=db.collection('acessos').doc(_trackSessao.uid);
-  ref.get().then(function(doc){
-    var regs=(doc.exists?doc.data().registros:[])||[];
-    if(!regs.length){
-      regs.push({ts:new Date().toISOString(),abas:abasArr,duracao:duracao});
-    } else {
-      regs[regs.length-1].abas=abasArr;
-      regs[regs.length-1].duracao=duracao;
-    }
-    ref.set({registros:regs});
-  }).catch(function(e){console.log('track save error:',e);});
-}
-// ===== FIM TRACKING =====
 
 auth.onAuthStateChanged(function(user){
   if(!user){
@@ -553,30 +419,24 @@ auth.onAuthStateChanged(function(user){
       if(navMapa) navMapa.style.display='block';
       // Mostrar itens exclusivos de admin (nav e acesso rápido)
       document.querySelectorAll('.admin-only').forEach(function(el){el.style.display='';});
-      var navAcessos=document.getElementById('nav-acessos');if(navAcessos) navAcessos.style.display='block';
       adminLogado=true;
       var btnUsu=document.getElementById('btn-usuarios');
       if(btnUsu) btnUsu.style.display='flex';
       verificarPendentes();
-      var btnExpC=document.getElementById('btn-export-chamados');
-      if(btnExpC) btnExpC.style.display='block';
-      var btnExpS=document.getElementById('btn-export-sugestoes');
-      if(btnExpS) btnExpS.style.display='block';
       // Adicionar link gerenciar usuários no admin
       var tabsEl=document.querySelector('.admin-tabs');
       if(tabsEl&&!document.getElementById('tab-usuarios')){
         var btn=document.createElement('button');
         btn.className='at'; btn.id='tab-usuarios';
         btn.innerHTML='👥 Usuários';
-        btn.onclick=function(){window.location.href='usuarios.html';};
+        btn.onclick=function(){window.open('usuarios.html','_blank');};
         tabsEl.appendChild(btn);
       }
     }
     // Inicializar portal — carrega dados do Firestore
-    if(usuarioAtual.perfil!=='admin') _trackInit(user.uid);
     carregarTodosOsDados(function(){
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
-      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();carregarChamados();carregarSugestoes();
+      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();carregarChamados();
     });
     // Preencher unidade do morador no campo de defeito
     var aptoField=document.getElementById('f-apto');
@@ -598,12 +458,11 @@ function fazerLogout(){
 // ===== FIM AUTH =====
 
 var WA='5519989360523';
-var NAV_IDS=['inicio','projetos','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
-var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
+var NAV_IDS=['inicio','projetos','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','mapa'];
+var BNAV_IDS=['inicio','projetos','prestadores','','defeitos'];
 var adminLogado=false;
 
 function nav(id){
-  _trackAba(id);
   // Financeiro redireciona direto
   if(id==='financeiro'){window.location.href='financeiro.html';return;}
   // Bloquear documentos e assembleias para não-admin
@@ -639,206 +498,6 @@ function reservaWA(){
 }
 
 // ===== DEFEITOS =====
-function escHtml(s){
-  return (s||'').toString()
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
-}
-
-// ===== EXPORTAR =====
-function exportarCSV(dados, nome){
-  var bom='﻿';
-  var csv=bom+dados.map(function(row){
-    return row.map(function(cell){
-      var s=(cell||'').toString().replace(/"/g,'""');
-      return '"'+s+'"';
-    }).join(',');
-  }).join('\n');
-  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download=nome+'.csv'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportarChamados(){
-  var rows=[['Data','Apto','Morador','Categoria','Urgência','Descrição','Status']];
-  chamados.forEach(function(c){
-    var data=c.criadoEm&&c.criadoEm.toDate?c.criadoEm.toDate().toLocaleDateString('pt-BR'):'—';
-    rows.push([data,c.apto||'',c.usuario||'',c.cat||'',c.urg||'',c.desc||'',c.status||'']);
-  });
-  exportarCSV(rows,'chamados-'+new Date().toISOString().slice(0,10));
-}
-
-function exportarSugestoes(){
-  var rows=[['Data','Apto','Morador','Tipo','Assunto','Descrição','Status','Resposta']];
-  sugestoes.forEach(function(s){
-    var data=s.criadoEm&&s.criadoEm.toDate?s.criadoEm.toDate().toLocaleDateString('pt-BR'):'—';
-    rows.push([data,s.unidade||'',s.nome||'',s.tipo||'',s.assunto||'',s.desc||'',s.status||'',s.resposta||'']);
-  });
-  exportarCSV(rows,'sugestoes-'+new Date().toISOString().slice(0,10));
-}
-
-// ===== SUGESTÕES =====
-var sugestoes=[];
-
-function carregarSugestoes(){
-  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  var query=adminLogado
-    ? db.collection('sugestoes').orderBy('criadoEm','desc').limit(100)
-    : db.collection('sugestoes').where('uid','==',u.uid||'').orderBy('criadoEm','desc').limit(50);
-  query.get().then(function(snap){
-    sugestoes=[];
-    snap.forEach(function(doc){sugestoes.push(Object.assign({id:doc.id},doc.data()));});
-    renderSugestoes();atualizarBadgeNotif();
-  }).catch(function(e){console.log('Erro sugestoes:',e);});
-}
-
-function enviarSugestao(){
-  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  var tipo=document.getElementById('sug-tipo').value;
-  var assunto=document.getElementById('sug-assunto').value.trim();
-  var desc=document.getElementById('sug-desc').value.trim();
-  if(!assunto||!desc){alert('Preencha o assunto e a descrição.');return;}
-  var sug={
-    tipo:tipo, assunto:assunto, desc:desc,
-    status:'Recebido',
-    uid:u.uid||'', nome:u.nome||'', unidade:u.unidade||'',
-    criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
-    resposta:'', respondidoEm:null
-  };
-  db.collection('sugestoes').add(sug).then(function(ref){
-    document.getElementById('sug-assunto').value='';
-    document.getElementById('sug-desc').value='';
-    alert('✅ Enviado com sucesso! Acompanhe o andamento aqui.');
-
-    carregarSugestoes();
-  }).catch(function(e){alert('Erro: '+e.message);});
-}
-
-var stSugMap={};
-var stColorMap2={};
-stColorMap2['Recebido']='blue';stColorMap2['Em Análise']='warn';stColorMap2['Respondido']='ok';stColorMap2['Encerrado']='gray';
-stSugMap['Recebido']='🔵 Recebido';
-stSugMap['Em Análise']='🟡 Em Análise';
-stSugMap['Respondido']='🟢 Respondido';
-stSugMap['Encerrado']='⚫ Encerrado';
-
-function renderSugestoes(){
-  var el=document.getElementById('lista-sugestoes');if(!el)return;
-  if(!adminLogado){
-    sugestoes.forEach(function(s){
-      var msgs=s.mensagens||[];
-      if(msgs.some(function(m){return m.role==='admin';})&&!s.lido){
-        db.collection('sugestoes').doc(s.id).update({lido:true}).catch(function(){});
-        s.lido=true;
-      }
-    });
-    atualizarBadgeNotif();
-  }
-  if(!sugestoes.length){el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px">Nenhuma sugestão ou solicitação ainda.</div>';return;}
-  var grupos=[
-    {label:'🔵 Recebido',key:'Recebido',aberto:true},
-    {label:'🟡 Em Análise',key:'Em Análise',aberto:true},
-    {label:'🟢 Respondido',key:'Respondido',aberto:true},
-    {label:'⚫ Encerrado',key:'Encerrado',aberto:false}
-  ];
-  el.innerHTML=grupos.map(function(g){
-    var itens=sugestoes.filter(function(s){return s.status===g.key;});
-    if(!itens.length) return '';
-    var rows=itens.map(function(s){
-      var msgs=s.mensagens||[];
-      var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-      var chatHtml=msgs.map(function(m){
-        var isMe=m.uid===u.uid||(!m.uid&&adminLogado&&m.role==='admin');
-        var dt=m.criadoEm&&m.criadoEm.toDate?m.criadoEm.toDate().toLocaleString('pt-BR'):(m.criadoEm||'');
-        return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:6px">'+
-          '<div style="max-width:80%;background:'+(isMe?'var(--azul)':'#f0f0eb')+';color:'+(isMe?'#fff':'var(--txt1)')+';border-radius:12px;padding:8px 12px;font-size:13px">'+
-            escHtml(m.texto)+
-          '</div>'+
-          '<div style="font-size:10px;color:var(--txt3);margin-top:2px">'+escHtml(m.autor)+(dt?' · '+dt:'')+'</div>'+
-        '</div>';
-      }).join('');
-      var statusOpts=Object.keys(stSugMap);
-      return '<div class="card" style="padding:12px;margin-bottom:6px">'+
-        '<div style="display:flex;gap:6px;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap">'+
-          '<div style="display:flex;gap:6px;align-items:center">'+
-            '<span class="badge '+(stColorMap2[s.status]||'gray')+'" style="font-size:11px">'+(stSugMap[s.status]||s.status)+'</span>'+
-            '<span style="font-size:11px;background:#f0eeff;color:#6d28d9;padding:2px 8px;border-radius:99px">'+escHtml(s.tipo)+'</span>'+
-          '</div>'+
-          (adminLogado?'<div style="display:flex;align-items:center;gap:6px"><select data-id="'+s.id+'" onchange="atualizarStatusSug(this.dataset.id,this.value)" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:7px">'+
-            statusOpts.map(function(k){return '<option value="'+k+'"'+(k===s.status?' selected':'')+'>'+stSugMap[k]+'</option>';}).join('')+
-          '</select><button data-sid="'+s.id+'" onclick="excluirSugestao(this.dataset.sid)" title="Excluir" style="width:26px;height:26px;border-radius:6px;border:none;background:#fdecea;color:#c0392b;cursor:pointer;font-size:13px;flex-shrink:0">🗑️</button></div>':'')+
-        '</div>'+
-        '<div style="font-weight:600;font-size:14px">'+escHtml(s.assunto)+'</div>'+
-        '<div style="font-size:12px;color:var(--txt3);margin-top:2px">'+(adminLogado?escHtml(s.nome)+' · Apto '+s.unidade+' · ':'')+
-          (s.criadoEm&&s.criadoEm.toDate?s.criadoEm.toDate().toLocaleDateString('pt-BR'):'—')+'</div>'+
-        '<div style="font-size:13px;color:var(--txt2);margin-top:6px;margin-bottom:8px">'+escHtml(s.desc)+'</div>'+
-        (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
-                '<div style="display:flex;gap:6px">'+
-          '<input id="sug-chat-'+s.id+'" data-sid="'+s.id+'" autocomplete="off" placeholder="Digite uma mensagem..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px">'+
-          '<button data-sid="'+s.id+'" onclick="enviarMensagemSugestao(this.dataset.sid)" class="badge blue" style="cursor:pointer;border:none;padding:7px 12px">Enviar</button>'+
-        '</div>'+'</div>'+
-      '</div>';
-    }).join('');
-    return '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">'+
-      '<div onclick="toggleGrupo(this)" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:'+(g.aberto?'#f0f5fb':'var(--card)')+'">'+
-        '<span style="font-weight:700;font-size:13px">'+g.label+'</span>'+
-        '<span style="font-size:12px;color:var(--txt3)">'+itens.length+' item(s) <span class="chevron-grupo" style="display:inline-block;transition:transform .2s;transform:'+(g.aberto?'rotate(90deg)':'rotate(0deg)')+'">›</span></span>'+
-      '</div>'+
-      '<div class="grupo-content" style="display:'+(g.aberto?'block':'none')+'">'+rows+'</div>'+
-    '</div>';
-  }).join('');
-}
-
-function enviarMensagemSugestao(id){
-  var inp=document.getElementById('sug-chat-'+id);
-  if(!inp) return;
-  var texto=inp.value.trim();
-  if(!texto) return;
-  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  var msg={
-    texto:texto,
-    autor:u.nome||'Usuário',
-    uid:u.uid||'',
-    role:adminLogado?'admin':'morador',
-    criadoEm:new Date().toLocaleString('pt-BR')
-  };
-  var s=sugestoes.find(function(s){return s.id===id;});
-  if(!s) return;
-  var msgs=(s.mensagens||[]).concat([msg]);
-  var update={mensagens:msgs,lido:false};
-  if(adminLogado&&s.status==='Recebido') update.status='Em Análise';
-  db.collection('sugestoes').doc(id).update(update).then(function(){
-    s.mensagens=msgs;
-    if(update.status) s.status=update.status;
-    inp.value='';
-    renderSugestoes();
-    atualizarBadgeNotif();
-  }).catch(function(e){alert('Erro: '+e.message);});
-}
-function atualizarStatusSug(id,novoStatus){
-  db.collection('sugestoes').doc(id).update({status:novoStatus}).then(function(){
-    var s=sugestoes.find(function(x){return x.id===id;});
-    if(s) s.status=novoStatus;
-    renderSugestoes();
-  }).catch(function(e){alert('Erro: '+e.message);});
-}
-
-function excluirSugestao(id){
-  if(!confirm('Excluir esta sugestão permanentemente? Esta ação não pode ser desfeita.')) return;
-  db.collection('sugestoes').doc(id).delete().then(function(){
-    sugestoes=sugestoes.filter(function(s){return s.id!==id;});
-    renderSugestoes();
-    atualizarBadgeNotif();
-  }).catch(function(e){alert('Erro ao excluir: '+e.message);});
-}
-
-
-
 // ===== DEFEITOS / CHAMADOS =====
 var chamados=[];
 
@@ -847,8 +506,8 @@ function carregarChamados(){
   var query=db.collection('chamados').orderBy('criadoEm','desc').limit(50);
   // Morador ve apenas os chamados da sua unidade
   if(!adminLogado&&u.unidade){
-    var unidadeNum=(u.unidade||'').replace(/[^0-9]/g,'');
-    query=db.collection('chamados').where('apto','>=',unidadeNum).where('apto','<=',unidadeNum+'z').orderBy('apto').limit(50);
+    var unidadeNum=(u.unidade||'').toString().replace(/[^0-9]/g,'');
+    query=db.collection('chamados').where('apto','==',unidadeNum).orderBy('criadoEm','desc').limit(50);
   }
   query.get().then(function(snap){
     chamados=[];
@@ -859,7 +518,7 @@ function carregarChamados(){
       var tb=b.criadoEm&&b.criadoEm.toDate?b.criadoEm.toDate():new Date(0);
       return tb-ta;
     });
-    renderChamados();atualizarBadgeNotif();
+    renderChamados();
   }).catch(function(e){console.log('Erro chamados:',e);});
 }
 
@@ -886,41 +545,11 @@ function registrar(){
     renderChamados();
     alert('✅ Chamado registrado! O síndico receberá uma notificação.');
     // Enviar email
-
+    var assunto=encodeURIComponent('[Defeito '+urg+'] '+cat+' — '+apto);
+    var corpo=encodeURIComponent('Registro de defeito\n\nLocal: '+apto+'\nCategoria: '+cat+'\nUrgência: '+urg+'\nData: '+data+'\nDescrição: '+desc+'\n\nEnviado pelo Portal Altos Santa Izabel.');
+    window.open('mailto:altosdesantaizabelcondominio@gmail.com?subject='+assunto+'&body='+corpo);
   }).catch(function(e){alert('Erro ao registrar: '+e.message);});
 }
-
-function enviarMensagemChamado(id){
-  var inp=document.getElementById('chat-input-'+id);
-  if(!inp) return;
-  var texto=inp.value.trim();
-  if(!texto) return;
-  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  var msg={
-    texto:texto,
-    autor:u.nome||'Usuário',
-    uid:u.uid||'',
-    role:adminLogado?'admin':'morador',
-    criadoEm:new Date().toLocaleString('pt-BR')
-  };
-  var x=chamados.find(function(x){return x.id===id;});
-  if(!x) return;
-  var msgs=(x.mensagens||[]).concat([msg]);
-  db.collection('chamados').doc(id).update({
-    mensagens:msgs,
-    lido:false
-  }).then(function(){
-    x.mensagens=msgs;
-    inp.value='';
-    renderChamados();
-    atualizarBadgeNotif();
-  }).catch(function(e){alert('Erro: '+e.message);});
-}
-
-
-
-
-
 
 function atualizarStatus(id,novoStatus){
   db.collection('chamados').doc(id).update({status:novoStatus}).then(function(){
@@ -930,165 +559,41 @@ function atualizarStatus(id,novoStatus){
   });
 }
 
-function excluirChamado(id){
-  if(!confirm('Excluir este defeito permanentemente? Esta ação não pode ser desfeita.')) return;
-  db.collection('chamados').doc(id).delete().then(function(){
-    chamados=chamados.filter(function(x){return x.id!==id;});
-    renderChamados();
-    atualizarBadgeNotif();
-  }).catch(function(e){alert('Erro ao excluir: '+e.message);});
-}
-
 function renderChamados(){
-  if(!adminLogado){
-    chamados.forEach(function(x){
-      var msgs=x.mensagens||[];
-      if(msgs.some(function(m){return m.role==='admin';})&&!x.lido){
-        db.collection('chamados').doc(x.id).update({lido:true}).catch(function(){});
-        x.lido=true;
-      }
-    });
-    atualizarBadgeNotif();
-  }
-  var ab=chamados.filter(function(x){return x.status==='Aberto';}).length;
-  var an=chamados.filter(function(x){return x.status==='Em análise';}).length;
-  var re=chamados.filter(function(x){return x.status==='Resolvido';}).length;
+  var ab=chamados.filter(function(c){return c.status==='Aberto';}).length;
+  var an=chamados.filter(function(c){return c.status==='Em análise';}).length;
+  var re=chamados.filter(function(c){return c.status==='Resolvido';}).length;
   document.getElementById('cnt-ab').textContent=ab;
   document.getElementById('cnt-an').textContent=an;
   document.getElementById('cnt-re').textContent=re;
   var el=document.getElementById('lista-chamados');
-  if(!chamados.length){el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhum chamado registrado.</div>';return;}
-  var stBadge={Aberto:'bad','Em análise':'warn','Em Andamento':'blue',Resolvido:'ok'};
-  var grupos=[
-    {label:'🔴 Aberto',key:'Aberto',aberto:true},
-    {label:'🟡 Em Análise',key:'Em análise',aberto:true},
-    {label:'🔵 Em Andamento',key:'Em Andamento',aberto:true},
-    {label:'🟢 Resolvido',key:'Resolvido',aberto:false}
-  ];
-  el.innerHTML=grupos.map(function(g){
-    var itens=chamados.filter(function(x){return x.status===g.key;});
-    if(!itens.length) return '';
-    var rows=itens.map(function(x){
-      var msgs=x.mensagens||[];
-      var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-      var chatHtml=msgs.map(function(m){
-        var isMe=m.uid===u.uid||(!m.uid&&adminLogado&&m.role==='admin');
-        var dt=m.criadoEm&&m.criadoEm.toDate?m.criadoEm.toDate().toLocaleString('pt-BR'):(m.criadoEm||'');
-        return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:6px">'+
-          '<div style="max-width:80%;background:'+(isMe?'var(--azul)':'#f0f0eb')+';color:'+(isMe?'#fff':'var(--txt1)')+';border-radius:12px;padding:8px 12px;font-size:13px">'+
-            escHtml(m.texto)+
-          '</div>'+
-          '<div style="font-size:10px;color:var(--txt3);margin-top:2px">'+escHtml(m.autor)+(dt?' · '+dt:'')+'</div>'+
-        '</div>';
-      }).join('');
-      var statusBtns='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
-        ['Aberto','Em análise','Em Andamento','Resolvido'].map(function(s){
-          return '<button data-id="'+x.id+'" data-st="'+s+'" onclick="atualizarStatus(this.dataset.id,this.dataset.st)" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:'+(x.status===s?'var(--azul)':'transparent')+';color:'+(x.status===s?'#fff':'var(--txt2)')+';cursor:pointer">'+s+'</button>';
-        }).join('')+
-      '</div>';
-      return '<div class="chamado" style="display:block;padding:12px 0">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-          '<div style="font-weight:600">'+escHtml(x.cat)+' — '+escHtml(x.apto)+'</div>'+
-          '<div style="display:flex;align-items:center;gap:6px">'+
-            '<span class="badge '+(stBadge[x.status]||'gray')+'">'+x.status+'</span>'+
-            (adminLogado?'<button data-xid="'+x.id+'" onclick="excluirChamado(this.dataset.xid)" title="Excluir" style="width:26px;height:26px;border-radius:6px;border:none;background:#fdecea;color:#c0392b;cursor:pointer;font-size:13px">🗑️</button>':'')+
-          '</div>'+
-        '</div>'+
-        '<div style="font-size:12px;color:var(--txt3);margin-bottom:4px">'+(x.desc.length>120?escHtml(x.desc.substring(0,120))+'<span id="ds-'+x.id+'">... <button onclick="document.getElementById(\'ds-'+x.id+'\').style.display=\'none\';document.getElementById(\'df-'+x.id+'\').style.display=\'inline\'" style="font-size:11px;color:var(--azul);border:none;background:none;cursor:pointer;padding:0">ver mais</button></span><span id="df-'+x.id+'" style="display:none">'+escHtml(x.desc.substring(120))+'</span>':escHtml(x.desc))+'</div>'+
-        '<div style="font-size:11px;color:var(--txt3);margin-bottom:8px">'+escHtml(x.data)+(x.usuario?' · '+escHtml(x.usuario):'')+'</div>'+
-        (adminLogado?statusBtns:'')+
-        (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
-                '<div style="display:flex;gap:6px">'+
-          '<input id="chat-input-'+x.id+'" data-xid="'+x.id+'" autocomplete="off" placeholder="Digite uma mensagem..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px">'+
-          '<button data-xid="'+x.id+'" onclick="enviarMensagemChamado(this.dataset.xid)" class="badge blue" style="cursor:pointer;border:none;padding:7px 12px">Enviar</button>'+
-        '</div>'+'</div>'+
-      '</div>';
-    }).join('');
-    return '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">'+
-      '<div onclick="toggleGrupo(this)" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:'+(g.aberto?'#f0f5fb':'var(--card)')+'">'+
-        '<span style="font-weight:700;font-size:13px">'+g.label+'</span>'+
-        '<span style="font-size:12px;color:var(--txt3)">'+itens.length+' item(s) <span class="chevron-grupo" style="display:inline-block;transition:transform .2s;transform:'+(g.aberto?'rotate(90deg)':'rotate(0deg)')+'">›</span></span>'+
+  if(!chamados.length){
+    el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhum chamado registrado.</div>';
+    return;
+  }
+  var corMap={Aberto:'#c0392b','Em análise':'#b8630a',Resolvido:'#2d7a3a'};
+  var bgMap={Aberto:'bad','Em análise':'warn',Resolvido:'ok'};
+  el.innerHTML=chamados.map(function(c){
+    var cor=corMap[c.status]||'#888';
+    var bg=bgMap[c.status]||'gray';
+    return '<div class="chamado">'+
+      '<div class="sdot" style="background:'+cor+'"></div>'+
+      '<div style="flex:1">'+
+        '<div style="font-weight:600">'+c.cat+' — '+c.apto+'</div>'+
+        '<div style="font-size:12px;color:var(--txt3);margin-top:2px">'+c.desc.substring(0,80)+(c.desc.length>80?'...':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+c.data+(c.usuario?' · '+c.usuario:'')+'</div>'+
+        (adminLogado
+          ?'<div style="margin-top:6px;display:flex;gap:6px">'+
+            ['Aberto','Em análise','Resolvido'].map(function(s){
+              return '<button onclick="atualizarStatus(\''+(c.id||'')+'\',\''+s+'\')" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:'+(c.status===s?'var(--azul)':'transparent')+';color:'+(c.status===s?'#fff':'var(--txt2)')+';cursor:pointer">'+s+'</button>';
+            }).join('')+
+          '</div>'
+          :''
+        )+
       '</div>'+
-      '<div class="grupo-content" style="display:'+(g.aberto?'block':'none')+';padding:0 14px">'+rows+'</div>'+
+      '<span class="badge '+bg+'">'+c.status+'</span>'+
     '</div>';
   }).join('');
-}
-
-function salvarRespostaChamado(id){
-  var resp=document.getElementById('cham-resp-'+id);
-  if(!resp) return;
-  var texto=resp.value.trim();
-  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  db.collection('chamados').doc(id).update({
-    resposta:texto,
-    respondidoPor:u.nome||'Admin',
-    respondidoEm:firebase.firestore.FieldValue.serverTimestamp(),
-    lido:false,
-    status:'Resolvido'
-  }).then(function(){
-    var x=chamados.find(function(x){return x.id===id;});
-    if(x){x.resposta=texto;x.respondidoPor=u.nome||'Admin';x.status='Resolvido';x.lido=false;}
-    renderChamados();
-    alert('✅ Resposta salva!');
-  }).catch(function(e){alert('Erro: '+e.message);});
-}
-
-function marcarLidoChamado(id){
-  db.collection('chamados').doc(id).update({lido:true}).then(function(){
-    var x=chamados.find(function(x){return x.id===id;});
-    if(x) x.lido=true;
-    var el=document.getElementById('resp-box-cham-'+id);
-    if(el) el.style.display='none';
-    atualizarBadgeNotif();
-  }).catch(function(){});
-}
-
-function marcarLidoSugestao(id){
-  db.collection('sugestoes').doc(id).update({lido:true}).then(function(){
-    var s=sugestoes.find(function(s){return s.id===id;});
-    if(s) s.lido=true;
-    var el=document.getElementById('resp-box-sug-'+id);
-    if(el) el.style.display='none';
-    atualizarBadgeNotif();
-  }).catch(function(){});
-}
-
-
-function navNotif(){
-  if(adminLogado){nav('defeitos');return;}
-  var temSug=sugestoes.some(function(s){var msgs=s.mensagens||[];return msgs.some(function(m){return m.role==='admin';})&&!s.lido;});
-  if(temSug) nav('sugestoes');
-  else nav('defeitos');
-}
-function atualizarBadgeNotif(){
-  var badge=document.getElementById('badge-notif');
-  if(!badge) return;
-  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}')
-;  if(adminLogado){
-    var semRespostaCham=chamados.filter(function(x){
-      var msgs=x.mensagens||[];
-      var temMsgAdmin=msgs.some(function(m){return m.role==='admin';});
-      var temRespostaLegado=x.resposta&&x.resposta.trim()!=='';
-      return !temMsgAdmin&&!temRespostaLegado;
-    }).length;
-    var semRespostaSug=sugestoes.filter(function(s){
-      var msgs=s.mensagens||[];
-      var temMsgAdmin=msgs.some(function(m){return m.role==='admin';});
-      return s.status==='Recebido'&&!temMsgAdmin;
-    }).length;
-    var total=semRespostaCham+semRespostaSug;
-    badge.textContent=total;
-    badge.style.display=total>0?'inline-block':'none';
-  } else {
-    var uid=u.uid||'';
-    if(!uid){badge.style.display='none';return;}
-    var naoLidos=0;
-    chamados.forEach(function(x){var msgs=x.mensagens||[];if(msgs.some(function(m){return m.role==='admin';})&&!x.lido) naoLidos++;});
-    sugestoes.forEach(function(s){var msgs=s.mensagens||[];if(msgs.some(function(m){return m.role==='admin';})&&!s.lido) naoLidos++;});
-    badge.textContent=naoLidos;
-    badge.style.display=naoLidos>0?'inline-block':'none';
-  }
-}
 
 // ===== ORÇAMENTOS =====
 var orcamentos=[
@@ -1162,18 +667,6 @@ function renderOrcamentosAdmin(){
   }).join('');
 }
 function addOrcamentoAdmin(){orcamentos.push({nome:'Novo orçamento',cat:'Outros',status:'gray',arquivos:[]});renderOrcamentosAdmin();}
-function addOrcamentoRapido(){
-  var nome=document.getElementById('nova-orc-nome').value.trim();
-  if(!nome){alert('Informe o nome.');return;}
-  var cat=document.getElementById('nova-orc-cat').value;
-  orcamentos.unshift({nome:nome,cat:cat,status:'gray',arquivos:[]});
-  document.getElementById('nova-orc-nome').value='';
-  document.getElementById('nova-orc-nome').focus();
-  renderOrcamentosAdmin();
-  salvarOrcamentos();
-  renderFiltrosOrc();
-  renderOrcamentos();
-}
 
 // ===== PRESTADORES =====
 var CATS_PREST=['Eletricista','Jardinagem','Portaria / Cameras','Ar Condicionado','Placa Solar','FoodTruck','Smart Store','Advogado'];
@@ -1211,9 +704,8 @@ function renderPrestadores(){
       var tel=p.tel.replace(/[^0-9]/g,''); if(tel.length>=10) tel='55'+tel;
       html+='<div class="file-row">'+
         '<div class="file-ico" style="background:'+(catBg[cat]||'#f0f0f0')+'">'+(catIcos[cat]||'👤')+'</div>'+
-        '<div style="flex:1"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+escHtml(p.ind):'')+'</div></div>'+
-        '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:4px">📞 Ligar</a>'+
-        '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="badge ok" style="text-decoration:none;margin-right:4px">💬 WhatsApp</a>'+
+        '<div style="flex:1"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+p.ind:'')+'</div></div>'+
+        '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:4px">Ligar</a>'+
         (adminLogado?'<button class="del-btn" onclick="removerPrestador('+idx+')">✕</button>':'')+
       '</div>';
     });
@@ -1231,19 +723,6 @@ function addPrestador(){
   var t=prompt('Telefone:')||'';
   var ind=prompt('Indicação (opcional):')||'';
   prestadores.push({nome:n,cat:c,tel:t,ind:ind});salvarPrestadores();renderPrestadores();
-}
-function addPrestadorRapido(){
-  var nome=document.getElementById('nova-pre-nome').value.trim();
-  if(!nome){alert('Informe o nome.');return;}
-  var tel=document.getElementById('nova-pre-tel').value.trim();
-  var cat=document.getElementById('nova-pre-cat').value;
-  prestadores.unshift({nome:nome,cat:cat,tel:tel,ind:''});
-  document.getElementById('nova-pre-nome').value='';
-  document.getElementById('nova-pre-tel').value='';
-  document.getElementById('nova-pre-nome').focus();
-  renderPrestadoresAdmin();
-  salvarPrestadores();
-  renderPrestadores();
 }
 function filtrarCatPrest(cat,btn){
   filtroAtualPrest=cat;
@@ -1304,16 +783,6 @@ function renderTarefasAdmin(){
   }).join('');
 }
 function addTarefa(){tarefas.push({txt:'Nova tarefa',sub:'',status:'gray'});renderTarefasAdmin();}
-function addTarefaRapida(){
-  var txt=document.getElementById('nova-tar-txt').value.trim();
-  if(!txt){alert('Informe a descrição.');return;}
-  var status=document.getElementById('nova-tar-status').value;
-  tarefas.unshift({txt:txt,sub:'',status:status});
-  document.getElementById('nova-tar-txt').value='';
-  document.getElementById('nova-tar-txt').focus();
-  renderTarefasAdmin();
-  salvarTarefas();
-}
 
 // ===== DADOS ADMIN — carregados do Firestore =====
 var dadosAdmin={
@@ -1389,6 +858,7 @@ function carregarTodosOsDados(callback){
   });
 }
 // ===== ADMIN =====
+var SENHA='altos2026';
 var RAMOS_CONTRATO=JSON.parse(localStorage.getItem('asi_ramos_contrato')||'null')||['Portaria Remota','Jardinagem','Facilities','Juridico','Administrativo','Manutenção'];
 function salvarRamosContrato(){localStorage.setItem('asi_ramos_contrato',JSON.stringify(RAMOS_CONTRATO));}
 var stContratoOpts=[
@@ -1441,34 +911,13 @@ function abrirAdmin(){
   }
 }
 function fecharAdmin(){document.getElementById('adminOverlay').classList.remove('on');}
-var SENHA_H='ebc91a10ca5887e7c0378130f4d436194a44c3795c6a51bf075246db702ccc55';
-async function hashSenha(s){
-  var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-}
 function verificarSenha(){
-  var senha=document.getElementById('adminSenha').value;
-  if(!senha){document.getElementById('erroSenha').style.display='block';return;}
-  var user=firebase.auth().currentUser;
-  if(!user){document.getElementById('erroSenha').style.display='block';return;}
-  db.collection('usuarios').doc(user.uid).get().then(function(doc){
-    if(!doc.exists||doc.data().perfil!=='admin'){
-      document.getElementById('erroSenha').style.display='block';return;
-    }
-    hashSenha(senha).then(function(h){
-      if(h===SENHA_H){
-        abrirPainelAdmin();
-      } else {
-        document.getElementById('erroSenha').style.display='block';
-      }
-    });
-  });
-}
-function abrirPainelAdmin(){
-  adminLogado=true;
+  if(document.getElementById('adminSenha').value===SENHA){
+    adminLogado=true;
     document.getElementById('adminLogin').style.display='none';
     document.getElementById('adminPainel').style.display='block';
     renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();
+  } else {document.getElementById('erroSenha').style.display='block';}
 }
 function adminTab(id,btn){
   document.querySelectorAll('.admin-sec').forEach(function(s){s.classList.remove('on');});
@@ -1524,31 +973,8 @@ function renderAdmin(){
 }
 function addAlerta(){dadosAdmin.alertas.push({txt:'Novo alerta',sub:'',status:'warn'});renderAdmin();}
 function addRealizacao(){dadosAdmin.realizacoes.unshift({data:'Abr/2026',txt:'Nova realização'});renderAdmin();}
-function addRealizacaoRapida(){
-  var data=document.getElementById('nova-real-data').value.trim();
-  var txt=document.getElementById('nova-real-txt').value.trim();
-  if(!txt){alert('Informe a descrição.');return;}
-  if(!data){var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];var now=new Date();data=meses[now.getMonth()]+'/'+now.getFullYear();}
-  dadosAdmin.realizacoes.unshift({data:data,txt:txt});
-  document.getElementById('nova-real-data').value='';
-  document.getElementById('nova-real-txt').value='';
-  document.getElementById('nova-real-txt').focus();
-  renderAdmin();
-  salvarRealizacoes();
-}
 function addProjeto(){dadosAdmin.projetos.push({nome:'Novo projeto',sub:'',pct:0,status:'blue'});renderAdmin();}
 function addContrato(){dadosAdmin.contratos.push({doc:'Novo documento',emissao:'—',validade:'—',status:'ok',ramo:''});renderAdmin();}
-function addContratoRapido(){
-  var doc=document.getElementById('nova-con-doc').value.trim();
-  if(!doc){alert('Informe o nome do documento.');return;}
-  var val=document.getElementById('nova-con-val').value.trim()||'—';
-  dadosAdmin.contratos.unshift({doc:doc,emissao:'—',validade:val,status:'ok',ramo:''});
-  document.getElementById('nova-con-doc').value='';
-  document.getElementById('nova-con-val').value='';
-  document.getElementById('nova-con-doc').focus();
-  renderAdmin();
-  salvarContratos();
-}
 function addRamoContrato(){
   var r=prompt('Nome do novo ramo de atividade:');
   if(!r||!r.trim()) return;
@@ -1606,14 +1032,6 @@ function renderRealizacoes(){
       '<div class="ano-content" style="display:'+(aberto?'block':'none')+';padding:0 15px">'+itens+'</div>'+
       '</div>';
   }).join('');
-}
-function toggleGrupo(header){
-  var content=header.nextElementSibling;
-  var chevron=header.querySelector('.chevron-grupo');
-  var aberto=content.style.display==='block';
-  content.style.display=aberto?'none':'block';
-  if(chevron) chevron.style.transform=aberto?'rotate(0deg)':'rotate(90deg)';
-  header.style.background=aberto?'var(--card)':'#f0f5fb';
 }
 function toggleChurrAno(header){
   var content=header.nextElementSibling;
@@ -1810,15 +1228,55 @@ function addDocumento(){
 
 
 
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
 
-// Rodapé dinâmico
-(function(){
-  var footer=document.createElement('div');
-  footer.style.cssText='text-align:center;padding:18px 16px 32px;font-size:11px;color:#999;border-top:1px solid #e4e4dc;margin-top:24px;background:var(--bg,#f4f4ef)';
-  footer.innerHTML='Copyright &copy; '+new Date().getFullYear()+' <strong style="color:#555">PAFRE GESTÃO &amp; TECNOLOGIA</strong>. Todos os direitos reservados.';
-  document.body.appendChild(footer);
-})();
+// ===== SUPORTE PAFRE =====
+var dbPafre=null;
+function initPafreDB(){
+  if(dbPafre) return dbPafre;
+  var appPafre=firebase.apps.find(function(a){return a.name==='pafre';});
+  if(!appPafre) appPafre=firebase.initializeApp({
+    apiKey:"AIzaSyB2raYjyu5lOEuHAtXHrFyFBdASBf48ljI",
+    authDomain:"pafre-gestao.firebaseapp.com",
+    projectId:"pafre-gestao",
+    storageBucket:"pafre-gestao.firebasestorage.app",
+    messagingSenderId:"305254099508",
+    appId:"1:305254099508:web:a6e9cf360a858d87c8f861"
+  },'pafre');
+  dbPafre=firebase.firestore(appPafre);
+  return dbPafre;
+}
+function abrirRelatarProblema(){
+  document.getElementById('suporte-overlay').style.display='flex';
+  document.getElementById('suporte-msg').textContent='';
+}
+function fecharRelatarProblema(){
+  document.getElementById('suporte-overlay').style.display='none';
+}
+function enviarRelatarProblema(){
+  var titulo=document.getElementById('sp-titulo').value.trim();
+  var desc=document.getElementById('sp-desc').value.trim();
+  var sev=document.getElementById('sp-sev').value;
+  var msg=document.getElementById('suporte-msg');
+  if(!titulo||!desc){msg.textContent='Preencha título e descrição.';msg.style.color='#c0392b';return;}
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  msg.textContent='Enviando...';msg.style.color='#1565c0';
+  initPafreDB().collection('chamados_suporte').add({
+    condominio:'Altos Santa Izabel',
+    uid:u.uid||'',nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+    titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
+    criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
+    mensagens:[]
+  }).then(function(){
+    msg.textContent='✅ Chamado enviado! A equipe PAFRE responderá em breve.';
+    msg.style.color='#2d7a3a';
+    document.getElementById('sp-titulo').value='';
+    document.getElementById('sp-desc').value='';
+    setTimeout(fecharRelatarProblema,2500);
+  }).catch(function(e){msg.textContent='Erro: '+e.message;msg.style.color='#c0392b';});
+}
+// ===== FIM SUPORTE =====
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
 window.addEventListener('beforeinstallprompt',function(e){
   e.preventDefault();var d=e;
   var btn=document.createElement('button');
@@ -1828,5 +1286,30 @@ window.addEventListener('beforeinstallprompt',function(e){
   document.body.appendChild(btn);
 });
 </script>
+
+<!-- MODAL RELATAR PROBLEMA -->
+<div id="suporte-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
+    <div style="padding:18px 20px 14px;border-bottom:1px solid #e4e4dc;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-weight:700;font-size:15px;color:#1a3a5c">🐛 Relatar problema ao suporte</div><div style="font-size:12px;color:#999;margin-top:2px">PAFRE GESTÃO & TECNOLOGIA</div></div>
+      <button onclick="fecharRelatarProblema()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div id="suporte-msg" style="min-height:16px;font-size:12px;margin-bottom:8px"></div>
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Título <span style="color:#c0392b">*</span></label>
+      <input id="sp-titulo" class="fi" placeholder="Resumo do problema...">
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Severidade <span style="color:#c0392b">*</span></label>
+      <select id="sp-sev" class="fi">
+        <option value="Baixa">🟢 Baixa — dúvida ou melhoria</option>
+        <option value="Média" selected>🟡 Média — funcionalidade com problema</option>
+        <option value="Alta">🟠 Alta — bloqueando uso</option>
+      </select>
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:3px">Descrição <span style="color:#c0392b">*</span></label>
+      <textarea id="sp-desc" class="fi" style="height:100px;resize:vertical" placeholder="Descreva o problema em detalhes..."></textarea>
+      <button onclick="enviarRelatarProblema()" style="width:100%;padding:11px;border-radius:9px;background:#1a3a5c;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px">📤 Enviar para o suporte</button>
+    </div>
+  </div>
+</div>
 </body>
-</html>
+</html>  
+ 
