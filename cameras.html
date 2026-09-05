@@ -55,6 +55,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .edit-box h3{font-size:15px;font-weight:700;color:var(--azul);margin-bottom:14px}
 .badge-modo{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700;background:#fff3e0;color:#b8630a;margin-left:8px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -88,7 +90,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 
     <div class="sec">
       Marcar câmeras
-      <button class="btn ghost" id="btn-modo" onclick="toggleModoAdd()" style="padding:5px 12px;font-size:12px">➕ Adicionar câmera</button>
+      <span style="display:flex;gap:6px">
+        <button class="btn ghost" id="btn-pdf" onclick="exportarPDF()" style="padding:5px 12px;font-size:12px">📄 Exportar PDF</button>
+        <button class="btn ghost" id="btn-modo" onclick="toggleModoAdd()" style="padding:5px 12px;font-size:12px">➕ Adicionar câmera</button>
+      </span>
     </div>
     <div class="card" style="padding:10px">
       <div id="planta-vazia" class="vazio-msg" style="display:none">Nenhuma planta cadastrada ainda. Cole o link acima e clique em "Salvar planta".</div>
@@ -375,6 +380,64 @@ function excluirPontoAtual(){
     renderPins();
     renderLista();
   });
+}
+
+function exportarPDF(){
+  if(!camerasData.planta){alert('Cadastre uma planta antes de exportar em PDF.');return;}
+  if(typeof html2canvas==='undefined'||!window.jspdf){alert('Não foi possível carregar as bibliotecas de PDF. Verifique sua conexão e tente novamente.');return;}
+  var btn=document.getElementById('btn-pdf');
+  var txtOriginal=btn.textContent;
+  btn.disabled=true;btn.textContent='⏳ Gerando...';
+  var scrollEl=document.getElementById('planta-scroll');
+  var zoomAnterior=zoomIdx;
+  var scrollAnterior={left:scrollEl.scrollLeft,top:scrollEl.scrollTop};
+  zoomIdx=0;
+  aplicarZoom();
+  function restaurar(){
+    zoomIdx=zoomAnterior;aplicarZoom();
+    scrollEl.scrollLeft=scrollAnterior.left;scrollEl.scrollTop=scrollAnterior.top;
+    btn.disabled=false;btn.textContent=txtOriginal;
+  }
+  setTimeout(function(){
+    var wrap=document.getElementById('planta-wrap');
+    html2canvas(wrap,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+      var img=canvas.toDataURL('image/jpeg',0.92);
+      var jsPDF=window.jspdf.jsPDF;
+      var pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+      var pageW=pdf.internal.pageSize.getWidth();
+      var pageH=pdf.internal.pageSize.getHeight();
+      var margin=30,topSpace=55;
+      var totalCameras=camerasData.pontos.reduce(function(a,p){return a+(p.qtd||1);},0);
+      pdf.setFontSize(14);pdf.setTextColor(26,58,92);
+      pdf.text('Mapa de Câmeras — Condomínio Altos Santa Izabel',margin,30);
+      pdf.setFontSize(9);pdf.setTextColor(120,120,120);
+      pdf.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'  ·  '+camerasData.pontos.length+' locais  ·  '+totalCameras+' câmeras no total',margin,44);
+      var maxW=pageW-margin*2,maxH=pageH-topSpace-margin;
+      var ratio=Math.min(maxW/canvas.width,maxH/canvas.height);
+      var w=canvas.width*ratio,h=canvas.height*ratio;
+      var x=(pageW-w)/2;
+      pdf.addImage(img,'JPEG',x,topSpace,w,h);
+      if(camerasData.pontos.length){
+        pdf.addPage();
+        pdf.setFontSize(14);pdf.setTextColor(26,58,92);
+        pdf.text('Lista de câmeras',margin,40);
+        pdf.setFontSize(11);pdf.setTextColor(30,30,30);
+        var y=65;
+        camerasData.pontos.forEach(function(p,i){
+          var qtd=p.qtd||1;
+          var linha=(i+1)+'. '+p.nome+(qtd>1?' — '+qtd+' câmeras':'');
+          pdf.text(linha,margin,y);
+          y+=20;
+          if(y>pageH-margin){pdf.addPage();y=40;}
+        });
+      }
+      pdf.save('mapa-cameras-altos-santa-izabel.pdf');
+      restaurar();
+    }).catch(function(e){
+      alert('Erro ao gerar PDF: '+e.message);
+      restaurar();
+    });
+  },250);
 }
 
 function escHtml(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
