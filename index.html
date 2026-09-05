@@ -1833,7 +1833,7 @@ function addDocumento(){
 // ===== FIM DOCUMENTOS =====
 
 // ===== SUPORTE PAFRE =====
-var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null;
+var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null,meusChamadosExpandidos={};
 var STATUS_BADGE_SUP={Aberto:'bad','Em análise':'warn','Aguardando cliente':'blue',Resolvido:'ok',Fechado:'gray'};
 function initPafreDB(){
   if(dbPafre) return dbPafre;
@@ -1900,20 +1900,42 @@ function renderMeusChamados(){
       '</div>';
     }).join('');
     var dt=c.criadoEm&&c.criadoEm.toDate?c.criadoEm.toDate().toLocaleDateString('pt-BR'):'—';
+    var ultima=msgs.length?msgs[msgs.length-1]:null;
+    var previaTxt=ultima?escHtml(ultima.texto.length>45?ultima.texto.substring(0,45)+'…':ultima.texto):'Sem mensagens ainda.';
+    var aberto=!!meusChamadosExpandidos[c.id];
     return '<div style="border:1px solid #e4e4dc;border-radius:12px;padding:12px;margin-bottom:10px">'+
-      '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
-        '<span class="badge '+(STATUS_BADGE_SUP[c.status]||'gray')+'">'+escHtml(c.status)+'</span>'+
-        '<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#f0efe8;color:#555">'+escHtml(c.severidade)+'</span>'+
+      '<div onclick="toggleMeuChamado(\''+c.id+'\')" style="cursor:pointer">'+
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
+          '<span class="badge '+(STATUS_BADGE_SUP[c.status]||'gray')+'">'+escHtml(c.status)+'</span>'+
+          '<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#f0efe8;color:#555">'+escHtml(c.severidade)+'</span>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-weight:600;font-size:13px">'+escHtml(c.titulo)+'</div>'+
+            '<div style="font-size:11px;color:#999;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+dt+' · '+previaTxt+'</div>'+
+          '</div>'+
+          '<span id="chev-meuc-'+c.id+'" style="color:#1565c0;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0">'+(aberto?'Ocultar ‹':'Leia mais ›')+'</span>'+
+        '</div>'+
       '</div>'+
-      '<div style="font-weight:600;font-size:13px">'+escHtml(c.titulo)+'</div>'+
-      '<div style="font-size:11px;color:#999;margin:2px 0 8px">'+dt+'</div>'+
-      (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
-      '<div style="display:flex;gap:6px">'+
-        '<input id="sp-chat-'+c.id+'" autocomplete="off" placeholder="Responder..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid #e4e4dc;border-radius:8px">'+
-        '<button onclick="enviarMensagemSuporte(\''+c.id+'\')" style="font-size:12px;padding:7px 12px;border-radius:8px;border:none;background:#e3f0fb;color:#1565c0;cursor:pointer;font-weight:600">Enviar</button>'+
+      '<div id="corpo-meuc-'+c.id+'" style="display:'+(aberto?'block':'none')+';margin-top:8px">'+
+        (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
+        '<div style="display:flex;gap:6px">'+
+          '<input id="sp-chat-'+c.id+'" autocomplete="off" placeholder="Responder..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid #e4e4dc;border-radius:8px">'+
+          '<button onclick="enviarMensagemSuporte(\''+c.id+'\')" style="font-size:12px;padding:7px 12px;border-radius:8px;border:none;background:#e3f0fb;color:#1565c0;cursor:pointer;font-weight:600">Enviar</button>'+
+        '</div>'+
       '</div>'+
     '</div>';
   }).join('');
+}
+
+function toggleMeuChamado(id){
+  meusChamadosExpandidos[id]=!meusChamadosExpandidos[id];
+  var el=document.getElementById('corpo-meuc-'+id);
+  var chev=document.getElementById('chev-meuc-'+id);
+  if(!el) return;
+  var aberto=meusChamadosExpandidos[id];
+  el.style.display=aberto?'block':'none';
+  if(chev) chev.textContent=aberto?'Ocultar ‹':'Leia mais ›';
 }
 function enviarMensagemSuporte(id){
   var inp=document.getElementById('sp-chat-'+id);
