@@ -39,6 +39,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .pin-ico span{transform:rotate(-45deg)}
 .pin:hover .pin-ico{background:#0f2440}
 .pin-qtd{position:absolute;top:-5px;right:-8px;background:#c0392b;color:#fff;border-radius:99px;font-size:9px;font-weight:700;min-width:15px;height:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff}
+.pin-ring{position:absolute;bottom:-2px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;pointer-events:none;opacity:0}
+.pin.pin-highlight .pin-ring{animation:pinPulse .9s ease-out 3}
+.pin.pin-highlight .pin-ico{animation:pinBounce .5s ease 3}
+@keyframes pinPulse{0%{box-shadow:0 0 0 0 rgba(192,57,43,.65);opacity:1}100%{box-shadow:0 0 0 24px rgba(192,57,43,0);opacity:0}}
+@keyframes pinBounce{0%{transform:rotate(45deg) scale(1)}30%{transform:rotate(45deg) scale(1.5)}100%{transform:rotate(45deg) scale(1)}}
 .vazio-msg{padding:40px 20px;text-align:center;color:var(--txt3);font-size:13px}
 .lista-cam-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f4f4ef}
 .lista-cam-row:last-child{border-bottom:none}
@@ -254,8 +259,8 @@ function renderPins(){
   el.innerHTML=camerasData.pontos.map(function(p){
     var qtd=p.qtd||1;
     var badge=qtd>1?'<div class="pin-qtd">'+qtd+'</div>':'';
-    return '<div class="pin" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
-      '<div class="pin-ico"><span>📷</span></div>'+badge+
+    return '<div class="pin" data-id="'+p.id+'" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
+      '<div class="pin-ico"><span>📷</span></div>'+badge+'<div class="pin-ring"></div>'+
     '</div>';
   }).join('');
 }
@@ -272,11 +277,11 @@ function renderLista(){
   }
   el.innerHTML=camerasData.pontos.map(function(p){
     var qtd=p.qtd||1;
-    return '<div class="lista-cam-row">'+
+    return '<div class="lista-cam-row" style="cursor:pointer" onclick="localizarCamera(\''+p.id+'\')" title="Localizar no mapa">'+
       '<div class="lista-cam-ico">📷</div>'+
       '<div style="flex:1"><div style="font-weight:500">'+escHtml(p.nome)+'</div>'+(qtd>1?'<div style="font-size:11px;color:var(--txt3)">'+qtd+' câmeras neste local</div>':'')+'</div>'+
-      '<button class="del-btn" style="background:#e3f0fb;color:#1565c0" onclick="abrirEdicaoPonto(\''+p.id+'\',false)" title="Editar">✏️</button>'+
-      '<button class="del-btn" onclick="excluirCameraLista(\''+p.id+'\')" title="Excluir">🗑️</button>'+
+      '<button class="del-btn" style="background:#e3f0fb;color:#1565c0" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="Editar">✏️</button>'+
+      '<button class="del-btn" onclick="event.stopPropagation();excluirCameraLista(\''+p.id+'\')" title="Excluir">🗑️</button>'+
     '</div>';
   }).join('');
 }
@@ -288,6 +293,33 @@ function excluirCameraLista(id){
     renderPins();
     renderLista();
   });
+}
+
+function localizarCamera(id){
+  if(!camerasData.planta) return;
+  var p=camerasData.pontos.find(function(x){return x.id===id;});
+  if(!p) return;
+  var scrollEl=document.getElementById('planta-scroll');
+  var wrap=document.getElementById('planta-wrap');
+  scrollEl.scrollIntoView({behavior:'smooth',block:'center'});
+  var alvoIdx=zoomSteps.indexOf(200);
+  if(zoomIdx<alvoIdx){zoomIdx=alvoIdx;aplicarZoom();}
+  setTimeout(function(){
+    var px=wrap.offsetWidth*(p.x/100);
+    var py=wrap.offsetHeight*(p.y/100);
+    scrollEl.scrollTo({
+      left:Math.max(0,px-scrollEl.clientWidth/2),
+      top:Math.max(0,py-scrollEl.clientHeight/2),
+      behavior:'smooth'
+    });
+    var pinEl=document.querySelector('.pin[data-id="'+id+'"]');
+    if(pinEl){
+      pinEl.classList.remove('pin-highlight');
+      void pinEl.offsetWidth;
+      pinEl.classList.add('pin-highlight');
+      setTimeout(function(){pinEl.classList.remove('pin-highlight');},3000);
+    }
+  },300);
 }
 
 function abrirEdicaoPonto(id,novo){
