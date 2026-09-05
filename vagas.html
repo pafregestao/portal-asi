@@ -47,7 +47,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .fi:focus{outline:none;border-color:var(--azul)}
 .save-btn{width:100%;padding:11px;border-radius:9px;background:var(--azul);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer}
 .cancel-btn{width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--txt2);cursor:pointer;font-size:13px;margin-top:6px}
+.pdf-btn{display:flex;align-items:center;gap:6px;background:var(--azul);color:#fff;border:none;border-radius:9px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600}
+.pdf-btn:disabled{opacity:.6;cursor:default}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -67,6 +71,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 
 <div class="wrap">
   <input class="search-bar" id="busca" placeholder="🔍  Buscar por apartamento ou número da vaga..." oninput="renderTorres()">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="pdf-btn" id="btn-pdf-vagas" onclick="exportarPDFVagas()">📄 Exportar PDF</button>
+  </div>
   <div class="legenda">
     <div class="leg"><div class="leg-dot" style="background:#fff9ec;border:1.5px solid #f5c842"></div>Com vaga</div>
     <div class="leg"><div class="leg-dot" style="background:#f0eeff;border:1.5px solid #a78bfa"></div>Especial</div>
@@ -266,6 +273,64 @@ function salvarEdicao(){
     renderTorres();
     alert('✅ Apto '+editandoApto+' → Vaga '+(novaVaga||'(sem vaga)'));
   }).catch(function(e){alert('Erro: '+e.message);});
+}
+
+function exportarPDFVagas(){
+  if(typeof html2canvas==='undefined'||!window.jspdf){alert('Não foi possível carregar as bibliotecas de PDF. Verifique sua conexão e tente novamente.');return;}
+  var btn=document.getElementById('btn-pdf-vagas');
+  var txtOriginal=btn.textContent;
+  btn.disabled=true;btn.textContent='⏳ Gerando...';
+  setTimeout(function(){
+    var el=document.getElementById('torres');
+    html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+      var jsPDF=window.jspdf.jsPDF;
+      var pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+      var pageW=pdf.internal.pageSize.getWidth();
+      var pageH=pdf.internal.pageSize.getHeight();
+      var margin=30,topSpace=55;
+      var comVaga=vagasData.filter(function(v){return v.vaga&&v.vaga.trim();}).length;
+      pdf.setFontSize(14);pdf.setTextColor(26,58,92);
+      pdf.text('Mapa de Vagas de Garagem — Altos Santa Izabel',margin,30);
+      pdf.setFontSize(9);pdf.setTextColor(120,120,120);
+      pdf.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'  ·  '+comVaga+'/'+vagasData.length+' unidades com vaga',margin,44);
+      var maxW=pageW-margin*2;
+      var imgWpt=maxW;
+      var imgHpt=canvas.height*(imgWpt/canvas.width);
+      var contentH=pageH-topSpace-margin;
+      var x=(pageW-imgWpt)/2;
+      if(imgHpt<=contentH){
+        var img=canvas.toDataURL('image/jpeg',0.92);
+        pdf.addImage(img,'JPEG',x,topSpace,imgWpt,imgHpt);
+      } else {
+        var pxPerPt=canvas.width/imgWpt;
+        var sliceHeightPxFirst=contentH*pxPerPt;
+        var sliceHeightPx=(pageH-margin*2)*pxPerPt;
+        var sy=0,first=true;
+        while(sy<canvas.height){
+          var curSliceH=first?sliceHeightPxFirst:sliceHeightPx;
+          var sh=Math.min(curSliceH,canvas.height-sy);
+          var sliceCanvas=document.createElement('canvas');
+          sliceCanvas.width=canvas.width;
+          sliceCanvas.height=sh;
+          var ctx=sliceCanvas.getContext('2d');
+          ctx.fillStyle='#ffffff';ctx.fillRect(0,0,sliceCanvas.width,sliceCanvas.height);
+          ctx.drawImage(canvas,0,sy,canvas.width,sh,0,0,canvas.width,sh);
+          var sliceImg=sliceCanvas.toDataURL('image/jpeg',0.92);
+          var sliceHpt=sh/pxPerPt;
+          var yPos=first?topSpace:margin;
+          if(!first) pdf.addPage();
+          pdf.addImage(sliceImg,'JPEG',x,yPos,imgWpt,sliceHpt);
+          sy+=sh;
+          first=false;
+        }
+      }
+      pdf.save('mapa-vagas-altos-santa-izabel.pdf');
+      btn.disabled=false;btn.textContent=txtOriginal;
+    }).catch(function(e){
+      alert('Erro ao gerar PDF: '+e.message);
+      btn.disabled=false;btn.textContent=txtOriginal;
+    });
+  },100);
 }
 
 auth.onAuthStateChanged(function(user){
