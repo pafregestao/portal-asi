@@ -26,13 +26,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .mc{background:var(--card);border-radius:12px;padding:12px 14px;border:1px solid var(--border)}
 .mc-lbl{font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
 .mc-val{font-size:20px;font-weight:700;color:var(--azul)}
-.planta-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#eee;cursor:default;user-select:none}
+.planta-scroll{overflow:auto;max-height:65vh;border-radius:12px;border:1px solid var(--border);background:#eee}
+.planta-wrap{position:relative;width:100%;background:#eee;cursor:default;user-select:none;transition:width .15s ease}
 .planta-wrap.modo-add{cursor:crosshair}
 .planta-wrap img{width:100%;display:block;pointer-events:none}
+.zoom-bar{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.zoom-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.zoom-btn:active{background:#f0f0ea}
+.zoom-label{font-size:12px;color:var(--txt2);min-width:44px;text-align:center}
 .pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer;display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
 .pin-ico{width:26px;height:26px;border-radius:50% 50% 50% 0;background:var(--azul);display:flex;align-items:center;justify-content:center;font-size:13px;transform:rotate(45deg);border:2px solid #fff}
 .pin-ico span{transform:rotate(-45deg)}
 .pin:hover .pin-ico{background:#0f2440}
+.pin-qtd{position:absolute;top:-5px;right:-8px;background:#c0392b;color:#fff;border-radius:99px;font-size:9px;font-weight:700;min-width:15px;height:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff}
 .vazio-msg{padding:40px 20px;text-align:center;color:var(--txt3);font-size:13px}
 .lista-cam-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f4f4ef}
 .lista-cam-row:last-child{border-bottom:none}
@@ -64,7 +70,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   <div id="conteudo" style="display:none">
 
     <div class="metrics">
-      <div class="mc"><div class="mc-lbl">Câmeras cadastradas</div><div class="mc-val" id="mc-total">0</div></div>
+      <div class="mc"><div class="mc-lbl">Locais marcados</div><div class="mc-val" id="mc-locais">0</div></div>
+      <div class="mc"><div class="mc-lbl">Total de câmeras</div><div class="mc-val" id="mc-total">0</div></div>
     </div>
 
     <div class="sec">Planta baixa</div>
@@ -80,9 +87,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="card" style="padding:10px">
       <div id="planta-vazia" class="vazio-msg" style="display:none">Nenhuma planta cadastrada ainda. Cole o link acima e clique em "Salvar planta".</div>
-      <div class="planta-wrap" id="planta-wrap" style="display:none">
-        <img id="planta-img" src="" alt="Planta do condomínio">
-        <div id="pins-layer"></div>
+      <div id="zoom-bar" class="zoom-bar" style="display:none">
+        <button class="zoom-btn" onclick="zoomOut()">➖</button>
+        <div class="zoom-label" id="zoom-label">100%</div>
+        <button class="zoom-btn" onclick="zoomIn()">➕</button>
+        <button class="zoom-btn" onclick="zoomReset()" title="Restaurar zoom">⟲</button>
+        <span style="font-size:11px;color:var(--txt3);margin-left:4px">Dê zoom pra marcar com mais precisão</span>
+      </div>
+      <div class="planta-scroll" id="planta-scroll" style="display:none">
+        <div class="planta-wrap" id="planta-wrap">
+          <img id="planta-img" src="" alt="Planta do condomínio">
+          <div id="pins-layer"></div>
+        </div>
       </div>
       <div id="dica-modo" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;text-align:center">👆 Clique em qualquer ponto da planta para marcar uma câmera<span class="badge-modo">Modo adicionar ativo</span></div>
     </div>
@@ -100,6 +116,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <h3 id="edit-titulo">📷 Câmera</h3>
     <label class="fl">Nome / localização</label>
     <input class="fi" id="edit-nome" placeholder="Ex: Portaria principal, Playground, Garagem Torre 1...">
+    <label class="fl">Quantidade de câmeras neste local</label>
+    <input class="fi" id="edit-qtd" type="number" min="1" value="1">
     <button class="btn primary" style="width:100%;margin-bottom:8px" onclick="salvarPonto()">💾 Salvar</button>
     <button class="btn danger" style="width:100%;margin-bottom:8px" id="btn-excluir-ponto" onclick="excluirPontoAtual()">🗑️ Excluir câmera</button>
     <button class="btn ghost" style="width:100%" onclick="fecharEdicaoPonto()">Cancelar</button>
@@ -121,6 +139,8 @@ var db=firebase.firestore();
 var camerasData={planta:'',pontos:[]};
 var modoAdd=false;
 var pontoEditandoId=null;
+var zoomSteps=[100,125,150,200,250,300,400];
+var zoomIdx=0;
 
 auth.onAuthStateChanged(function(user){
   if(!user){window.location.href='auth.html';return;}
@@ -170,16 +190,40 @@ function salvarPlanta(){
 
 function renderPlanta(){
   var vazio=document.getElementById('planta-vazia');
-  var wrap=document.getElementById('planta-wrap');
+  var scroll=document.getElementById('planta-scroll');
+  var zoomBar=document.getElementById('zoom-bar');
   if(!camerasData.planta){
     vazio.style.display='block';
-    wrap.style.display='none';
+    scroll.style.display='none';
+    zoomBar.style.display='none';
     return;
   }
   vazio.style.display='none';
-  wrap.style.display='block';
+  scroll.style.display='block';
+  zoomBar.style.display='flex';
   document.getElementById('planta-img').src=driveUrl(camerasData.planta);
+  zoomReset();
   renderPins();
+}
+
+function aplicarZoom(){
+  var pct=zoomSteps[zoomIdx];
+  document.getElementById('planta-wrap').style.width=pct+'%';
+  document.getElementById('zoom-label').textContent=pct+'%';
+}
+function zoomIn(){
+  if(zoomIdx<zoomSteps.length-1) zoomIdx++;
+  aplicarZoom();
+}
+function zoomOut(){
+  if(zoomIdx>0) zoomIdx--;
+  aplicarZoom();
+}
+function zoomReset(){
+  zoomIdx=0;
+  aplicarZoom();
+  var scroll=document.getElementById('planta-scroll');
+  if(scroll){scroll.scrollLeft=0;scroll.scrollTop=0;}
 }
 
 function toggleModoAdd(){
@@ -200,7 +244,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var x=((e.clientX-rect.left)/rect.width)*100;
     var y=((e.clientY-rect.top)/rect.height)*100;
     var id='cam_'+Date.now();
-    camerasData.pontos.push({id:id,x:x,y:y,nome:'Nova câmera'});
+    camerasData.pontos.push({id:id,x:x,y:y,nome:'Nova câmera',qtd:1});
     abrirEdicaoPonto(id,true);
   });
 });
@@ -208,26 +252,42 @@ document.addEventListener('DOMContentLoaded',function(){
 function renderPins(){
   var el=document.getElementById('pins-layer');
   el.innerHTML=camerasData.pontos.map(function(p){
-    return '<div class="pin" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+'">'+
-      '<div class="pin-ico"><span>📷</span></div>'+
+    var qtd=p.qtd||1;
+    var badge=qtd>1?'<div class="pin-qtd">'+qtd+'</div>':'';
+    return '<div class="pin" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
+      '<div class="pin-ico"><span>📷</span></div>'+badge+
     '</div>';
   }).join('');
 }
 
 function renderLista(){
   var el=document.getElementById('lista-cameras');
-  document.getElementById('mc-total').textContent=camerasData.pontos.length;
+  var totalLocais=camerasData.pontos.length;
+  var totalCameras=camerasData.pontos.reduce(function(a,p){return a+(p.qtd||1);},0);
+  document.getElementById('mc-locais').textContent=totalLocais;
+  document.getElementById('mc-total').textContent=totalCameras;
   if(!camerasData.pontos.length){
     el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:10px 0">Nenhuma câmera cadastrada ainda.</div>';
     return;
   }
   el.innerHTML=camerasData.pontos.map(function(p){
+    var qtd=p.qtd||1;
     return '<div class="lista-cam-row">'+
       '<div class="lista-cam-ico">📷</div>'+
-      '<div style="flex:1;font-weight:500">'+escHtml(p.nome)+'</div>'+
-      '<button class="del-btn" onclick="abrirEdicaoPonto(\''+p.id+'\',false)">✏️</button>'+
+      '<div style="flex:1"><div style="font-weight:500">'+escHtml(p.nome)+'</div>'+(qtd>1?'<div style="font-size:11px;color:var(--txt3)">'+qtd+' câmeras neste local</div>':'')+'</div>'+
+      '<button class="del-btn" style="background:#e3f0fb;color:#1565c0" onclick="abrirEdicaoPonto(\''+p.id+'\',false)" title="Editar">✏️</button>'+
+      '<button class="del-btn" onclick="excluirCameraLista(\''+p.id+'\')" title="Excluir">🗑️</button>'+
     '</div>';
   }).join('');
+}
+
+function excluirCameraLista(id){
+  if(!confirm('Remover esta câmera do mapa?')) return;
+  camerasData.pontos=camerasData.pontos.filter(function(x){return x.id!==id;});
+  salvarCamerasFirestore(function(){
+    renderPins();
+    renderLista();
+  });
 }
 
 function abrirEdicaoPonto(id,novo){
@@ -236,6 +296,7 @@ function abrirEdicaoPonto(id,novo){
   if(!p) return;
   document.getElementById('edit-titulo').textContent=novo?'📷 Nova câmera':'📷 Editar câmera';
   document.getElementById('edit-nome').value=novo?'':p.nome;
+  document.getElementById('edit-qtd').value=p.qtd||1;
   document.getElementById('btn-excluir-ponto').style.display=novo?'none':'block';
   document.getElementById('editOverlay').classList.add('on');
   setTimeout(function(){document.getElementById('edit-nome').focus();},50);
@@ -260,8 +321,10 @@ function toggleModoAddOff(){
 function salvarPonto(){
   var nome=document.getElementById('edit-nome').value.trim();
   if(!nome){alert('Informe um nome ou local para a câmera.');return;}
+  var qtd=parseInt(document.getElementById('edit-qtd').value,10);
+  if(!qtd||qtd<1) qtd=1;
   var p=camerasData.pontos.find(function(x){return x.id===pontoEditandoId;});
-  if(p) p.nome=nome;
+  if(p){p.nome=nome;p.qtd=qtd;}
   salvarCamerasFirestore(function(){
     document.getElementById('editOverlay').classList.remove('on');
     pontoEditandoId=null;
