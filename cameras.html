@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<title>Mapa de Câmeras — Portal ASI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--azul:#1a3a5c;--ok:#2d7a3a;--warn:#b8630a;--bad:#c0392b;--bg:#f4f4ef;--card:#fff;--border:#e4e4dc;--txt:#1a1a1a;--txt2:#666;--txt3:#999}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--txt);min-height:100vh}
+.hdr{background:var(--azul);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.back-btn{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;flex-shrink:0}
+.hdr-title{flex:1}.hdr-title h1{font-size:15px;font-weight:700}.hdr-title p{font-size:11px;opacity:.65;margin-top:1px}
+.wrap{max-width:1000px;margin:0 auto;padding:14px 14px 40px}
+.sec{font-size:10px;font-weight:700;color:var(--txt3);letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.fl{display:block;font-size:12px;color:var(--txt2);font-weight:600;margin-bottom:3px}
+.fi{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:10px}
+.fi:focus{outline:none;border-color:var(--azul)}
+.btn{padding:10px 18px;border-radius:9px;border:none;font-size:13px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--azul);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--txt2)}
+.btn.danger{background:#fdecea;color:#c0392b}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.mc{background:var(--card);border-radius:12px;padding:12px 14px;border:1px solid var(--border)}
+.mc-lbl{font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.mc-val{font-size:20px;font-weight:700;color:var(--azul)}
+.planta-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#eee;cursor:default;user-select:none}
+.planta-wrap.modo-add{cursor:crosshair}
+.planta-wrap img{width:100%;display:block;pointer-events:none}
+.pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer;display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
+.pin-ico{width:26px;height:26px;border-radius:50% 50% 50% 0;background:var(--azul);display:flex;align-items:center;justify-content:center;font-size:13px;transform:rotate(45deg);border:2px solid #fff}
+.pin-ico span{transform:rotate(-45deg)}
+.pin:hover .pin-ico{background:#0f2440}
+.vazio-msg{padding:40px 20px;text-align:center;color:var(--txt3);font-size:13px}
+.lista-cam-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f4f4ef}
+.lista-cam-row:last-child{border-bottom:none}
+.lista-cam-ico{width:30px;height:30px;border-radius:8px;background:#e3f0fb;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.del-btn{width:28px;height:28px;border-radius:7px;border:none;background:#fdecea;color:#c0392b;cursor:pointer;font-size:14px;flex-shrink:0}
+.edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px}
+.edit-overlay.on{display:flex}
+.edit-box{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:380px}
+.edit-box h3{font-size:15px;font-weight:700;color:var(--azul);margin-bottom:14px}
+.badge-modo{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700;background:#fff3e0;color:#b8630a;margin-left:8px}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="hdr">
+  <a class="back-btn" href="index.html">← Voltar</a>
+  <div class="hdr-title">
+    <h1>📷 Mapa de Câmeras</h1>
+    <p>Altos Santa Izabel · Acesso restrito ao administrador</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="loading" style="text-align:center;padding:40px;color:var(--txt3);font-size:13px">⏳ Carregando...</div>
+
+  <div id="conteudo" style="display:none">
+
+    <div class="metrics">
+      <div class="mc"><div class="mc-lbl">Câmeras cadastradas</div><div class="mc-val" id="mc-total">0</div></div>
+    </div>
+
+    <div class="sec">Planta baixa</div>
+    <div class="card">
+      <label class="fl">Link da imagem da planta (Google Drive ou URL direta)</label>
+      <input class="fi" id="input-planta" placeholder="Cole aqui o link da planta / projeto...">
+      <button class="btn primary" onclick="salvarPlanta()">💾 Salvar planta</button>
+    </div>
+
+    <div class="sec">
+      Marcar câmeras
+      <button class="btn ghost" id="btn-modo" onclick="toggleModoAdd()" style="padding:5px 12px;font-size:12px">➕ Adicionar câmera</button>
+    </div>
+    <div class="card" style="padding:10px">
+      <div id="planta-vazia" class="vazio-msg" style="display:none">Nenhuma planta cadastrada ainda. Cole o link acima e clique em "Salvar planta".</div>
+      <div class="planta-wrap" id="planta-wrap" style="display:none">
+        <img id="planta-img" src="" alt="Planta do condomínio">
+        <div id="pins-layer"></div>
+      </div>
+      <div id="dica-modo" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;text-align:center">👆 Clique em qualquer ponto da planta para marcar uma câmera<span class="badge-modo">Modo adicionar ativo</span></div>
+    </div>
+
+    <div class="sec">Lista de câmeras</div>
+    <div class="card" style="padding:0 16px" id="lista-cameras">
+      <div style="color:var(--txt3);font-size:13px;padding:10px 0">Nenhuma câmera cadastrada ainda.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="edit-overlay" id="editOverlay">
+  <div class="edit-box">
+    <h3 id="edit-titulo">📷 Câmera</h3>
+    <label class="fl">Nome / localização</label>
+    <input class="fi" id="edit-nome" placeholder="Ex: Portaria principal, Playground, Garagem Torre 1...">
+    <button class="btn primary" style="width:100%;margin-bottom:8px" onclick="salvarPonto()">💾 Salvar</button>
+    <button class="btn danger" style="width:100%;margin-bottom:8px" id="btn-excluir-ponto" onclick="excluirPontoAtual()">🗑️ Excluir câmera</button>
+    <button class="btn ghost" style="width:100%" onclick="fecharEdicaoPonto()">Cancelar</button>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxifeD5tvV3A4s4SE6d5-P-HyI1Pf0h8s",
+  authDomain:"portal-altos-santa-izabel.firebaseapp.com",
+  projectId:"portal-altos-santa-izabel",
+  storageBucket:"portal-altos-santa-izabel.firebasestorage.app",
+  messagingSenderId:"314879065622",
+  appId:"1:314879065622:web:76be1b38e018a0cbed3f37"
+});
+var auth=firebase.auth();
+var db=firebase.firestore();
+
+var camerasData={planta:'',pontos:[]};
+var modoAdd=false;
+var pontoEditandoId=null;
+
+auth.onAuthStateChanged(function(user){
+  if(!user){window.location.href='auth.html';return;}
+  db.collection('usuarios').doc(user.uid).get().then(function(doc){
+    if(!doc.exists||doc.data().perfil!=='admin'){window.location.href='index.html';return;}
+    carregarCameras();
+  });
+});
+
+function driveUrl(link){
+  if(!link) return '';
+  var m=link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(m) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w2000';
+  return link;
+}
+
+function carregarCameras(){
+  db.collection('portal').doc('cameras').get().then(function(doc){
+    if(doc.exists){
+      camerasData=doc.data();
+      if(!camerasData.pontos) camerasData.pontos=[];
+    }
+    document.getElementById('loading').style.display='none';
+    document.getElementById('conteudo').style.display='block';
+    document.getElementById('input-planta').value=camerasData.planta||'';
+    renderPlanta();
+    renderLista();
+  }).catch(function(e){
+    document.getElementById('loading').textContent='Erro ao carregar: '+e.message;
+  });
+}
+
+function salvarCamerasFirestore(cb){
+  db.collection('portal').doc('cameras').set(camerasData).then(function(){
+    if(cb) cb();
+  }).catch(function(e){alert('Erro ao salvar: '+e.message);});
+}
+
+function salvarPlanta(){
+  var link=document.getElementById('input-planta').value.trim();
+  camerasData.planta=link;
+  salvarCamerasFirestore(function(){
+    renderPlanta();
+    alert('✅ Planta salva!');
+  });
+}
+
+function renderPlanta(){
+  var vazio=document.getElementById('planta-vazia');
+  var wrap=document.getElementById('planta-wrap');
+  if(!camerasData.planta){
+    vazio.style.display='block';
+    wrap.style.display='none';
+    return;
+  }
+  vazio.style.display='none';
+  wrap.style.display='block';
+  document.getElementById('planta-img').src=driveUrl(camerasData.planta);
+  renderPins();
+}
+
+function toggleModoAdd(){
+  modoAdd=!modoAdd;
+  var btn=document.getElementById('btn-modo');
+  var dica=document.getElementById('dica-modo');
+  var wrap=document.getElementById('planta-wrap');
+  btn.textContent=modoAdd?'✕ Cancelar':'➕ Adicionar câmera';
+  dica.style.display=modoAdd?'block':'none';
+  wrap.classList.toggle('modo-add',modoAdd);
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  var wrap=document.getElementById('planta-wrap');
+  wrap.addEventListener('click',function(e){
+    if(!modoAdd) return;
+    var rect=wrap.getBoundingClientRect();
+    var x=((e.clientX-rect.left)/rect.width)*100;
+    var y=((e.clientY-rect.top)/rect.height)*100;
+    var id='cam_'+Date.now();
+    camerasData.pontos.push({id:id,x:x,y:y,nome:'Nova câmera'});
+    abrirEdicaoPonto(id,true);
+  });
+});
+
+function renderPins(){
+  var el=document.getElementById('pins-layer');
+  el.innerHTML=camerasData.pontos.map(function(p){
+    return '<div class="pin" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+'">'+
+      '<div class="pin-ico"><span>📷</span></div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderLista(){
+  var el=document.getElementById('lista-cameras');
+  document.getElementById('mc-total').textContent=camerasData.pontos.length;
+  if(!camerasData.pontos.length){
+    el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:10px 0">Nenhuma câmera cadastrada ainda.</div>';
+    return;
+  }
+  el.innerHTML=camerasData.pontos.map(function(p){
+    return '<div class="lista-cam-row">'+
+      '<div class="lista-cam-ico">📷</div>'+
+      '<div style="flex:1;font-weight:500">'+escHtml(p.nome)+'</div>'+
+      '<button class="del-btn" onclick="abrirEdicaoPonto(\''+p.id+'\',false)">✏️</button>'+
+    '</div>';
+  }).join('');
+}
+
+function abrirEdicaoPonto(id,novo){
+  pontoEditandoId=id;
+  var p=camerasData.pontos.find(function(x){return x.id===id;});
+  if(!p) return;
+  document.getElementById('edit-titulo').textContent=novo?'📷 Nova câmera':'📷 Editar câmera';
+  document.getElementById('edit-nome').value=novo?'':p.nome;
+  document.getElementById('btn-excluir-ponto').style.display=novo?'none':'block';
+  document.getElementById('editOverlay').classList.add('on');
+  setTimeout(function(){document.getElementById('edit-nome').focus();},50);
+}
+
+function fecharEdicaoPonto(){
+  // se cancelou uma câmera recém criada sem nome definido, remove
+  var p=camerasData.pontos.find(function(x){return x.id===pontoEditandoId;});
+  if(p&&p.nome==='Nova câmera'){
+    camerasData.pontos=camerasData.pontos.filter(function(x){return x.id!==pontoEditandoId;});
+  }
+  document.getElementById('editOverlay').classList.remove('on');
+  pontoEditandoId=null;
+  toggleModoAddOff();
+  renderPins();
+}
+
+function toggleModoAddOff(){
+  if(modoAdd) toggleModoAdd();
+}
+
+function salvarPonto(){
+  var nome=document.getElementById('edit-nome').value.trim();
+  if(!nome){alert('Informe um nome ou local para a câmera.');return;}
+  var p=camerasData.pontos.find(function(x){return x.id===pontoEditandoId;});
+  if(p) p.nome=nome;
+  salvarCamerasFirestore(function(){
+    document.getElementById('editOverlay').classList.remove('on');
+    pontoEditandoId=null;
+    toggleModoAddOff();
+    renderPins();
+    renderLista();
+  });
+}
+
+function excluirPontoAtual(){
+  if(!confirm('Remover esta câmera do mapa?')) return;
+  camerasData.pontos=camerasData.pontos.filter(function(x){return x.id!==pontoEditandoId;});
+  salvarCamerasFirestore(function(){
+    document.getElementById('editOverlay').classList.remove('on');
+    pontoEditandoId=null;
+    renderPins();
+    renderLista();
+  });
+}
+
+function escHtml(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+<!-- Rodapé -->
+<script>var _f=document.createElement('div');_f.style.cssText='text-align:center;padding:18px 16px 32px;font-size:11px;color:#999;border-top:1px solid #e4e4dc;margin-top:24px;background:#f4f4ef';_f.innerHTML='Copyright &copy; '+new Date().getFullYear()+' <strong style="color:#555">PAFRE GESTÃO &amp; TECNOLOGIA</strong>. Todos os direitos reservados.';document.body.appendChild(_f);</script>
+</html>
