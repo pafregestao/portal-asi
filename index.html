@@ -1835,6 +1835,7 @@ function addDocumento(){
 // ===== SUPORTE PAFRE =====
 var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null,meusChamadosExpandidos={};
 var STATUS_BADGE_SUP={Aberto:'bad','Em análise':'warn','Aguardando cliente':'blue',Resolvido:'ok',Fechado:'gray','Cancelado pelo cliente':'canceled'};
+var SLA_HORAS_SUP={Baixa:120,'Média':48,Alta:24};
 function initPafreDB(){
   if(dbPafre) return dbPafre;
   var appPafre=firebase.apps.find(function(a){return a.name==='pafre';});
@@ -1854,6 +1855,18 @@ function garantirAuthPafre(cb,errCb){
   initPafreDB();
   if(authPafre.currentUser){cb();return;}
   authPafre.signInAnonymously().then(function(){cb();}).catch(errCb);
+}
+function proximoNumeroChamado(){
+  var ano=new Date().getFullYear();
+  var ref=dbPafre.collection('contadores').doc('chamados_suporte_'+ano);
+  return dbPafre.runTransaction(function(tx){
+    return tx.get(ref).then(function(doc){
+      var atual=doc.exists?(doc.data().seq||0):0;
+      var novo=atual+1;
+      tx.set(ref,{seq:novo,ano:ano},{merge:true});
+      return String(novo).padStart(2,'0')+'-'+ano;
+    });
+  });
 }
 function iniciarMonitorSuporte(){
   if(unsubMeusChamados) return;
@@ -1904,16 +1917,32 @@ function renderMeusChamados(){
     var previaTxt=ultima?escHtml(ultima.texto.length>45?ultima.texto.substring(0,45)+'…':ultima.texto):'Sem mensagens ainda.';
     var aberto=!!meusChamadosExpandidos[c.id];
     var podeCancelar=['Aberto','Em análise','Aguardando cliente'].indexOf(c.status)>=0;
+    var prazoHtml='';
+    if(podeCancelar&&c.criadoEm&&c.criadoEm.toDate){
+      var criadoTs=c.criadoEm.toDate().getTime();
+      var horasSla=SLA_HORAS_SUP[c.severidade]||48;
+      var prazoTs=criadoTs+horasSla*3600000;
+      var prazoData=new Date(prazoTs);
+      var pctSla=Math.min(100,Math.max(0,Math.round((Date.now()-criadoTs)/(horasSla*3600000)*100)));
+      var corSla=pctSla<60?'#2d7a3a':pctSla<85?'#b8630a':'#c0392b';
+      var prazoTxt=prazoData.toLocaleDateString('pt-BR')+' às '+prazoData.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      prazoHtml='<div style="margin-top:5px">'+
+        '<div style="font-size:11px;color:'+corSla+'">⏱️ Previsão de atendimento: até '+prazoTxt+'</div>'+
+        '<div style="height:4px;background:#f0efe8;border-radius:99px;overflow:hidden;margin-top:3px"><div style="height:100%;width:'+pctSla+'%;background:'+corSla+'"></div></div>'+
+      '</div>';
+    }
     return '<div style="border:1px solid #e4e4dc;border-radius:12px;padding:12px;margin-bottom:10px">'+
       '<div onclick="toggleMeuChamado(\''+c.id+'\')" style="cursor:pointer">'+
         '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
           '<span class="badge '+(STATUS_BADGE_SUP[c.status]||'gray')+'">'+escHtml(c.status)+'</span>'+
           '<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#f0efe8;color:#555">'+escHtml(c.severidade)+'</span>'+
+          (c.numero?'<span style="font-size:11px;color:#999;font-weight:600">#'+escHtml(c.numero)+'</span>':'')+
         '</div>'+
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-weight:600;font-size:13px">'+escHtml(c.titulo)+'</div>'+
             '<div style="font-size:11px;color:#999;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+dt+' · '+previaTxt+'</div>'+
+            prazoHtml+
           '</div>'+
           '<span id="chev-meuc-'+c.id+'" style="color:#1565c0;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0">'+(aberto?'Ocultar ‹':'Leia mais ›')+'</span>'+
         '</div>'+
@@ -2000,14 +2029,17 @@ function enviarRelatarProblema(){
   var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
   msg.textContent='Enviando...';msg.style.color='#1565c0';
   garantirAuthPafre(function(){
-    dbPafre.collection('chamados_suporte').add({
-      condominio:'Altos Santa Izabel',
-      uid:u.uid||'',authUid:authPafre.currentUser.uid,nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
-      titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
-      criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
-      mensagens:[],lidoMorador:true
-    }).then(function(){
-      msg.textContent='✅ Chamado enviado! Acompanhe em "Meus chamados".';
+    proximoNumeroChamado().then(function(numero){
+      return dbPafre.collection('chamados_suporte').add({
+        numero:numero,
+        condominio:'Altos Santa Izabel',
+        uid:u.uid||'',authUid:authPafre.currentUser.uid,nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+        titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
+        criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
+        mensagens:[],lidoMorador:true
+      }).then(function(){return numero;});
+    }).then(function(numero){
+      msg.textContent='✅ Chamado #'+numero+' enviado! Acompanhe em "Meus chamados".';
       msg.style.color='#2d7a3a';
       document.getElementById('sp-titulo').value='';
       document.getElementById('sp-desc').value='';
