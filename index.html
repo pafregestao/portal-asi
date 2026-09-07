@@ -1334,11 +1334,21 @@ function renderTarefasAdmin(){
       ordemBtns.replace('{UP}','moverItem(tarefas,'+i+',-1,renderTarefasAdmin)').replace('{DOWN}','moverItem(tarefas,'+i+',1,renderTarefasAdmin)')+
       '<input class="ie-txt" style="min-width:140px" value="'+esc(t.txt)+'" onchange="tarefas['+i+'].txt=this.value">'+
       '<input class="ie-sub" value="'+esc(t.sub)+'" onchange="tarefas['+i+'].sub=this.value" placeholder="Detalhe">'+
-      '<select class="ie-sel" onchange="onStatusChange(tarefas,'+i+',this.value,renderTarefasAdmin)">'+['ok','warn','gray','bad','blue'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+'</select>'+
+      '<select class="ie-sel" onchange="onStatusChangeTarefa('+i+',this.value)">'+['ok','warn','gray','bad','blue'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+'</select>'+
       '<button class="del-btn" onclick="tarefas.splice('+i+',1);renderTarefasAdmin()">✕</button></div>';
   }).join('');
 }
 function addTarefa(){tarefas.push({txt:'Nova tarefa',sub:'',status:'gray'});renderTarefasAdmin();}
+function onStatusChangeTarefa(i,val){
+  if(!tarefas[i]) return;
+  tarefas[i].status=val;
+  if(val==='ok'){
+    var item=tarefas.splice(i,1)[0];
+    tarefas.push(item);
+  }
+  renderTarefasAdmin();
+  renderTarefas();
+}
 function addTarefaRapida(){
   var txt=document.getElementById('nova-tar-txt').value.trim();
   if(!txt){alert('Informe a descrição.');return;}
