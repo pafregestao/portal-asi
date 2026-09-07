@@ -131,6 +131,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <label class="fl">Quantidade de câmeras neste local</label>
     <input class="fi" id="edit-qtd" type="number" min="1" value="1">
     <button class="btn primary" style="width:100%;margin-bottom:8px" onclick="salvarPonto()">💾 Salvar</button>
+    <button class="btn ghost" style="width:100%;margin-bottom:8px" id="btn-reposicionar" onclick="iniciarReposicionar()">🔀 Reposicionar no mapa</button>
     <button class="btn danger" style="width:100%;margin-bottom:8px" id="btn-excluir-ponto" onclick="excluirPontoAtual()">🗑️ Excluir câmera</button>
     <button class="btn ghost" style="width:100%" onclick="fecharEdicaoPonto()">Cancelar</button>
   </div>
@@ -151,6 +152,8 @@ var db=firebase.firestore();
 var camerasData={planta:'',pontos:[]};
 var modoAdd=false;
 var pontoEditandoId=null;
+var idReposicionando=null;
+var listaCamerasExpandida=false;
 var zoomSteps=[100,125,150,200,250,300,400];
 var zoomIdx=0;
 
@@ -239,22 +242,65 @@ function zoomReset(){
 }
 
 function toggleModoAdd(){
+  if(idReposicionando) cancelarReposicionar();
   modoAdd=!modoAdd;
   var btn=document.getElementById('btn-modo');
-  var dica=document.getElementById('dica-modo');
   var wrap=document.getElementById('planta-wrap');
   btn.textContent=modoAdd?'✕ Cancelar':'➕ Adicionar câmera';
-  dica.style.display=modoAdd?'block':'none';
   wrap.classList.toggle('modo-add',modoAdd);
+  atualizarDicaModo();
+}
+
+function atualizarDicaModo(){
+  var dica=document.getElementById('dica-modo');
+  if(idReposicionando){
+    dica.style.display='block';
+    dica.innerHTML='👆 Clique no novo local no mapa para mover esta câmera<span class="badge-modo" style="background:#e3f0fb;color:#1565c0">Reposicionando</span> <button onclick="cancelarReposicionar()" style="margin-left:6px;font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:#fff;cursor:pointer">Cancelar</button>';
+  } else if(modoAdd){
+    dica.style.display='block';
+    dica.innerHTML='👆 Clique em qualquer ponto da planta para marcar uma câmera<span class="badge-modo">Modo adicionar ativo</span>';
+  } else {
+    dica.style.display='none';
+  }
+}
+
+function iniciarReposicionar(){
+  if(!pontoEditandoId) return;
+  idReposicionando=pontoEditandoId;
+  pontoEditandoId=null;
+  document.getElementById('editOverlay').classList.remove('on');
+  var wrap=document.getElementById('planta-wrap');
+  wrap.classList.add('modo-add');
+  atualizarDicaModo();
+  document.getElementById('planta-scroll').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function cancelarReposicionar(){
+  idReposicionando=null;
+  var wrap=document.getElementById('planta-wrap');
+  wrap.classList.toggle('modo-add',modoAdd);
+  atualizarDicaModo();
 }
 
 document.addEventListener('DOMContentLoaded',function(){
   var wrap=document.getElementById('planta-wrap');
   wrap.addEventListener('click',function(e){
-    if(!modoAdd) return;
+    if(!modoAdd&&!idReposicionando) return;
     var rect=wrap.getBoundingClientRect();
     var x=((e.clientX-rect.left)/rect.width)*100;
     var y=((e.clientY-rect.top)/rect.height)*100;
+    if(idReposicionando){
+      var pMov=camerasData.pontos.find(function(pt){return pt.id===idReposicionando;});
+      if(pMov){pMov.x=x;pMov.y=y;}
+      idReposicionando=null;
+      wrap.classList.toggle('modo-add',modoAdd);
+      atualizarDicaModo();
+      salvarCamerasFirestore(function(){
+        renderPins();
+        renderLista();
+      });
+      return;
+    }
     var id='cam_'+Date.now();
     camerasData.pontos.push({id:id,x:x,y:y,nome:'Nova câmera',qtd:1});
     abrirEdicaoPonto(id,true);
@@ -282,7 +328,10 @@ function renderLista(){
     el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:10px 0">Nenhuma câmera cadastrada ainda.</div>';
     return;
   }
-  el.innerHTML=camerasData.pontos.map(function(p){
+  var LIMITE=4;
+  var visiveis=listaCamerasExpandida?camerasData.pontos:camerasData.pontos.slice(0,LIMITE);
+  var restantes=camerasData.pontos.length-LIMITE;
+  el.innerHTML=visiveis.map(function(p){
     var qtd=p.qtd||1;
     return '<div class="lista-cam-row" style="cursor:pointer" onclick="localizarCamera(\''+p.id+'\')" title="Localizar no mapa">'+
       '<div class="lista-cam-ico"><div class="cam-icon-b" style="width:16px;height:14px"></div></div>'+
@@ -290,7 +339,13 @@ function renderLista(){
       '<button class="del-btn" style="background:#e3f0fb;color:#1565c0" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="Editar">✏️</button>'+
       '<button class="del-btn" onclick="event.stopPropagation();excluirCameraLista(\''+p.id+'\')" title="Excluir">🗑️</button>'+
     '</div>';
-  }).join('');
+  }).join('')+
+  (restantes>0?'<div style="padding:10px 0;text-align:center"><button onclick="toggleListaCameras()" style="font-size:12px;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:#fff;color:var(--azul);cursor:pointer;font-weight:600">'+(listaCamerasExpandida?'Mostrar menos ‹':'Ver mais '+restantes+' câmera'+(restantes>1?'s':'')+' ›')+'</button></div>':'');
+}
+
+function toggleListaCameras(){
+  listaCamerasExpandida=!listaCamerasExpandida;
+  renderLista();
 }
 
 function excluirCameraLista(id){
@@ -337,6 +392,7 @@ function abrirEdicaoPonto(id,novo){
   document.getElementById('edit-nome').value=novo?'':p.nome;
   document.getElementById('edit-qtd').value=p.qtd||1;
   document.getElementById('btn-excluir-ponto').style.display=novo?'none':'block';
+  document.getElementById('btn-reposicionar').style.display=novo?'none':'block';
   document.getElementById('editOverlay').classList.add('on');
   setTimeout(function(){document.getElementById('edit-nome').focus();},50);
 }
