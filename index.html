@@ -1834,7 +1834,7 @@ function addDocumento(){
 
 // ===== SUPORTE PAFRE =====
 var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null,meusChamadosExpandidos={};
-var STATUS_BADGE_SUP={Aberto:'bad','Em análise':'warn','Aguardando cliente':'blue',Resolvido:'ok',Fechado:'gray'};
+var STATUS_BADGE_SUP={Aberto:'bad','Em análise':'warn','Aguardando cliente':'blue',Resolvido:'ok',Fechado:'gray','Cancelado pelo cliente':'canceled'};
 function initPafreDB(){
   if(dbPafre) return dbPafre;
   var appPafre=firebase.apps.find(function(a){return a.name==='pafre';});
@@ -1903,6 +1903,7 @@ function renderMeusChamados(){
     var ultima=msgs.length?msgs[msgs.length-1]:null;
     var previaTxt=ultima?escHtml(ultima.texto.length>45?ultima.texto.substring(0,45)+'…':ultima.texto):'Sem mensagens ainda.';
     var aberto=!!meusChamadosExpandidos[c.id];
+    var podeCancelar=['Aberto','Em análise','Aguardando cliente'].indexOf(c.status)>=0;
     return '<div style="border:1px solid #e4e4dc;border-radius:12px;padding:12px;margin-bottom:10px">'+
       '<div onclick="toggleMeuChamado(\''+c.id+'\')" style="cursor:pointer">'+
         '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">'+
@@ -1923,6 +1924,7 @@ function renderMeusChamados(){
           '<input id="sp-chat-'+c.id+'" autocomplete="off" placeholder="Responder..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid #e4e4dc;border-radius:8px">'+
           '<button onclick="enviarMensagemSuporte(\''+c.id+'\')" style="font-size:12px;padding:7px 12px;border-radius:8px;border:none;background:#e3f0fb;color:#1565c0;cursor:pointer;font-weight:600">Enviar</button>'+
         '</div>'+
+        (podeCancelar?'<button onclick="cancelarChamado(\''+c.id+'\')" style="width:100%;margin-top:8px;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid #ffcdd2;background:#fdecea;color:#c0392b;cursor:pointer;font-weight:600">🚫 Cancelar chamado</button>':'')+
       '</div>'+
     '</div>';
   }).join('');
@@ -1950,6 +1952,19 @@ function enviarMensagemSuporte(id){
   dbPafre.collection('chamados_suporte').doc(id).update({mensagens:msgs,lidoMorador:true}).then(function(){
     c.mensagens=msgs;c.lidoMorador=true;
     inp.value='';
+    renderMeusChamados();
+  }).catch(function(e){alert('Erro: '+e.message);});
+}
+
+function cancelarChamado(id){
+  if(!confirm('Cancelar este chamado? O suporte PAFRE será avisado e essa ação não pode ser desfeita.')) return;
+  var c=meusChamados.find(function(x){return x.id===id;});
+  if(!c) return;
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  var msg={texto:'Chamado cancelado pelo morador.',autor:u.nome||'Morador',role:'cliente',criadoEm:new Date().toLocaleString('pt-BR')};
+  var msgs=(c.mensagens||[]).concat([msg]);
+  dbPafre.collection('chamados_suporte').doc(id).update({status:'Cancelado pelo cliente',mensagens:msgs,lidoMorador:true}).then(function(){
+    c.status='Cancelado pelo cliente';c.mensagens=msgs;c.lidoMorador=true;
     renderMeusChamados();
   }).catch(function(e){alert('Erro: '+e.message);});
 }
