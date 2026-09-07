@@ -1129,7 +1129,7 @@ var orcamentos=[
   {nome:'Manutenção Câmeras',cat:'Câmeras',status:'gray',arquivos:[]}
 ];
 function salvarOrcamentos(){salvarNoFirestore('orcamentos',orcamentos,function(){});}
-var orcStatusTxt={warn:'Em análise',bad:'Urgente',blue:'Novo',ok:'Concluído',gray:'Cotação'};
+var orcStatusTxt={warn:'Em análise',bad:'Urgente',blue:'Novo',ok:'Concluído',gray:'Cotação',canceled:'Cancelado'};
 
 var CATS_ORC=['Quiosque','Car Wash','Pintura','Portaria','Documentação','Limpeza','Jardinagem','Pl. Solar','Câmeras','Outros'];
 var filtroAtualOrc='todos';
@@ -1156,8 +1156,8 @@ function renderOrcamentos(){
     return '<div class="card" style="margin-bottom:8px">'+
       '<div class="row">'+
         '<div style="flex:1"><div style="font-weight:600">'+o.nome+'</div><div style="font-size:11px;color:var(--txt3)">'+o.cat+'</div></div>'+
-        '<select class="orc-status-sel badge '+o.status+'" onchange="orcamentos['+i+'].status=this.value;this.className=\'orc-status-sel badge \'+this.value;salvarOrcamentos()">'+
-          ['warn','bad','blue','ok','gray'].map(function(s){return '<option value="'+s+'"'+(o.status===s?' selected':'')+'>'+orcStatusTxt[s]+'</option>';}).join('')+
+        '<select class="orc-status-sel badge '+o.status+'" onchange="atualizarStatusOrcamento('+i+',this.value)">'+
+          ['warn','bad','blue','ok','gray','canceled'].map(function(s){return '<option value="'+s+'"'+(o.status===s?' selected':'')+'>'+orcStatusTxt[s]+'</option>';}).join('')+
         '</select>'+
         (adminLogado?'<button class="del-btn" style="margin-left:4px" onclick="orcamentos.splice('+i+',1);salvarOrcamentos();renderFiltrosOrc();renderOrcamentos()">&#x2715;</button>':'')+
       '</div>'+
@@ -1171,6 +1171,17 @@ function addOrcamento(){
   if(!CATS_ORC.includes(c)) c='Outros';
   orcamentos.push({nome:n,cat:c,status:'gray',arquivos:[]});
   salvarOrcamentos();renderFiltrosOrc();renderOrcamentos();
+}
+function atualizarStatusOrcamento(idx,novoStatus){
+  if(!orcamentos[idx]) return;
+  orcamentos[idx].status=novoStatus;
+  if(novoStatus==='ok'||novoStatus==='canceled'){
+    var item=orcamentos.splice(idx,1)[0];
+    orcamentos.push(item);
+  }
+  salvarOrcamentos();
+  renderFiltrosOrc();
+  renderOrcamentos();
 }
 function renderOrcamentosAdmin(){
   var el=document.getElementById('edit-orcamentos');if(!el)return;
