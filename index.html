@@ -263,18 +263,7 @@ textarea.fi{height:75px;resize:vertical}
 <!-- ASSEMBLEIAS -->
 <div id="pg-assembleias" class="pg">
   <div class="sec">Atas disponíveis</div>
-  <div class="card" style="padding:0 15px">
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e8f5e9">📋</div><div style="flex:1"><div style="font-weight:500">AGE — Eleição de Síndico</div><div style="font-size:11px;color:var(--txt3)">Dez/2024 · Registrada</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 16/01/2024</div><div style="font-size:11px;color:var(--txt3)">Jan/2024</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 10/04/2023</div><div style="font-size:11px;color:var(--txt3)">Abr/2023</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 29/11/2022</div><div style="font-size:11px;color:var(--txt3)">Nov/2022</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 23/06/2022</div><div style="font-size:11px;color:var(--txt3)">Jun/2022</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia 10/11/2020</div><div style="font-size:11px;color:var(--txt3)">Nov/2020</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">AGO — Eleição (por e-mail)</div><div style="font-size:11px;color:var(--txt3)">Ago/2020</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#f0efe8">📋</div><div style="flex:1"><div style="font-weight:500">Assembleia Abril 2019</div><div style="font-size:11px;color:var(--txt3)">Abr/2019</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e3f0fb">📋</div><div style="flex:1"><div style="font-weight:500">Retificação AGI 27/10/2018</div><div style="font-size:11px;color:var(--txt3)">Out/2018</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-    <a href="https://drive.google.com/drive/folders/1WTn7gO6c8o8nIgnCX2jBQaN6B7LFb3bG" target="_blank" class="file-row" style="text-decoration:none;color:inherit"><div class="file-ico" style="background:#e8f5e9">📄</div><div style="flex:1"><div style="font-weight:500">Convenção do Condomínio</div></div><span style="color:#1565c0;font-size:18px">›</span></a>
-  </div>
+  <div class="card" style="padding:0 15px" id="lista-assembleias"></div>
 </div>
 
 <!-- SUGESTÕES -->
@@ -354,6 +343,7 @@ textarea.fi{height:75px;resize:vertical}
         <button class="at" onclick="adminTab('prestadores',this)">👤 Prestadores</button>
         <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
         <button class="at" onclick="adminTab('documentos',this)">📁 Documentos</button>
+        <button class="at" onclick="adminTab('assembleias',this)">🏛 Assembleias</button>
       </div>
       <div class="admin-sec on" id="asec-alertas">
         <div id="edit-alertas"></div>
@@ -440,6 +430,19 @@ textarea.fi{height:75px;resize:vertical}
         <div id="edit-documentos"></div>
         <button class="add-btn" onclick="addDocumento()">+ Adicionar documento</button>
         <button class="save-btn" onclick="salvarDocumentos()">&#x1F4BE; Salvar documentos</button>
+      </div>
+      <div class="admin-sec" id="asec-assembleias">
+        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova assembleia/ata</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input id="nova-asb-nome" placeholder="Nome (ex: Assembleia 12/03/2026)..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
+            <input id="nova-asb-sub" placeholder="Data/detalhe (ex: Mar/2026)" style="width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addAssembleiaRapida()">
+            <button onclick="addAssembleiaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Cole o link do arquivo específico no Drive (não da pasta) em cada item, pra abrir o PDF direto.</div>
+        <div id="edit-assembleias"></div>
+        <button class="save-btn" onclick="salvarAssembleias()">&#x1F4BE; Salvar assembleias</button>
       </div>
       <button onclick="fecharAdmin()" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--txt2);cursor:pointer;font-size:13px;margin-top:8px">Fechar</button>
     </div>
@@ -580,7 +583,7 @@ auth.onAuthStateChanged(function(user){
     if(usuarioAtual.perfil!=='admin') _trackInit(user.uid);
     carregarTodosOsDados(function(){
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
-      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();carregarChamados();carregarSugestoes();
+      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();carregarChamados();carregarSugestoes();
     });
     iniciarMonitorSuporte();
     // Preencher unidade do morador no campo de defeito
@@ -1416,6 +1419,7 @@ function carregarTodosOsDados(callback){
     tarefas:   function(d){tarefas=d;},
     orcamentos:function(d){orcamentos=d;},
     documentos:function(d){documentos=d;},
+    assembleias:function(d){assembleias=d;},
     prestadores:function(d){prestadores=d;}
   };
   var keys=Object.keys(secoes);
@@ -1474,7 +1478,7 @@ function abrirAdmin(){
   document.querySelectorAll('.at').forEach(function(b){b.classList.remove('on');});
   document.getElementById('asec-alertas').classList.add('on');
   document.querySelector('.at').classList.add('on');
-  renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderDocumentosAdmin();
+  renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderDocumentosAdmin();renderAssembleiasAdmin();
   // Adicionar aba Usuários se ainda não existe
   if(!document.getElementById('tab-usuarios')){
     var tabsEl=document.querySelector('.admin-tabs');
@@ -1852,6 +1856,70 @@ function addDocumento(){
 }
 
 // ===== FIM DOCUMENTOS =====
+
+// ===== ASSEMBLEIAS =====
+var assembleias=[
+  {nome:'AGE — Eleição de Síndico',sub:'Dez/2024 · Registrada',link:'',ico:'📋'},
+  {nome:'Assembleia 16/01/2024',sub:'Jan/2024',link:'',ico:'📋'},
+  {nome:'Assembleia 10/04/2023',sub:'Abr/2023',link:'',ico:'📋'},
+  {nome:'Assembleia 29/11/2022',sub:'Nov/2022',link:'',ico:'📋'},
+  {nome:'Assembleia 23/06/2022',sub:'Jun/2022',link:'',ico:'📋'},
+  {nome:'Assembleia 10/11/2020',sub:'Nov/2020',link:'',ico:'📋'},
+  {nome:'AGO — Eleição (por e-mail)',sub:'Ago/2020',link:'',ico:'📋'},
+  {nome:'Assembleia Abril 2019',sub:'Abr/2019',link:'',ico:'📋'},
+  {nome:'Retificação AGI 27/10/2018',sub:'Out/2018',link:'',ico:'📋'},
+  {nome:'Convenção do Condomínio',sub:'',link:'',ico:'📄'}
+];
+
+function salvarAssembleias(){
+  salvarNoFirestore('assembleias',assembleias,function(){renderAssembleias();alert('✅ Assembleias salvas!');});
+}
+
+function renderAssembleias(){
+  var el=document.getElementById('lista-assembleias');if(!el)return;
+  if(!assembleias.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhuma assembleia cadastrada.</div>';return;}
+  el.innerHTML=assembleias.map(function(a){
+    var inner='<div class="file-ico" style="background:'+(a.bg||'#e3f0fb')+'">'+(a.ico||'📋')+'</div>'+
+      '<div style="flex:1"><div style="font-weight:500">'+escHtml(a.nome)+'</div>'+
+      (a.sub?'<div style="font-size:11px;color:var(--txt3)">'+escHtml(a.sub)+'</div>':'')+
+      '</div>';
+    if(a.link){
+      return '<a href="'+driveLink(a.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:18px">›</span></a>';
+    }
+    return '<div class="file-row">'+inner+'<span style="font-size:10px;color:var(--txt3)">Sem link</span></div>';
+  }).join('');
+}
+
+function renderAssembleiasAdmin(){
+  var el=document.getElementById('edit-assembleias');if(!el)return;
+  el.innerHTML=assembleias.map(function(a,i){
+    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+      ordemBtns.replace('{UP}','moverItem(assembleias,'+i+',-1,renderAssembleiasAdmin)').replace('{DOWN}','moverItem(assembleias,'+i+',1,renderAssembleiasAdmin)')+
+      '<input class="ie-txt" value="'+esc(a.nome)+'" onchange="assembleias['+i+'].nome=this.value" placeholder="Nome">'+
+      '<input class="ie-sub" value="'+esc(a.sub||'')+'" onchange="assembleias['+i+'].sub=this.value" placeholder="Data/detalhe">'+
+      '<input style="width:100%;margin-top:4px;font-size:11px" value="'+esc(a.link||'')+'" onchange="assembleias['+i+'].link=this.value" placeholder="🔗 Link do ARQUIVO no Drive (não da pasta)">'+
+      '<button class="del-btn" onclick="assembleias.splice('+i+',1);renderAssembleiasAdmin()">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function addAssembleia(){
+  assembleias.unshift({nome:'Nova assembleia',sub:'',link:'',ico:'📋'});
+  renderAssembleiasAdmin();
+}
+
+function addAssembleiaRapida(){
+  var nome=document.getElementById('nova-asb-nome').value.trim();
+  if(!nome){alert('Informe o nome.');return;}
+  var sub=document.getElementById('nova-asb-sub').value.trim();
+  assembleias.unshift({nome:nome,sub:sub,link:'',ico:'📋'});
+  document.getElementById('nova-asb-nome').value='';
+  document.getElementById('nova-asb-sub').value='';
+  document.getElementById('nova-asb-nome').focus();
+  renderAssembleiasAdmin();
+  salvarAssembleias();
+}
+// ===== FIM ASSEMBLEIAS =====
 
 // ===== SUPORTE PAFRE =====
 var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null,meusChamadosExpandidos={};
