@@ -1786,22 +1786,19 @@ function sincronizarFinanceiro(){
 
 // ===== DOCUMENTOS =====
 var documentos=[
-  {nome:'AVCB — Auto de Vistoria Bombeiros',sub:'Emitido Mar/2021 · Vencido Mar/2026',status:'bad',link:'',secao:'docs'},
-  {nome:'Seguro do Condomínio',sub:'Validade não verificada',status:'warn',link:'',secao:'docs'},
-  {nome:'Convenção do Condomínio',sub:'PDF registrado',status:'ok',link:'',secao:'docs'},
-  {nome:'Regimento Interno',sub:'PDF',status:'ok',link:'',secao:'docs'},
-  {nome:'CNPJ — Inscrição Cadastral',sub:'PDF',status:'ok',link:'',secao:'docs'},
-  {nome:'Planta Hidráulica',sub:'11 folhas',status:'ok',link:'',secao:'plantas'},
-  {nome:'Planta Elétrica',sub:'22 folhas',status:'ok',link:'',secao:'plantas'},
-  {nome:'Planta Arquitetura',sub:'',status:'ok',link:'',secao:'plantas'}
+  {nome:'AVCB — Auto de Vistoria Bombeiros',sub:'Emitido Mar/2021 · Vencido Mar/2026',link:'',secao:'docs'},
+  {nome:'Seguro do Condomínio',sub:'Validade não verificada',link:'',secao:'docs'},
+  {nome:'Convenção do Condomínio',sub:'PDF registrado',link:'',secao:'docs'},
+  {nome:'Regimento Interno',sub:'PDF',link:'',secao:'docs'},
+  {nome:'CNPJ — Inscrição Cadastral',sub:'PDF',link:'',secao:'docs'},
+  {nome:'Planta Hidráulica',sub:'11 folhas',link:'',secao:'plantas'},
+  {nome:'Planta Elétrica',sub:'22 folhas',link:'',secao:'plantas'},
+  {nome:'Planta Arquitetura',sub:'',link:'',secao:'plantas'}
 ];
 
 function salvarDocumentos(){
   salvarNoFirestore('documentos',documentos,function(){renderDocumentos();alert('✅ Documentos salvos!');});
 }
-
-var docIco={bad:'📄',warn:'📄',ok:'📄',blue:'📄'};
-var docBg={bad:'#fdecea',warn:'#fff3e0',ok:'#e3f0fb',blue:'#e3f0fb'};
 
 function renderDocumentos(){
   ['docs','plantas'].forEach(function(secao){
@@ -1810,11 +1807,10 @@ function renderDocumentos(){
     var filtrados=documentos.filter(function(d){return d.secao===secao;});
     if(!filtrados.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhum documento cadastrado.</div>';return;}
     el.innerHTML=filtrados.map(function(d){
-      var inner='<div class="file-ico" style="background:'+(docBg[d.status]||'#e3f0fb')+'">📄</div>'+
+      var inner='<div class="file-ico" style="background:#e3f0fb">📄</div>'+
         '<div style="flex:1"><div style="font-weight:500">'+d.nome+'</div>'+
         (d.sub?'<div style="font-size:11px;color:var(--txt3)">'+d.sub+'</div>':'')+
-        '</div>'+
-        '<span class="badge '+d.status+'">'+stMap[d.status]+'</span>';
+        '</div>';
       if(d.link){
         return '<a href="'+driveLink(d.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:12px;margin-left:6px">🔗</span></a>';
       }
@@ -1839,7 +1835,6 @@ function renderDocumentosAdmin(){
       ordemBtns.replace('{UP}','moverItem(documentos,'+i+',-1,renderDocumentosAdmin)').replace('{DOWN}','moverItem(documentos,'+i+',1,renderDocumentosAdmin)')+
       '<input class="ie-txt" value="'+esc(d.nome)+'" onchange="documentos['+i+'].nome=this.value" placeholder="Nome">'+
       '<input class="ie-sub" value="'+esc(d.sub||'')+'" onchange="documentos['+i+'].sub=this.value" placeholder="Detalhe">'+
-      '<select class="ie-sel" onchange="documentos['+i+'].status=this.value">'+selOpts(d.status)+'</select>'+
       '<select style="width:80px;font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:6px" onchange="documentos['+i+'].secao=this.value">'+
         '<option value="docs"'+(d.secao==='docs'?' selected':'')+'>Docs</option>'+
         '<option value="plantas"'+(d.secao==='plantas'?' selected':'')+'>Plantas</option>'+
@@ -1851,7 +1846,7 @@ function renderDocumentosAdmin(){
 }
 
 function addDocumento(){
-  documentos.push({nome:'Novo documento',sub:'',status:'ok',link:'',secao:'docs'});
+  documentos.push({nome:'Novo documento',sub:'',link:'',secao:'docs'});
   renderDocumentosAdmin();
 }
 
