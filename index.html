@@ -130,7 +130,7 @@ textarea.fi{height:75px;resize:vertical}
   <button class="nb" onclick="nav('contratos')">Contratos</button>
   <button class="nb" onclick="nav('churrasqueira')">Churrasqueira</button>
   <button class="nb" onclick="nav('financeiro')">Financeiro</button>
-  <button class="nb admin-only" id="nav-documentos" style="display:none" onclick="nav('documentos')">Documentos</button>
+  <button class="nb" id="nav-documentos" onclick="nav('documentos')">Documentos</button>
   <button class="nb" onclick="nav('prestadores')">Prestadores</button>
   <button class="nb admin-only" id="nav-assembleias" style="display:none" onclick="nav('assembleias')">Assembleias</button>
   <button class="nb" onclick="nav('defeitos')">Defeitos</button>
@@ -154,7 +154,7 @@ textarea.fi{height:75px;resize:vertical}
     <div class="gcard" onclick="window.location.href='vagas.html'"><div class="gico" style="background:#e3f0fb">🚗</div><div><div style="font-weight:600;font-size:13px">Vagas</div><div style="font-size:11px;color:var(--txt3)">Garagem por apto</div></div></div>
     <div class="gcard" onclick="nav('defeitos')"><div class="gico" style="background:#fdecea">🔧</div><div><div style="font-weight:600;font-size:13px">Reportar defeito</div><div style="font-size:11px;color:var(--txt3)">Formulário rápido</div></div></div>
     <div class="gcard" onclick="nav('sugestoes')"><div class="gico" style="background:#f0eeff">💡</div><div><div style="font-weight:600;font-size:13px">Sugestões</div><div style="font-size:11px;color:var(--txt3)">Sugestões e solicitações</div></div></div>
-    <div class="gcard admin-only" style="display:none" onclick="nav('documentos')"><div class="gico" style="background:#e8f5e9">📁</div><div><div style="font-weight:600;font-size:13px">Documentos</div><div style="font-size:11px;color:var(--txt3)">Plantas, regimento...</div></div></div>
+    <div class="gcard" onclick="nav('documentos')"><div class="gico" style="background:#e8f5e9">📁</div><div><div style="font-weight:600;font-size:13px">Documentos</div><div style="font-size:11px;color:var(--txt3)">Plantas, regimento...</div></div></div>
     <div class="gcard admin-only" style="display:none" onclick="nav('assembleias')"><div class="gico" style="background:#e3f0fb">🏛</div><div><div style="font-weight:600;font-size:13px">Assembleias</div><div style="font-size:11px;color:var(--txt3)">Atas registradas</div></div></div>
   </div>
   <div class="sec">Alertas e pendências</div>
@@ -614,8 +614,8 @@ function nav(id){
   _trackAba(id);
   // Financeiro redireciona direto
   if(id==='financeiro'){window.location.href='financeiro.html';return;}
-  // Bloquear documentos e assembleias para não-admin
-  if((id==='documentos'||id==='assembleias'||id==='orcamentos')&&!adminLogado) return;
+  // Bloquear assembleias e orçamentos para não-admin (documentos já liberado)
+  if((id==='assembleias'||id==='orcamentos')&&!adminLogado) return;
   document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
   document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
   document.querySelectorAll('.bni').forEach(function(b){b.classList.remove('on');});
