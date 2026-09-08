@@ -344,6 +344,7 @@ textarea.fi{height:75px;resize:vertical}
         <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
         <button class="at" onclick="adminTab('documentos',this)">📁 Documentos</button>
         <button class="at" onclick="adminTab('assembleias',this)">🏛 Assembleias</button>
+        <button class="at" onclick="adminTab('notificacoes',this)">📲 Notificações<span id="tab-notif-count"></span></button>
       </div>
       <div class="admin-sec on" id="asec-alertas">
         <div id="edit-alertas"></div>
@@ -443,6 +444,10 @@ textarea.fi{height:75px;resize:vertical}
         <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Cole o link do arquivo específico no Drive (não da pasta) em cada item, pra abrir o PDF direto.</div>
         <div id="edit-assembleias"></div>
         <button class="save-btn" onclick="salvarAssembleias()">&#x1F4BE; Salvar assembleias</button>
+      </div>
+      <div class="admin-sec" id="asec-notificacoes">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Notificações pendentes de envio pro WhatsApp do morador (defeitos e sugestões que mudaram de status ou receberam resposta). Clique em "Enviar" pra abrir o WhatsApp já com a mensagem pronta — a notificação some da lista sozinha.</div>
+        <div id="lista-notif-pendentes"></div>
       </div>
       <button onclick="fecharAdmin()" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--txt2);cursor:pointer;font-size:13px;margin-top:8px">Fechar</button>
     </div>
@@ -701,7 +706,7 @@ function carregarSugestoes(){
   query.get().then(function(snap){
     sugestoes=[];
     snap.forEach(function(doc){sugestoes.push(Object.assign({id:doc.id},doc.data()));});
-    renderSugestoes();atualizarBadgeNotif();
+    renderSugestoes();atualizarBadgeNotif();renderNotificacoesPendentes();
   }).catch(function(e){console.log('Erro sugestoes:',e);});
 }
 
@@ -714,7 +719,7 @@ function enviarSugestao(){
   var sug={
     tipo:tipo, assunto:assunto, desc:desc,
     status:'Recebido',
-    uid:u.uid||'', nome:u.nome||'', unidade:u.unidade||'',
+    uid:u.uid||'', nome:u.nome||'', unidade:u.unidade||'', celular:u.celular||'',
     criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
     resposta:'', respondidoEm:null
   };
@@ -785,6 +790,7 @@ function renderSugestoes(){
         '<div style="font-size:12px;color:var(--txt3);margin-top:2px">'+(adminLogado?escHtml(s.nome)+' · Apto '+s.unidade+' · ':'')+
           (s.criadoEm&&s.criadoEm.toDate?s.criadoEm.toDate().toLocaleDateString('pt-BR'):'—')+'</div>'+
         '<div style="font-size:13px;color:var(--txt2);margin-top:6px;margin-bottom:8px">'+escHtml(s.desc)+'</div>'+
+        (adminLogado?'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:8px;cursor:pointer"><input type="checkbox" id="notif-off-sug-'+s.id+'" style="cursor:pointer">🔕 Não notificar o morador desta vez</label>':'')+
         (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
                 '<div style="display:flex;gap:6px">'+
           '<input id="sug-chat-'+s.id+'" data-sid="'+s.id+'" autocomplete="off" placeholder="Digite uma mensagem..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px">'+
@@ -820,19 +826,39 @@ function enviarMensagemSugestao(id){
   var msgs=(s.mensagens||[]).concat([msg]);
   var update={mensagens:msgs,lido:false};
   if(adminLogado&&s.status==='Recebido') update.status='Em Análise';
+  if(adminLogado){
+    var chk=document.getElementById('notif-off-sug-'+id);
+    if(!(chk&&chk.checked)){
+      update.precisaNotificar=true;
+      update.notifTexto='Olá! Você recebeu uma resposta na sua '+s.tipo.toLowerCase()+' "'+s.assunto+'". Acompanhe pelo Portal Altos Santa Izabel.';
+    }
+  }
   db.collection('sugestoes').doc(id).update(update).then(function(){
     s.mensagens=msgs;
     if(update.status) s.status=update.status;
+    if(update.precisaNotificar){s.precisaNotificar=true;s.notifTexto=update.notifTexto;}
     inp.value='';
     renderSugestoes();
     atualizarBadgeNotif();
+    renderNotificacoesPendentes();
   }).catch(function(e){alert('Erro: '+e.message);});
 }
 function atualizarStatusSug(id,novoStatus){
-  db.collection('sugestoes').doc(id).update({status:novoStatus}).then(function(){
-    var s=sugestoes.find(function(x){return x.id===id;});
-    if(s) s.status=novoStatus;
+  var s=sugestoes.find(function(x){return x.id===id;});
+  var chk=document.getElementById('notif-off-sug-'+id);
+  var notificar=!(chk&&chk.checked);
+  var update={status:novoStatus};
+  if(notificar){
+    update.precisaNotificar=true;
+    update.notifTexto='Olá! Sua '+(s?s.tipo.toLowerCase():'sugestão')+' "'+(s?s.assunto:'')+'" mudou de status para: '+novoStatus+'. Acompanhe pelo Portal Altos Santa Izabel.';
+  }
+  db.collection('sugestoes').doc(id).update(update).then(function(){
+    if(s){
+      s.status=novoStatus;
+      if(notificar){s.precisaNotificar=true;s.notifTexto=update.notifTexto;}
+    }
     renderSugestoes();
+    renderNotificacoesPendentes();
   }).catch(function(e){alert('Erro: '+e.message);});
 }
 
@@ -867,7 +893,7 @@ function carregarChamados(){
       var tb=b.criadoEm&&b.criadoEm.toDate?b.criadoEm.toDate():new Date(0);
       return tb-ta;
     });
-    renderChamados();atualizarBadgeNotif();
+    renderChamados();atualizarBadgeNotif();renderNotificacoesPendentes();
   }).catch(function(e){console.log('Erro chamados:',e);});
 }
 
@@ -884,6 +910,8 @@ function registrar(){
     status:'Aberto',
     usuario:u.nome||'',
     unidade:u.unidade||'',
+    uid:u.uid||'',
+    celular:u.celular||'',
     criadoEm:firebase.firestore.FieldValue.serverTimestamp()
   };
   db.collection('chamados').add(chamado).then(function(ref){
@@ -914,14 +942,21 @@ function enviarMensagemChamado(id){
   var x=chamados.find(function(x){return x.id===id;});
   if(!x) return;
   var msgs=(x.mensagens||[]).concat([msg]);
-  db.collection('chamados').doc(id).update({
-    mensagens:msgs,
-    lido:false
-  }).then(function(){
+  var update={mensagens:msgs,lido:false};
+  if(adminLogado){
+    var chk=document.getElementById('notif-off-cham-'+id);
+    if(!(chk&&chk.checked)){
+      update.precisaNotificar=true;
+      update.notifTexto='Olá! Você recebeu uma resposta no seu defeito "'+x.cat+' — Ap. '+x.apto+'". Acompanhe pelo Portal Altos Santa Izabel.';
+    }
+  }
+  db.collection('chamados').doc(id).update(update).then(function(){
     x.mensagens=msgs;
+    if(update.precisaNotificar){x.precisaNotificar=true;x.notifTexto=update.notifTexto;}
     inp.value='';
     renderChamados();
     atualizarBadgeNotif();
+    renderNotificacoesPendentes();
   }).catch(function(e){alert('Erro: '+e.message);});
 }
 
@@ -931,10 +966,21 @@ function enviarMensagemChamado(id){
 
 
 function atualizarStatus(id,novoStatus){
-  db.collection('chamados').doc(id).update({status:novoStatus}).then(function(){
-    var c=chamados.find(function(x){return x.id===id;});
-    if(c) c.status=novoStatus;
+  var x=chamados.find(function(c){return c.id===id;});
+  var chk=document.getElementById('notif-off-cham-'+id);
+  var notificar=!(chk&&chk.checked);
+  var update={status:novoStatus};
+  if(notificar){
+    update.precisaNotificar=true;
+    update.notifTexto='Olá! Seu defeito "'+(x?x.cat+' — Ap. '+x.apto:'')+'" mudou de status para: '+novoStatus+'. Acompanhe pelo Portal Altos Santa Izabel.';
+  }
+  db.collection('chamados').doc(id).update(update).then(function(){
+    if(x){
+      x.status=novoStatus;
+      if(notificar){x.precisaNotificar=true;x.notifTexto=update.notifTexto;}
+    }
     renderChamados();
+    renderNotificacoesPendentes();
   });
 }
 
@@ -1023,6 +1069,7 @@ function renderChamados(){
           '<div style="font-size:13px;color:var(--txt2);margin-bottom:6px;white-space:pre-wrap">'+escHtml(x.desc)+'</div>'+
           '<div style="font-size:11px;color:var(--txt3);margin-bottom:8px">'+escHtml(x.data)+(x.usuario?' · '+escHtml(x.usuario):'')+'</div>'+
           (adminLogado?statusBtns:'')+
+          (adminLogado?'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin:0 0 8px;cursor:pointer"><input type="checkbox" id="notif-off-cham-'+x.id+'" style="cursor:pointer">🔕 Não notificar o morador desta vez</label>':'')+
           (msgs.length?'<div style="background:#fafaf7;border-radius:10px;padding:10px;margin-bottom:8px">'+chatHtml+'</div>':'')+
           '<div style="display:flex;gap:6px">'+
             '<input id="chat-input-'+x.id+'" data-xid="'+x.id+'" autocomplete="off" placeholder="Digite uma mensagem..." style="flex:1;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:8px">'+
@@ -1478,7 +1525,7 @@ function abrirAdmin(){
   document.querySelectorAll('.at').forEach(function(b){b.classList.remove('on');});
   document.getElementById('asec-alertas').classList.add('on');
   document.querySelector('.at').classList.add('on');
-  renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderDocumentosAdmin();renderAssembleiasAdmin();
+  renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderDocumentosAdmin();renderAssembleiasAdmin();renderNotificacoesPendentes();
   // Adicionar aba Usuários se ainda não existe
   if(!document.getElementById('tab-usuarios')){
     var tabsEl=document.querySelector('.admin-tabs');
@@ -1517,7 +1564,7 @@ function abrirPainelAdmin(){
   adminLogado=true;
     document.getElementById('adminLogin').style.display='none';
     document.getElementById('adminPainel').style.display='block';
-    renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();
+    renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderNotificacoesPendentes();
 }
 function adminTab(id,btn){
   document.querySelectorAll('.admin-sec').forEach(function(s){s.classList.remove('on');});
@@ -1916,6 +1963,45 @@ function addAssembleiaRapida(){
 }
 // ===== FIM ASSEMBLEIAS =====
 
+// ===== NOTIFICAÇÕES WHATSAPP =====
+function linkWhats(tel,texto){
+  var t=(tel||'').replace(/[^0-9]/g,'');
+  if(t.length>=10) t='55'+t;
+  return 'https://wa.me/'+t+'?text='+encodeURIComponent(texto||'');
+}
+function marcarNotificado(colecao,id){
+  db.collection(colecao).doc(id).update({precisaNotificar:false}).then(function(){
+    var arr=colecao==='chamados'?chamados:sugestoes;
+    var it=arr.find(function(x){return x.id===id;});
+    if(it) it.precisaNotificar=false;
+    renderNotificacoesPendentes();
+  }).catch(function(){});
+}
+function renderNotificacoesPendentes(){
+  var el=document.getElementById('lista-notif-pendentes');
+  if(!el) return;
+  var itensCham=(chamados||[]).filter(function(x){return x.precisaNotificar;}).map(function(x){
+    return {tipo:'🔧 Defeito',apto:x.apto,nome:x.usuario,celular:x.celular,texto:x.notifTexto,col:'chamados',id:x.id};
+  });
+  var itensSug=(sugestoes||[]).filter(function(s){return s.precisaNotificar;}).map(function(s){
+    return {tipo:(s.tipo==='Sugestão'?'💡':'📋')+' '+s.tipo,apto:s.unidade,nome:s.nome,celular:s.celular,texto:s.notifTexto,col:'sugestoes',id:s.id};
+  });
+  var todos=itensCham.concat(itensSug);
+  var badgeTab=document.getElementById('tab-notif-count');
+  if(badgeTab) badgeTab.textContent=todos.length?(' ('+todos.length+')'):'';
+  if(!todos.length){el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:8px 0">Nenhuma notificação pendente.</div>';return;}
+  el.innerHTML=todos.map(function(n){
+    var temTel=!!n.celular;
+    return '<div class="card" style="padding:12px;margin-bottom:6px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+n.tipo+' — Ap. '+escHtml(n.apto||'')+' ('+escHtml(n.nome||'')+')</div>'+
+        '<div style="font-size:12px;color:var(--txt2);margin-top:3px">'+escHtml(n.texto||'')+'</div></div>'+
+        (temTel?'<a href="'+linkWhats(n.celular,n.texto)+'" target="_blank" onclick="marcarNotificado(\''+n.col+'\',\''+n.id+'\')" class="badge ok" style="text-decoration:none;flex-shrink:0;white-space:nowrap">📲 Enviar</a>':'<span class="badge bad" style="flex-shrink:0;white-space:nowrap">Sem celular</span>')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
 // ===== SUPORTE PAFRE =====
 var dbPafre=null,authPafre=null,meusChamados=[],unsubMeusChamados=null,meusChamadosExpandidos={};
 var STATUS_BADGE_SUP={Aberto:'bad','Em análise':'warn','Aguardando cliente':'blue',Resolvido:'ok',Fechado:'gray','Cancelado pelo cliente':'canceled'};
@@ -2117,7 +2203,7 @@ function enviarRelatarProblema(){
       return dbPafre.collection('chamados_suporte').add({
         numero:numero,
         condominio:'Altos Santa Izabel',
-        uid:u.uid||'',authUid:authPafre.currentUser.uid,nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',
+        uid:u.uid||'',authUid:authPafre.currentUser.uid,nome:u.nome||'',email:u.email||'',unidade:u.unidade||'',celular:u.celular||'',
         titulo:titulo,desc:desc,severidade:sev,status:'Aberto',
         criadoEm:firebase.firestore.FieldValue.serverTimestamp(),
         mensagens:[],lidoMorador:true
