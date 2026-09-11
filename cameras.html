@@ -40,6 +40,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .pin:hover .pin-ico{background:#0f2440}
 .pin-qtd{position:absolute;top:-5px;right:-8px;background:#c0392b;color:#fff;border-radius:99px;font-size:9px;font-weight:700;min-width:15px;height:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff}
 .pin-ring{position:absolute;bottom:-2px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;pointer-events:none;opacity:0}
+.pin-cone{position:absolute;width:110px;height:110px;transform:translate(-50%,-50%);pointer-events:none;border-radius:50%;opacity:.6;z-index:1}
 .pin.pin-highlight .pin-ring{animation:pinPulse .9s ease-out 3}
 .pin.pin-highlight .pin-ico{animation:pinBounce .5s ease 3}
 @keyframes pinPulse{0%{box-shadow:0 0 0 0 rgba(192,57,43,.65);opacity:1}100%{box-shadow:0 0 0 24px rgba(192,57,43,0);opacity:0}}
@@ -130,6 +131,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <input class="fi" id="edit-nome" placeholder="Ex: Portaria principal, Playground, Garagem Torre 1...">
     <label class="fl">Quantidade de câmeras neste local</label>
     <input class="fi" id="edit-qtd" type="number" min="1" value="1">
+    <label class="fl">Direção da câmera (para onde filma)</label>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div style="width:52px;height:52px;border-radius:50%;background:#f0f0ea;position:relative;flex-shrink:0;border:1px solid var(--border);overflow:hidden">
+        <div id="dir-cone-preview" style="position:absolute;inset:0"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px">📷</div>
+      </div>
+      <input type="range" id="edit-dir" min="0" max="359" value="0" style="flex:1" oninput="atualizarPreviewDirecao(this.value)">
+      <span id="dir-valor" style="font-size:12px;color:var(--txt3);width:34px;text-align:right">0°</span>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:14px;justify-content:center">
+      <button type="button" onclick="setDirecao(315)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↖</button>
+      <button type="button" onclick="setDirecao(0)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↑</button>
+      <button type="button" onclick="setDirecao(45)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↗</button>
+      <button type="button" onclick="setDirecao(270)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">←</button>
+      <button type="button" onclick="setDirecao(90)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">→</button>
+      <button type="button" onclick="setDirecao(225)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↙</button>
+      <button type="button" onclick="setDirecao(180)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↓</button>
+      <button type="button" onclick="setDirecao(135)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↘</button>
+    </div>
     <button class="btn primary" style="width:100%;margin-bottom:8px" onclick="salvarPonto()">💾 Salvar</button>
     <button class="btn ghost" style="width:100%;margin-bottom:8px" id="btn-reposicionar" onclick="iniciarReposicionar()">🔀 Reposicionar no mapa</button>
     <button class="btn danger" style="width:100%;margin-bottom:8px" id="btn-excluir-ponto" onclick="excluirPontoAtual()">🗑️ Excluir câmera</button>
@@ -312,7 +332,10 @@ function renderPins(){
   el.innerHTML=camerasData.pontos.map(function(p){
     var qtd=p.qtd||1;
     var badge=qtd>1?'<div class="pin-qtd">'+qtd+'</div>':'';
-    return '<div class="pin" data-id="'+p.id+'" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
+    var dir=(typeof p.direcao==='number')?p.direcao:0;
+    var start=((dir-40)%360+360)%360;
+    var cone='<div class="pin-cone" style="left:'+p.x+'%;top:'+p.y+'%;background:conic-gradient(from '+start+'deg, transparent 0deg, rgba(21,101,192,.55) 4deg, rgba(21,101,192,.55) 76deg, transparent 80deg, transparent 360deg)"></div>';
+    return cone+'<div class="pin" data-id="'+p.id+'" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
       '<div class="pin-ico"><div class="cam-icon-w" style="width:14px;height:12px"></div></div>'+badge+'<div class="pin-ring"></div>'+
     '</div>';
   }).join('');
@@ -391,10 +414,24 @@ function abrirEdicaoPonto(id,novo){
   document.getElementById('edit-titulo').innerHTML='<div class="cam-icon-b" style="width:16px;height:14px;display:inline-block;vertical-align:-2px;margin-right:6px"></div>'+(novo?'Nova câmera':'Editar câmera');
   document.getElementById('edit-nome').value=novo?'':p.nome;
   document.getElementById('edit-qtd').value=p.qtd||1;
+  var dirAtual=(typeof p.direcao==='number')?p.direcao:0;
+  document.getElementById('edit-dir').value=dirAtual;
+  atualizarPreviewDirecao(dirAtual);
   document.getElementById('btn-excluir-ponto').style.display=novo?'none':'block';
   document.getElementById('btn-reposicionar').style.display=novo?'none':'block';
   document.getElementById('editOverlay').classList.add('on');
   setTimeout(function(){document.getElementById('edit-nome').focus();},50);
+}
+
+function atualizarPreviewDirecao(val){
+  val=parseInt(val,10)||0;
+  document.getElementById('dir-valor').textContent=val+'°';
+  var start=((val-40)%360+360)%360;
+  document.getElementById('dir-cone-preview').style.background='conic-gradient(from '+start+'deg, transparent 0deg, rgba(21,101,192,.55) 4deg, rgba(21,101,192,.55) 76deg, transparent 80deg, transparent 360deg)';
+}
+function setDirecao(val){
+  document.getElementById('edit-dir').value=val;
+  atualizarPreviewDirecao(val);
 }
 
 function fecharEdicaoPonto(){
@@ -418,8 +455,9 @@ function salvarPonto(){
   if(!nome){alert('Informe um nome ou local para a câmera.');return;}
   var qtd=parseInt(document.getElementById('edit-qtd').value,10);
   if(!qtd||qtd<1) qtd=1;
+  var direcao=parseInt(document.getElementById('edit-dir').value,10)||0;
   var p=camerasData.pontos.find(function(x){return x.id===pontoEditandoId;});
-  if(p){p.nome=nome;p.qtd=qtd;}
+  if(p){p.nome=nome;p.qtd=qtd;p.direcao=direcao;}
   salvarCamerasFirestore(function(){
     document.getElementById('editOverlay').classList.remove('on');
     pontoEditandoId=null;
