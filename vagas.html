@@ -71,6 +71,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 </div>
 
 <div class="wrap">
+  <div id="alerta-duplicadas" style="display:none;background:#fdecea;border:1px solid #ffcdd2;color:#c0392b;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px"></div>
   <input class="search-bar" id="busca" placeholder="🔍  Buscar por apartamento ou número da vaga..." oninput="renderTorres()">
   <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
     <button class="pdf-btn" id="btn-pdf-vagas" onclick="exportarPDFVagas()">📄 Exportar PDF</button>
@@ -233,6 +234,7 @@ function renderTorres(){
   }
 
   document.getElementById('torres').innerHTML=buildTorre(1)+buildTorre(2);
+  renderAlertaDuplicadas();
 
   if(meuApto&&!q){
     setTimeout(function(){
@@ -240,6 +242,33 @@ function renderTorres(){
       if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
     },150);
   }
+}
+
+function encontrarDuplicadas(){
+  var mapa={};
+  vagasData.forEach(function(v){
+    var val=(v.vaga||'').trim();
+    if(!val) return;
+    var chave=val.toUpperCase();
+    if(!mapa[chave]) mapa[chave]=[];
+    mapa[chave].push(v.apto);
+  });
+  var dups=[];
+  Object.keys(mapa).forEach(function(k){
+    if(mapa[k].length>1) dups.push({vaga:k,aptos:mapa[k]});
+  });
+  return dups;
+}
+
+function renderAlertaDuplicadas(){
+  var el=document.getElementById('alerta-duplicadas');
+  if(!el) return;
+  if(!adminLogado){el.style.display='none';return;}
+  var dups=encontrarDuplicadas();
+  if(!dups.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="font-weight:700;margin-bottom:6px">⚠️ '+dups.length+' número(s) de vaga duplicado(s)</div>'+
+    dups.map(function(d){return '<div style="margin-bottom:2px">Vaga <strong>'+d.vaga+'</strong> — apto(s): '+d.aptos.join(', ')+'</div>';}).join('');
 }
 
 function toggleEdicao(){
@@ -266,6 +295,13 @@ function fecharEdicao(){
 function salvarEdicao(){
   if(!editandoApto) return;
   var novaVaga=document.getElementById('edit-vaga').value.trim();
+  if(novaVaga){
+    var chave=novaVaga.toUpperCase();
+    var conflito=vagasData.find(function(x){return x.apto!==editandoApto&&(x.vaga||'').trim().toUpperCase()===chave;});
+    if(conflito){
+      if(!confirm('⚠️ A vaga "'+novaVaga+'" já está atribuída ao apto '+conflito.apto+'.\n\nDeseja salvar mesmo assim?')) return;
+    }
+  }
   var v=vagasData.find(function(x){return x.apto===editandoApto;});
   if(v) v.vaga=novaVaga;
   else vagasData.push({apto:editandoApto,vaga:novaVaga});
