@@ -173,7 +173,7 @@ textarea.fi{height:75px;resize:vertical}
     <div style="flex:1"><div style="font-weight:600">Phoenix Global — Administradora/Boletos</div><div style="font-size:12px;color:var(--txt3)">(19) 99269-6889</div></div>
     <button class="btn success" onclick="window.open('https://wa.me/5519992696889?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'))">WhatsApp</button>
   </div>
-  <div style="text-align:center;padding:16px 0 4px;font-size:11px;color:var(--txt3)">Portal Altos Santa Izabel · v1.13.0 · Jun/2026</div>
+  <div style="text-align:center;padding:16px 0 4px;font-size:11px;color:var(--txt3)" id="versao-footer">Portal Altos Santa Izabel</div>
 </div>
 
 <!-- PROJETOS -->
@@ -2224,6 +2224,17 @@ function enviarRelatarProblema(){
 // ===== FIM SUPORTE =====
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
+
+function atualizarVersaoFooter(){
+  fetch('./sw.js').then(function(r){return r.text();}).then(function(txt){
+    var m=txt.match(/portal-asi-v(\d+)/);
+    var el=document.getElementById('versao-footer');
+    if(!el) return;
+    var mesAno=new Date().toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('.','');
+    el.textContent='Portal Altos Santa Izabel'+(m?' · v'+m[1]:'')+' · '+mesAno;
+  }).catch(function(){});
+}
+atualizarVersaoFooter();
 
 // Rodapé dinâmico
 (function(){
