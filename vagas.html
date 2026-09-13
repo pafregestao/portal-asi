@@ -260,15 +260,44 @@ function encontrarDuplicadas(){
   return dups;
 }
 
+function encontrarForaDoIntervalo(){
+  var invalidos=[];
+  vagasData.forEach(function(v){
+    var val=(v.vaga||'').trim();
+    if(!val) return;
+    if(tipoVaga(val)!=='normal') return; // especial (V..) e PNE não seguem numeração sequencial
+    var n=parseInt(val,10);
+    if(isNaN(n)){
+      invalidos.push({apto:v.apto,vaga:val,motivo:'não é um número válido'});
+      return;
+    }
+    if(n<1||n>128||(n>=120&&n<=124)){
+      invalidos.push({apto:v.apto,vaga:val,motivo:'fora da faixa válida (001–119 ou 125–128)'});
+    }
+  });
+  return invalidos;
+}
+
+function escVal(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
 function renderAlertaDuplicadas(){
   var el=document.getElementById('alerta-duplicadas');
   if(!el) return;
   if(!adminLogado){el.style.display='none';return;}
   var dups=encontrarDuplicadas();
-  if(!dups.length){el.style.display='none';return;}
+  var invalidos=encontrarForaDoIntervalo();
+  if(!dups.length&&!invalidos.length){el.style.display='none';return;}
   el.style.display='block';
-  el.innerHTML='<div style="font-weight:700;margin-bottom:6px">⚠️ '+dups.length+' número(s) de vaga duplicado(s)</div>'+
-    dups.map(function(d){return '<div style="margin-bottom:2px">Vaga <strong>'+d.vaga+'</strong> — apto(s): '+d.aptos.join(', ')+'</div>';}).join('');
+  var html='';
+  if(dups.length){
+    html+='<div style="font-weight:700;margin-bottom:6px">⚠️ '+dups.length+' número(s) de vaga duplicado(s)</div>'+
+      dups.map(function(d){return '<div style="margin-bottom:2px">Vaga <strong>'+escVal(d.vaga)+'</strong> — apto(s): '+d.aptos.join(', ')+'</div>';}).join('');
+  }
+  if(invalidos.length){
+    html+='<div style="font-weight:700;margin:'+(dups.length?'10px':'0')+' 0 6px">⚠️ '+invalidos.length+' número(s) fora da faixa válida</div>'+
+      invalidos.map(function(i){return '<div style="margin-bottom:2px">Apto <strong>'+escVal(i.apto)+'</strong> — vaga "'+escVal(i.vaga)+'" ('+i.motivo+')</div>';}).join('');
+  }
+  el.innerHTML=html;
 }
 
 function toggleEdicao(){
