@@ -28,6 +28,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .mc-lbl{font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
 .mc-val{font-size:20px;font-weight:700;color:var(--azul)}
 .planta-scroll{overflow:auto;max-height:65vh;border-radius:12px;border:1px solid var(--border);background:#eee}
+.mapa-container.tela-cheia{position:fixed;inset:0;z-index:700;background:#fff;padding:10px;display:flex;flex-direction:column;gap:8px}
+.mapa-container.tela-cheia .planta-scroll{flex:1;max-height:none}
 .planta-wrap{position:relative;width:100%;background:#eee;cursor:default;user-select:none;transition:width .15s ease}
 .planta-wrap.modo-add{cursor:crosshair}
 .planta-wrap img{width:100%;display:block;pointer-events:none}
@@ -101,20 +103,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="card" style="padding:10px">
       <div id="planta-vazia" class="vazio-msg" style="display:none">Nenhuma planta cadastrada ainda. Cole o link acima e clique em "Salvar planta".</div>
-      <div id="zoom-bar" class="zoom-bar" style="display:none">
-        <button class="zoom-btn" onclick="zoomOut()">➖</button>
-        <div class="zoom-label" id="zoom-label">100%</div>
-        <button class="zoom-btn" onclick="zoomIn()">➕</button>
-        <button class="zoom-btn" onclick="zoomReset()" title="Restaurar zoom">⟲</button>
-        <span style="font-size:11px;color:var(--txt3);margin-left:4px">Dê zoom pra marcar com mais precisão</span>
-      </div>
-      <div class="planta-scroll" id="planta-scroll" style="display:none">
-        <div class="planta-wrap" id="planta-wrap">
-          <img id="planta-img" src="" alt="Planta do condomínio">
-          <div id="pins-layer"></div>
+      <div id="mapa-container" class="mapa-container">
+        <div id="zoom-bar" class="zoom-bar" style="display:none">
+          <button class="zoom-btn" onclick="zoomOut()">➖</button>
+          <div class="zoom-label" id="zoom-label">100%</div>
+          <button class="zoom-btn" onclick="zoomIn()">➕</button>
+          <button class="zoom-btn" onclick="zoomReset()" title="Restaurar zoom">⟲</button>
+          <button class="zoom-btn" id="btn-fullscreen" onclick="toggleTelaCheia()" title="Tela cheia">⛶</button>
+          <span style="font-size:11px;color:var(--txt3);margin-left:4px">Dê zoom pra marcar com mais precisão</span>
         </div>
+        <div class="planta-scroll" id="planta-scroll" style="display:none">
+          <div class="planta-wrap" id="planta-wrap">
+            <img id="planta-img" src="" alt="Planta do condomínio">
+            <div id="pins-layer"></div>
+          </div>
+        </div>
+        <div id="dica-modo" style="display:none;font-size:12px;color:var(--warn);text-align:center">👆 Clique em qualquer ponto da planta para marcar uma câmera<span class="badge-modo">Modo adicionar ativo</span></div>
       </div>
-      <div id="dica-modo" style="display:none;font-size:12px;color:var(--warn);margin-top:8px;text-align:center">👆 Clique em qualquer ponto da planta para marcar uma câmera<span class="badge-modo">Modo adicionar ativo</span></div>
     </div>
 
     <div class="sec">Lista de câmeras</div>
@@ -242,6 +247,23 @@ function zoomReset(){
   aplicarZoom();
   var scroll=document.getElementById('planta-scroll');
   if(scroll){scroll.scrollLeft=0;scroll.scrollTop=0;}
+}
+
+function toggleTelaCheia(){
+  var cont=document.getElementById('mapa-container');
+  var btn=document.getElementById('btn-fullscreen');
+  var ativo=cont.classList.toggle('tela-cheia');
+  btn.textContent=ativo?'✕':'⛶';
+  btn.title=ativo?'Sair da tela cheia':'Tela cheia';
+  document.body.style.overflow=ativo?'hidden':'';
+  if(ativo){
+    document.addEventListener('keydown',fecharTelaCheiaEsc);
+  } else {
+    document.removeEventListener('keydown',fecharTelaCheiaEsc);
+  }
+}
+function fecharTelaCheiaEsc(e){
+  if(e.key==='Escape') toggleTelaCheia();
 }
 
 function toggleModoAdd(){
