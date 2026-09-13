@@ -2226,7 +2226,7 @@ function enviarRelatarProblema(){
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
 
 function atualizarVersaoFooter(){
-  fetch('./sw.js').then(function(r){return r.text();}).then(function(txt){
+  fetch('./sw.js',{cache:'no-store'}).then(function(r){return r.text();}).then(function(txt){
     var m=txt.match(/portal-asi-v([\d.]+)/);
     var el=document.getElementById('versao-footer');
     if(!el) return;
