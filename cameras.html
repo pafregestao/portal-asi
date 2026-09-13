@@ -131,26 +131,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <label class="fl">Nome / localização</label>
     <input class="fi" id="edit-nome" placeholder="Ex: Portaria principal, Playground, Garagem Torre 1...">
     <label class="fl">Quantidade de câmeras neste local</label>
-    <input class="fi" id="edit-qtd" type="number" min="1" value="1">
-    <label class="fl">Direção da câmera (para onde filma)</label>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <div style="width:52px;height:52px;border-radius:50%;background:#f0f0ea;position:relative;flex-shrink:0;border:1px solid var(--border);overflow:hidden">
-        <div id="dir-cone-preview" style="position:absolute;inset:0"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px">📷</div>
-      </div>
-      <input type="range" id="edit-dir" min="0" max="359" value="0" style="flex:1" oninput="atualizarPreviewDirecao(this.value)">
-      <span id="dir-valor" style="font-size:12px;color:var(--txt3);width:34px;text-align:right">0°</span>
-    </div>
-    <div style="display:flex;gap:4px;margin-bottom:14px;justify-content:center">
-      <button type="button" onclick="setDirecao(315)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↖</button>
-      <button type="button" onclick="setDirecao(0)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↑</button>
-      <button type="button" onclick="setDirecao(45)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↗</button>
-      <button type="button" onclick="setDirecao(270)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">←</button>
-      <button type="button" onclick="setDirecao(90)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">→</button>
-      <button type="button" onclick="setDirecao(225)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↙</button>
-      <button type="button" onclick="setDirecao(180)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↓</button>
-      <button type="button" onclick="setDirecao(135)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">↘</button>
-    </div>
+    <input class="fi" id="edit-qtd" type="number" min="1" value="1" oninput="ajustarDirecoesQtd(this.value)">
+    <div id="direcoes-container"></div>
     <button class="btn primary" style="width:100%;margin-bottom:8px" onclick="salvarPonto()">💾 Salvar</button>
     <button class="btn ghost" style="width:100%;margin-bottom:8px" id="btn-reposicionar" onclick="iniciarReposicionar()">🔀 Reposicionar no mapa</button>
     <button class="btn danger" style="width:100%;margin-bottom:8px" id="btn-excluir-ponto" onclick="excluirPontoAtual()">🗑️ Excluir câmera</button>
@@ -333,10 +315,12 @@ function renderPins(){
   el.innerHTML=camerasData.pontos.map(function(p){
     var qtd=p.qtd||1;
     var badge=qtd>1?'<div class="pin-qtd">'+qtd+'</div>':'';
-    var dir=(typeof p.direcao==='number')?p.direcao:0;
-    var start=((dir-40)%360+360)%360;
-    var cone='<div class="pin-cone" style="left:'+p.x+'%;top:'+p.y+'%;background:conic-gradient(from '+start+'deg, transparent 0deg, rgba(21,101,192,.55) 4deg, rgba(21,101,192,.55) 76deg, transparent 80deg, transparent 360deg)"></div>';
-    return cone+'<div class="pin" data-id="'+p.id+'" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
+    var dirs=(Array.isArray(p.direcoes)&&p.direcoes.length)?p.direcoes:[(typeof p.direcao==='number'?p.direcao:0)];
+    var cones=dirs.map(function(dir){
+      var start=((dir-40)%360+360)%360;
+      return '<div class="pin-cone" style="left:'+p.x+'%;top:'+p.y+'%;background:conic-gradient(from '+start+'deg, transparent 0deg, rgba(21,101,192,.55) 4deg, rgba(21,101,192,.55) 76deg, transparent 80deg, transparent 360deg)"></div>';
+    }).join('');
+    return cones+'<div class="pin" data-id="'+p.id+'" style="left:'+p.x+'%;top:'+p.y+'%" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="'+escHtml(p.nome)+' ('+qtd+')">'+
       '<div class="pin-ico"><div class="cam-icon-w" style="width:14px;height:12px"></div></div>'+badge+'<div class="pin-ring"></div>'+
     '</div>';
   }).join('');
@@ -414,25 +398,74 @@ function abrirEdicaoPonto(id,novo){
   if(!p) return;
   document.getElementById('edit-titulo').innerHTML='<div class="cam-icon-b" style="width:16px;height:14px;display:inline-block;vertical-align:-2px;margin-right:6px"></div>'+(novo?'Nova câmera':'Editar câmera');
   document.getElementById('edit-nome').value=novo?'':p.nome;
-  document.getElementById('edit-qtd').value=p.qtd||1;
-  var dirAtual=(typeof p.direcao==='number')?p.direcao:0;
-  document.getElementById('edit-dir').value=dirAtual;
-  atualizarPreviewDirecao(dirAtual);
+  var qtdAtual=p.qtd||1;
+  document.getElementById('edit-qtd').value=qtdAtual;
+  var direcoesExistentes=Array.isArray(p.direcoes)?p.direcoes.slice():(typeof p.direcao==='number'?[p.direcao]:[]);
+  direcoesAtuais=[];
+  for(var i=0;i<qtdAtual;i++){
+    direcoesAtuais.push(typeof direcoesExistentes[i]==='number'?direcoesExistentes[i]:0);
+  }
+  renderBlocosDirecao();
   document.getElementById('btn-excluir-ponto').style.display=novo?'none':'block';
   document.getElementById('btn-reposicionar').style.display=novo?'none':'block';
   document.getElementById('editOverlay').classList.add('on');
   setTimeout(function(){document.getElementById('edit-nome').focus();},50);
 }
 
-function atualizarPreviewDirecao(val){
-  val=parseInt(val,10)||0;
-  document.getElementById('dir-valor').textContent=val+'°';
-  var start=((val-40)%360+360)%360;
-  document.getElementById('dir-cone-preview').style.background='conic-gradient(from '+start+'deg, transparent 0deg, rgba(21,101,192,.55) 4deg, rgba(21,101,192,.55) 76deg, transparent 80deg, transparent 360deg)';
+var direcoesAtuais=[];
+
+function ajustarDirecoesQtd(val){
+  var qtd=parseInt(val,10);
+  if(!qtd||qtd<1) qtd=1;
+  var novo=[];
+  for(var i=0;i<qtd;i++){
+    novo.push(typeof direcoesAtuais[i]==='number'?direcoesAtuais[i]:0);
+  }
+  direcoesAtuais=novo;
+  renderBlocosDirecao();
 }
-function setDirecao(val){
-  document.getElementById('edit-dir').value=val;
-  atualizarPreviewDirecao(val);
+
+function renderBlocosDirecao(){
+  var cont=document.getElementById('direcoes-container');
+  var numerar=direcoesAtuais.length>1;
+  cont.innerHTML=direcoesAtuais.map(function(v,idx){
+    return gerarBlocoDirecao(idx,v,numerar);
+  }).join('');
+  direcoesAtuais.forEach(function(v,idx){atualizarPreviewDirecao(idx,v);});
+}
+
+function gerarBlocoDirecao(idx,valor,numerar){
+  var setas=[['↖',315],['↑',0],['↗',45],['←',270],['→',90],['↙',225],['↓',180],['↘',135]];
+  var botoes=setas.map(function(s){
+    return '<button type="button" onclick="setDirecao('+idx+','+s[1]+')" style="width:24px;height:24px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:11px">'+s[0]+'</button>';
+  }).join('');
+  return '<div style="margin-bottom:10px;padding:8px;background:#f8f8f4;border-radius:8px">'+
+    '<label class="fl" style="margin-top:0;margin-bottom:6px">'+(numerar?'Câmera '+(idx+1)+' — direção':'Direção da câmera (para onde filma)')+'</label>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+      '<div style="width:40px;height:40px;border-radius:50%;background:#f0f0ea;position:relative;flex-shrink:0;border:1px solid var(--border);overflow:hidden">'+
+        '<div id="dir-cone-preview-'+idx+'" style="position:absolute;inset:0"></div>'+
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px">📷</div>'+
+      '</div>'+
+      '<input type="range" id="edit-dir-'+idx+'" min="0" max="359" value="'+valor+'" style="flex:1" oninput="atualizarPreviewDirecao('+idx+',this.value)">'+
+      '<span id="dir-valor-'+idx+'" style="font-size:11px;color:var(--txt3);width:32px;text-align:right">'+valor+'°</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:3px;justify-content:center">'+botoes+'</div>'+
+  '</div>';
+}
+
+function atualizarPreviewDirecao(idx,val){
+  val=parseInt(val,10)||0;
+  direcoesAtuais[idx]=val;
+  var valEl=document.getElementById('dir-valor-'+idx);
+  if(valEl) valEl.textContent=val+'°';
+  var start=((val-40)%360+360)%360;
+  var prevEl=document.getElementById('dir-cone-preview-'+idx);
+  if(prevEl) prevEl.style.background='conic-gradient(from '+start+'deg, transparent 0deg, rgba(21,101,192,.55) 4deg, rgba(21,101,192,.55) 76deg, transparent 80deg, transparent 360deg)';
+}
+function setDirecao(idx,val){
+  var slider=document.getElementById('edit-dir-'+idx);
+  if(slider) slider.value=val;
+  atualizarPreviewDirecao(idx,val);
 }
 
 function fecharEdicaoPonto(){
@@ -456,9 +489,13 @@ function salvarPonto(){
   if(!nome){alert('Informe um nome ou local para a câmera.');return;}
   var qtd=parseInt(document.getElementById('edit-qtd').value,10);
   if(!qtd||qtd<1) qtd=1;
-  var direcao=parseInt(document.getElementById('edit-dir').value,10)||0;
+  var direcoes=[];
+  for(var i=0;i<qtd;i++){
+    var slider=document.getElementById('edit-dir-'+i);
+    direcoes.push(slider?(parseInt(slider.value,10)||0):(direcoesAtuais[i]||0));
+  }
   var p=camerasData.pontos.find(function(x){return x.id===pontoEditandoId;});
-  if(p){p.nome=nome;p.qtd=qtd;p.direcao=direcao;}
+  if(p){p.nome=nome;p.qtd=qtd;p.direcoes=direcoes;delete p.direcao;}
   salvarCamerasFirestore(function(){
     document.getElementById('editOverlay').classList.remove('on');
     pontoEditandoId=null;
