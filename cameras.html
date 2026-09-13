@@ -73,7 +73,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   <a class="back-btn" href="index.html">← Voltar</a>
   <div class="hdr-title">
     <h1>    <div class="cam-icon-w" style="width:20px;height:18px;display:inline-block;vertical-align:-4px;margin-right:4px"></div>Mapa de Câmeras</h1>
-    <p>Altos Santa Izabel · Acesso restrito ao administrador</p>
+    <p id="hdr-sub">Altos Santa Izabel · Acesso restrito ao administrador</p>
   </div>
 </div>
 
@@ -87,8 +87,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <div class="mc"><div class="mc-lbl">Total de câmeras</div><div class="mc-val" id="mc-total">0</div></div>
     </div>
 
-    <div class="sec">Planta baixa</div>
-    <div class="card">
+    <div class="sec admin-only" style="display:none">Planta baixa</div>
+    <div class="card admin-only" style="display:none">
       <label class="fl">Link da imagem da planta (Google Drive ou URL direta)</label>
       <input class="fi" id="input-planta" placeholder="Cole aqui o link da planta / projeto...">
       <button class="btn primary" onclick="salvarPlanta()">💾 Salvar planta</button>
@@ -97,8 +97,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <div class="sec">
       Marcar câmeras
       <span style="display:flex;gap:6px">
-        <button class="btn ghost" id="btn-pdf" onclick="exportarPDF()" style="padding:5px 12px;font-size:12px">📄 Exportar PDF</button>
-        <button class="btn ghost" id="btn-modo" onclick="toggleModoAdd()" style="padding:5px 12px;font-size:12px">➕ Adicionar câmera</button>
+        <button class="btn ghost admin-only" id="btn-pdf" style="display:none;padding:5px 12px;font-size:12px" onclick="exportarPDF()">📄 Exportar PDF</button>
+        <button class="btn ghost admin-only" id="btn-modo" style="display:none;padding:5px 12px;font-size:12px" onclick="toggleModoAdd()">➕ Adicionar câmera</button>
       </span>
     </div>
     <div class="card" style="padding:10px">
@@ -164,11 +164,15 @@ var idReposicionando=null;
 var listaCamerasExpandida=false;
 var zoomSteps=[100,125,150,200,250,300,400];
 var zoomIdx=0;
+var isAdmin=false;
 
 auth.onAuthStateChanged(function(user){
   if(!user){window.location.href='auth.html';return;}
   db.collection('usuarios').doc(user.uid).get().then(function(doc){
-    if(!doc.exists||doc.data().perfil!=='admin'){window.location.href='index.html';return;}
+    if(!doc.exists){window.location.href='auth.html';return;}
+    isAdmin=doc.data().perfil==='admin';
+    document.querySelectorAll('.admin-only').forEach(function(el){el.style.display=isAdmin?'':'none';});
+    document.getElementById('hdr-sub').textContent=isAdmin?'Altos Santa Izabel · Administração':'Altos Santa Izabel · Visualização';
     carregarCameras();
   });
 });
@@ -366,8 +370,8 @@ function renderLista(){
     return '<div class="lista-cam-row" style="cursor:pointer" onclick="localizarCamera(\''+p.id+'\')" title="Localizar no mapa">'+
       '<div class="lista-cam-ico"><div class="cam-icon-b" style="width:16px;height:14px"></div></div>'+
       '<div style="flex:1"><div style="font-weight:500">'+escHtml(p.nome)+'</div>'+(qtd>1?'<div style="font-size:11px;color:var(--txt3)">'+qtd+' câmeras neste local</div>':'')+'</div>'+
-      '<button class="del-btn" style="background:#e3f0fb;color:#1565c0" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="Editar">✏️</button>'+
-      '<button class="del-btn" onclick="event.stopPropagation();excluirCameraLista(\''+p.id+'\')" title="Excluir">🗑️</button>'+
+      (isAdmin?'<button class="del-btn" style="background:#e3f0fb;color:#1565c0" onclick="event.stopPropagation();abrirEdicaoPonto(\''+p.id+'\',false)" title="Editar">✏️</button>':'')+
+      (isAdmin?'<button class="del-btn" onclick="event.stopPropagation();excluirCameraLista(\''+p.id+'\')" title="Excluir">🗑️</button>':'')+
     '</div>';
   }).join('')+
   (restantes>0?'<div style="padding:10px 0;text-align:center"><button onclick="toggleListaCameras()" style="font-size:12px;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:#fff;color:var(--azul);cursor:pointer;font-weight:600">'+(listaCamerasExpandida?'Mostrar menos ‹':'Ver mais '+restantes+' câmera'+(restantes>1?'s':'')+' ›')+'</button></div>':'');
@@ -415,6 +419,7 @@ function localizarCamera(id){
 }
 
 function abrirEdicaoPonto(id,novo){
+  if(!isAdmin) return;
   pontoEditandoId=id;
   var p=camerasData.pontos.find(function(x){return x.id===id;});
   if(!p) return;
