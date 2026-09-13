@@ -2227,7 +2227,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
 
 function atualizarVersaoFooter(){
   fetch('./sw.js',{cache:'no-store'}).then(function(r){return r.text();}).then(function(txt){
-    var m=txt.match(/portal-asi-v([\d.]+)/);
+    var m=txt.match(/APP_VERSION\s*=\s*'([\d.]+)'/);
     var el=document.getElementById('versao-footer');
     if(!el) return;
     var mesAno=new Date().toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('.','');
