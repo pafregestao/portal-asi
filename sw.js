@@ -1,4 +1,5 @@
-const CACHE = 'portal-asi-v44';
+const APP_VERSION = '1.13.44';
+const CACHE = 'portal-asi-v'+APP_VERSION;
 const ASSETS = ['./index.html','./manifest.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
