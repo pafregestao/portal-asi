@@ -161,6 +161,7 @@ textarea.fi{height:75px;resize:vertical}
   <div class="sec">Alertas e pendências</div>
   <div class="card" id="lista-alertas"></div>
   <div class="sec">Realizações recentes</div>
+  <input id="busca-realizacoes" placeholder="🔍 Buscar em todas as realizações..." oninput="filtrarRealizacoes(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:8px;font-family:inherit">
   <div class="card" id="lista-realizacoes"></div>
   <div class="sec">Contato da administração</div>
   <div class="card row">
@@ -1673,8 +1674,38 @@ function renderAlertas(){
   var ico={bad:'🔴',warn:'🟡',blue:'🔵',ok:'🟢'};
   el.innerHTML=dadosAdmin.alertas.map(function(a){return '<div class="file-row"><div class="file-ico" style="background:'+(cor[a.status]||'#f0efe8')+'">'+ico[a.status]+'</div><div style="flex:1"><div style="font-weight:600">'+a.txt+'</div><div style="font-size:12px;color:var(--txt3)">'+a.sub+'</div></div><span class="badge '+a.status+'">'+stMap[a.status]+'</span></div>';}).join('');
 }
+function normalizarBusca(s){
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+var buscaRealizacoesAtual='';
+function filtrarRealizacoes(termo){
+  buscaRealizacoesAtual=termo||'';
+  renderRealizacoes();
+}
 function renderRealizacoes(){
   var el=document.getElementById('lista-realizacoes');if(!el)return;
+  var termo=normalizarBusca(buscaRealizacoesAtual);
+  if(termo){
+    var encontrados=dadosAdmin.realizacoes.filter(function(r){
+      return normalizarBusca(r.txt).indexOf(termo)>=0;
+    });
+    if(!encontrados.length){
+      el.innerHTML='<div style="padding:14px;color:var(--txt3);font-size:13px;text-align:center">Nenhuma realização encontrada para "'+escHtml(buscaRealizacoesAtual)+'".</div>';
+      return;
+    }
+    el.innerHTML='<div style="padding:9px 15px;font-size:12px;color:var(--txt3);border-bottom:1px solid var(--border)">'+encontrados.length+' resultado(s) para "'+escHtml(buscaRealizacoesAtual)+'"</div>'+
+      '<div style="padding:0 15px">'+encontrados.map(function(r){
+        var fotoUrl=r.foto?driveUrl(r.foto):null;
+        return '<div class="file-row" style="align-items:flex-start">'+
+          (fotoUrl
+            ?'<img src="'+fotoUrl+'" onclick="abrirFoto(\''+(r.foto||'')+'\')" style="width:56px;height:56px;border-radius:8px;object-fit:cover;cursor:pointer;flex-shrink:0" onerror="this.style.display=\'none\'">'
+            :'<div class="file-ico" style="background:#e8f5e9">✅</div>'
+          )+
+          '<div style="flex:1"><div style="font-size:12px;color:var(--txt3)">'+r.data+'</div><div style="font-weight:500">'+r.txt+'</div></div>'+
+          '<span class="badge ok">✓</span></div>';
+      }).join('')+'</div>';
+    return;
+  }
   var grupos={};
   dadosAdmin.realizacoes.forEach(function(r){
     var ano=(r.data||'').split('/')[1]||'Outros';
