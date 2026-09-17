@@ -128,14 +128,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <div class="form-group"><label>Nome</label><input id="edit-nome" name="campo-edit-nome" autocomplete="off"></div>
     <div class="form-group"><label>Unidade (Apto)</label><input id="edit-unidade" name="campo-edit-unidade" autocomplete="off" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
     <div class="form-group"><label>Senha</label>
-      <div style="display:flex;gap:8px">
-        <input id="edit-senha" name="campo-nova-credencial" autocomplete="off" type="text" placeholder="Nova senha (min. 6 caracteres)" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fafafa">
-        <button onclick="gerarSenha()" style="padding:9px 12px;background:#f0efe8;border:none;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap">🎲 Gerar</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <button onclick="definirSenha()" style="flex:1;padding:8px;background:#e8f5e9;color:#2d7a3a;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">💾 Definir senha</button>
-        <button onclick="enviarResetLink()" style="flex:1;padding:8px;background:#e3f0fb;color:#1565c0;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📧 Enviar link</button>
-      </div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Não é possível definir uma senha específica diretamente (limitação do Firebase). Envie um link de redefinição — o morador escolhe a própria senha nova.</div>
+      <button onclick="enviarResetLink()" style="width:100%;padding:9px;background:#e3f0fb;color:#1565c0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📧 Enviar link de redefinição de senha</button>
       <div id="msg-senha" style="margin-top:6px;font-size:12px"></div>
     </div>
     <div class="form-group"><label>Celular</label><input id="edit-cel" name="campo-edit-celular" autocomplete="off"></div>
@@ -300,42 +294,6 @@ function abrirEdicao(uid,nome,unidade,cel,tipo,perfil,status){
   document.getElementById('edit-status').value=status||'pendente';
   document.getElementById('modal-edicao').classList.add('on');
 }
-function gerarSenha(){
-  var chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  var senha='';
-  for(var i=0;i<8;i++) senha+=chars.charAt(Math.floor(Math.random()*chars.length));
-  document.getElementById('edit-senha').value=senha;
-}
-function definirSenha(){
-  var uid=document.getElementById('edit-uid').value;
-  var email=document.getElementById('edit-email').value.trim();
-  var senha=document.getElementById('edit-senha').value.trim();
-  var msgEl=document.getElementById('msg-senha');
-  if(!senha||senha.length<6){msgEl.innerHTML='<span style="color:#c0392b">Mínimo 6 caracteres.</span>';return;}
-  if(!email){msgEl.innerHTML='<span style="color:#c0392b">E-mail não encontrado.</span>';return;}
-  // Criar credencial temporária: fazer login com o usuário via API e trocar senha
-  var apiKey='AIzaSyAxifeD5tvV3A4s4SE6d5-P-HyI1Pf0h8s';
-  // Primeiro buscar a senha atual do Firestore para fazer login
-  db.collection('usuarios').doc(uid).get().then(function(doc){
-    if(!doc.exists) throw new Error('Usuário não encontrado');
-    // Enviar reset de senha por email como alternativa confiável
-    return auth.sendPasswordResetEmail(email);
-  }).then(function(){
-    msgEl.innerHTML='<span style="color:#1565c0">📧 Link de reset enviado para '+email+'. Peça ao morador para verificar o email e redefinir a senha.</span>';
-  }).catch(function(e){
-    // Fallback: tentar via API REST com token do admin
-    auth.currentUser.getIdToken().then(function(adminToken){
-      // Buscar o localId do usuário via lookup
-      return fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key='+apiKey,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({idToken:adminToken})
-      }).then(function(r){return r.json();});
-    }).catch(function(e2){
-      msgEl.innerHTML='<span style="color:#c0392b">❌ Erro: '+e2.message+'</span>';
-    });
-  });
-}
 function enviarResetLink(){
   var uid=document.getElementById('edit-uid').value;
   var msgEl=document.getElementById('msg-senha');
@@ -348,7 +306,7 @@ function enviarResetLink(){
     });
   }).catch(function(e){msgEl.innerHTML='<span style="color:#c0392b">❌ Erro: '+e.message+'</span>';});
 }
-function fecharModal(){document.getElementById('modal-edicao').classList.remove('on');document.getElementById('msg-senha').innerHTML='';document.getElementById('edit-senha').value='';}
+function fecharModal(){document.getElementById('modal-edicao').classList.remove('on');document.getElementById('msg-senha').innerHTML='';}
 function excluirUsuario(){
   var uid=document.getElementById('edit-uid').value;
   var nome=document.getElementById('edit-nome').value;
