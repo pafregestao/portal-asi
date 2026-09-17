@@ -88,10 +88,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <div class="create-form">
       <h3>➕ Novo usuário</h3>
       <div class="form-grid">
-        <div class="form-group"><label>Nome completo</label><input id="c-nome" placeholder="Ex: João Silva"></div>
-        <div class="form-group"><label>E-mail</label><input id="c-email" type="email" placeholder="morador@email.com"></div>
-        <div class="form-group"><label>Unidade (Apto)</label><input id="c-unidade" placeholder="Ex: 1042" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
-        <div class="form-group"><label>Celular</label><input id="c-cel" placeholder="(19) 99999-9999"></div>
+        <div class="form-group"><label>Nome completo</label><input id="c-nome" name="campo-nome" autocomplete="off" placeholder="Ex: João Silva"></div>
+        <div class="form-group"><label>E-mail</label><input id="c-email" name="campo-email-novo" autocomplete="off" type="email" placeholder="morador@email.com"></div>
+        <div class="form-group"><label>Unidade (Apto)</label><input id="c-unidade" name="campo-unidade" autocomplete="off" placeholder="Ex: 1042" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+        <div class="form-group"><label>Celular</label><input id="c-cel" name="campo-celular" autocomplete="off" placeholder="(19) 99999-9999"></div>
         <div class="form-group"><label>Tipo</label>
           <select id="c-tipo"><option>Proprietário</option><option>Inquilino</option><option>Familiar</option></select>
         </div>
@@ -125,11 +125,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   <div class="modal">
     <h2>✏️ Editar usuário</h2>
     <input type="hidden" id="edit-uid">
-    <div class="form-group"><label>Nome</label><input id="edit-nome"></div>
-    <div class="form-group"><label>Unidade (Apto)</label><input id="edit-unidade" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+    <div class="form-group"><label>Nome</label><input id="edit-nome" name="campo-edit-nome" autocomplete="off"></div>
+    <div class="form-group"><label>Unidade (Apto)</label><input id="edit-unidade" name="campo-edit-unidade" autocomplete="off" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
     <div class="form-group"><label>Senha</label>
       <div style="display:flex;gap:8px">
-        <input id="edit-senha" type="text" placeholder="Nova senha (min. 6 caracteres)" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fafafa">
+        <input id="edit-senha" name="campo-nova-credencial" autocomplete="off" type="text" placeholder="Nova senha (min. 6 caracteres)" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fafafa">
         <button onclick="gerarSenha()" style="padding:9px 12px;background:#f0efe8;border:none;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap">🎲 Gerar</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:6px">
@@ -138,7 +138,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       </div>
       <div id="msg-senha" style="margin-top:6px;font-size:12px"></div>
     </div>
-    <div class="form-group"><label>Celular</label><input id="edit-cel"></div>
+    <div class="form-group"><label>Celular</label><input id="edit-cel" name="campo-edit-celular" autocomplete="off"></div>
     <div class="form-group"><label>Tipo</label>
       <select id="edit-tipo"><option>Proprietário</option><option>Inquilino</option><option>Familiar</option></select>
     </div>
