@@ -347,7 +347,6 @@ textarea.fi{height:75px;resize:vertical}
       <div class="admin-tabs">
         <button class="at on" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
         <button class="at" onclick="adminTab('projetos',this)">🔨 Projetos</button>
-        <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
         <button class="at" onclick="adminTab('notificacoes',this)">📲 Notificações<span id="tab-notif-count"></span></button>
       </div>
       <div class="admin-sec on" id="asec-realizacoes">
@@ -368,20 +367,6 @@ textarea.fi{height:75px;resize:vertical}
         <div id="edit-projetos"></div>
         <button class="add-btn" onclick="addProjeto()">+ Adicionar projeto</button>
         <button class="save-btn" onclick="salvarProjetos()">💾 Salvar projetos</button>
-      </div>
-      <div class="admin-sec" id="asec-orcamentos">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo orçamento</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-orc-nome" placeholder="Nome do orçamento..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addOrcamentoRapido()">
-            <select id="nova-orc-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option>Quiosque</option><option>Car Wash</option><option>Pintura</option><option>Portaria</option><option>Documentação</option><option>Limpeza</option><option>Jardinagem</option><option>Pl. Solar</option><option>Câmeras</option><option>Outros</option>
-            </select>
-            <button onclick="addOrcamentoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
-        <div id="edit-orcamentos"></div>
-        <button class="save-btn" onclick="salvarOrcamentos();renderOrcamentos();alert('✅ Orçamentos salvos!')">💾 Salvar orçamentos</button>
       </div>
       <div class="admin-sec" id="asec-notificacoes">
         <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Notificações pendentes de envio pro WhatsApp do morador (defeitos e sugestões que mudaram de status ou receberam resposta). Clique em "Enviar" pra abrir o WhatsApp já com a mensagem pronta — a notificação some da lista sozinha.</div>
@@ -1140,19 +1125,39 @@ function renderOrcamentos(){
   var el=document.getElementById('orc-lista');if(!el)return;
   renderFiltrosOrc();
   var filtrados=filtroAtualOrc==='todos'?orcamentos:orcamentos.filter(function(o){return o.cat===filtroAtualOrc;});
-  el.innerHTML=filtrados.map(function(o){
+  var formAdd=!adminLogado?'':(
+    '<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo orçamento</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        '<input id="nova-orc-nome" placeholder="Nome do orçamento..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addOrcamentoRapido()">'+
+        '<select id="nova-orc-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+CATS_ORC.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'+
+        '<button onclick="addOrcamentoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+      '</div>'+
+    '</div>'
+  );
+  el.innerHTML=formAdd+filtrados.map(function(o){
     var i=orcamentos.indexOf(o);
+    if(!adminLogado){
+      return '<div class="card" style="margin-bottom:8px">'+
+        '<div class="row">'+
+          '<div style="flex:1"><div style="font-weight:600">'+o.nome+'</div><div style="font-size:11px;color:var(--txt3)">'+o.cat+'</div></div>'+
+          '<span class="badge '+o.status+'">'+orcStatusTxt[o.status]+'</span>'+
+        '</div>'+
+        (o.arquivos&&o.arquivos.length?'<div style="margin-top:8px">'+o.arquivos.map(function(a){return '<span class="tag">📄 '+a+'</span>';}).join('')+'</div>':'')+
+      '</div>';
+    }
     return '<div class="card" style="margin-bottom:8px">'+
-      '<div class="row">'+
-        '<div style="flex:1"><div style="font-weight:600">'+o.nome+'</div><div style="font-size:11px;color:var(--txt3)">'+o.cat+'</div></div>'+
+      '<div class="row" style="flex-wrap:wrap;gap:6px">'+
+        '<input value="'+esc(o.nome)+'" onchange="orcamentos['+i+'].nome=this.value;salvarOrcamentos();renderFiltrosOrc();renderOrcamentos()" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+        '<select onchange="orcamentos['+i+'].cat=this.value;salvarOrcamentos();renderFiltrosOrc();renderOrcamentos()" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+CATS_ORC.map(function(c){return '<option value="'+c+'"'+(o.cat===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>'+
         '<select class="orc-status-sel badge '+o.status+'" onchange="atualizarStatusOrcamento('+i+',this.value)">'+
           ['warn','bad','blue','ok','gray','canceled'].map(function(s){return '<option value="'+s+'"'+(o.status===s?' selected':'')+'>'+orcStatusTxt[s]+'</option>';}).join('')+
         '</select>'+
-        (adminLogado?'<button class="del-btn" style="margin-left:4px" onclick="orcamentos.splice('+i+',1);salvarOrcamentos();renderFiltrosOrc();renderOrcamentos()">&#x2715;</button>':'')+
+        '<button class="del-btn" onclick="orcamentos.splice('+i+',1);salvarOrcamentos();renderFiltrosOrc();renderOrcamentos()">&#x2715;</button>'+
       '</div>'+
       (o.arquivos&&o.arquivos.length?'<div style="margin-top:8px">'+o.arquivos.map(function(a){return '<span class="tag">📄 '+a+'</span>';}).join('')+'</div>':'')+
     '</div>';
-  }).join('')+(adminLogado?'<button class="add-btn" onclick="addOrcamento()">+ Adicionar orçamento</button>':'');
+  }).join('');
 }
 function addOrcamento(){
   var n=prompt('Nome do orçamento:');if(!n)return;
