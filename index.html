@@ -582,6 +582,7 @@ auth.onAuthStateChanged(function(user){
     // Inicializar portal — carrega dados do Firestore
     if(usuarioAtual.perfil!=='admin') _trackInit(user.uid);
     carregarTodosOsDados(function(){
+      migrarTarefasConcluidas();
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();carregarChamados();carregarSugestoes();
     });
@@ -1367,6 +1368,20 @@ function excluirTarefaDireto(i){
   if(!confirm('Excluir a tarefa "'+tarefas[i].txt+'"?')) return;
   tarefas.splice(i,1);
   salvarTarefasSilencioso();
+}
+function migrarTarefasConcluidas(){
+  if(!adminLogado) return;
+  var concluidas=tarefas.filter(function(t){return t.status==='ok';});
+  if(!concluidas.length) return;
+  tarefas=tarefas.filter(function(t){return t.status!=='ok';});
+  var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var hoje=new Date();
+  var dataStr=meses[hoje.getMonth()]+'/'+hoje.getFullYear();
+  concluidas.forEach(function(item){
+    dadosAdmin.realizacoes.unshift({data:dataStr,txt:item.txt,foto:''});
+  });
+  salvarNoFirestore('tarefas',tarefas,function(){});
+  salvarNoFirestore('realizacoes',dadosAdmin.realizacoes,function(){renderRealizacoes();});
 }
 function renderTarefas(){
   var el=document.getElementById('lista-tarefas');if(!el)return;
