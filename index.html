@@ -348,8 +348,6 @@ textarea.fi{height:75px;resize:vertical}
         <button class="at on" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
         <button class="at" onclick="adminTab('projetos',this)">🔨 Projetos</button>
         <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
-        <button class="at" onclick="adminTab('documentos',this)">📁 Documentos</button>
-        <button class="at" onclick="adminTab('assembleias',this)">🏛 Assembleias</button>
         <button class="at" onclick="adminTab('notificacoes',this)">📲 Notificações<span id="tab-notif-count"></span></button>
       </div>
       <div class="admin-sec on" id="asec-realizacoes">
@@ -384,25 +382,6 @@ textarea.fi{height:75px;resize:vertical}
         </div>
         <div id="edit-orcamentos"></div>
         <button class="save-btn" onclick="salvarOrcamentos();renderOrcamentos();alert('✅ Orçamentos salvos!')">💾 Salvar orçamentos</button>
-      </div>
-      <div class="admin-sec" id="asec-documentos">
-        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Gerencie os documentos. Cole o link do Drive de cada arquivo.</div>
-        <div id="edit-documentos"></div>
-        <button class="add-btn" onclick="addDocumento()">+ Adicionar documento</button>
-        <button class="save-btn" onclick="salvarDocumentos()">&#x1F4BE; Salvar documentos</button>
-      </div>
-      <div class="admin-sec" id="asec-assembleias">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova assembleia/ata</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-asb-nome" placeholder="Nome (ex: Assembleia 12/03/2026)..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <input id="nova-asb-sub" placeholder="Data/detalhe (ex: Mar/2026)" style="width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addAssembleiaRapida()">
-            <button onclick="addAssembleiaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Cole o link do arquivo específico no Drive (não da pasta) em cada item, pra abrir o PDF direto.</div>
-        <div id="edit-assembleias"></div>
-        <button class="save-btn" onclick="salvarAssembleias()">&#x1F4BE; Salvar assembleias</button>
       </div>
       <div class="admin-sec" id="asec-notificacoes">
         <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Notificações pendentes de envio pro WhatsApp do morador (defeitos e sugestões que mudaram de status ou receberam resposta). Clique em "Enviar" pra abrir o WhatsApp já com a mensagem pronta — a notificação some da lista sozinha.</div>
@@ -1991,19 +1970,64 @@ function renderDocumentos(){
   ['docs','plantas'].forEach(function(secao){
     var elId=secao==='docs'?'lista-documentos':'lista-plantas';
     var el=document.getElementById(elId);if(!el)return;
-    var filtrados=documentos.filter(function(d){return d.secao===secao;});
-    if(!filtrados.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhum documento cadastrado.</div>';return;}
-    el.innerHTML=filtrados.map(function(d){
-      var inner='<div class="file-ico" style="background:#e3f0fb">📄</div>'+
-        '<div style="flex:1"><div style="font-weight:500">'+d.nome+'</div>'+
-        (d.sub?'<div style="font-size:11px;color:var(--txt3)">'+d.sub+'</div>':'')+
-        '</div>';
-      if(d.link){
-        return '<a href="'+driveLink(d.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:12px;margin-left:6px">🔗</span></a>';
-      }
-      return '<div class="file-row">'+inner+'</div>';
+    var idxs=[];
+    documentos.forEach(function(d,i){if(d.secao===secao) idxs.push(i);});
+    if(!adminLogado){
+      if(!idxs.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhum documento cadastrado.</div>';return;}
+      el.innerHTML=idxs.map(function(i){
+        var d=documentos[i];
+        var inner='<div class="file-ico" style="background:#e3f0fb">📄</div>'+
+          '<div style="flex:1"><div style="font-weight:500">'+d.nome+'</div>'+
+          (d.sub?'<div style="font-size:11px;color:var(--txt3)">'+d.sub+'</div>':'')+
+          '</div>';
+        if(d.link){
+          return '<a href="'+driveLink(d.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:12px;margin-left:6px">🔗</span></a>';
+        }
+        return '<div class="file-row">'+inner+'</div>';
+      }).join('');
+      return;
+    }
+    var formAdd=secao!=='docs'?'':(
+      '<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+        '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo documento</div>'+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+          '<input id="novo-doc-nome" placeholder="Nome do documento..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addDocumentoRapido()">'+
+          '<select id="novo-doc-secao" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit"><option value="docs">Docs</option><option value="plantas">Plantas</option></select>'+
+          '<button onclick="addDocumentoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+        '</div>'+
+      '</div>'
+    );
+    if(!idxs.length){el.innerHTML=formAdd+'<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhum documento cadastrado.</div>';return;}
+    el.innerHTML=formAdd+idxs.map(function(i){
+      var d=documentos[i];
+      return '<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
+        '<div class="file-ico" style="background:#e3f0fb">📄</div>'+
+        '<input value="'+esc(d.nome)+'" onchange="documentos['+i+'].nome=this.value;salvarDocumentosSilencioso()" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+        '<input value="'+esc(d.sub||'')+'" onchange="documentos['+i+'].sub=this.value;salvarDocumentosSilencioso()" placeholder="Detalhe" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<input value="'+esc(d.link||'')+'" onchange="documentos['+i+'].link=this.value;salvarDocumentosSilencioso()" placeholder="🔗 Link do Drive" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<select onchange="documentos['+i+'].secao=this.value;salvarDocumentosSilencioso()" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit"><option value="docs"'+(d.secao==='docs'?' selected':'')+'>Docs</option><option value="plantas"'+(d.secao==='plantas'?' selected':'')+'>Plantas</option></select>'+
+        '<button onclick="excluirDocumentoDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
+      '</div>';
     }).join('');
   });
+}
+function salvarDocumentosSilencioso(){
+  salvarNoFirestore('documentos',documentos,function(){renderDocumentos();});
+}
+function excluirDocumentoDireto(i){
+  if(!documentos[i]) return;
+  if(!confirm('Excluir o documento "'+documentos[i].nome+'"?')) return;
+  documentos.splice(i,1);
+  salvarDocumentosSilencioso();
+}
+function addDocumentoRapido(){
+  var nome=document.getElementById('novo-doc-nome').value.trim();
+  if(!nome){alert('Informe o nome.');return;}
+  var secao=document.getElementById('novo-doc-secao').value;
+  documentos.push({nome:nome,sub:'',link:'',secao:secao});
+  document.getElementById('novo-doc-nome').value='';
+  document.getElementById('novo-doc-nome').focus();
+  salvarDocumentosSilencioso();
 }
 
 function driveLink(link){
@@ -2059,17 +2083,56 @@ function salvarAssembleias(){
 
 function renderAssembleias(){
   var el=document.getElementById('lista-assembleias');if(!el)return;
-  if(!assembleias.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhuma assembleia cadastrada.</div>';return;}
-  el.innerHTML=assembleias.map(function(a){
-    var inner='<div class="file-ico" style="background:'+(a.bg||'#e3f0fb')+'">'+(a.ico||'📋')+'</div>'+
-      '<div style="flex:1"><div style="font-weight:500">'+escHtml(a.nome)+'</div>'+
-      (a.sub?'<div style="font-size:11px;color:var(--txt3)">'+escHtml(a.sub)+'</div>':'')+
+  if(!adminLogado){
+    if(!assembleias.length){el.innerHTML='<div style="padding:12px;color:var(--txt3);font-size:13px">Nenhuma assembleia cadastrada.</div>';return;}
+    el.innerHTML=assembleias.map(function(a){
+      var inner='<div class="file-ico" style="background:'+(a.bg||'#e3f0fb')+'">'+(a.ico||'📋')+'</div>'+
+        '<div style="flex:1"><div style="font-weight:500">'+escHtml(a.nome)+'</div>'+
+        (a.sub?'<div style="font-size:11px;color:var(--txt3)">'+escHtml(a.sub)+'</div>':'')+
+        '</div>';
+      if(a.link){
+        return '<a href="'+driveLink(a.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:18px">›</span></a>';
+      }
+      return '<div class="file-row">'+inner+'<span style="font-size:10px;color:var(--txt3)">Sem link</span></div>';
+    }).join('');
+    return;
+  }
+  var formAdd='<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova assembleia/ata</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<input id="nova-asb-nome" placeholder="Nome (ex: Assembleia 12/03/2026)..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
+      '<input id="nova-asb-sub" placeholder="Data/detalhe (ex: Mar/2026)" style="width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addAssembleiaRapida()">'+
+      '<button onclick="addAssembleiaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+    '</div>'+
+  '</div>';
+  el.innerHTML=formAdd+'<div style="font-size:11px;color:var(--txt3);margin-bottom:8px">Cole o link do arquivo específico no Drive (não da pasta) em cada item, pra abrir o PDF direto.</div>'+
+    assembleias.map(function(a,i){
+      return '<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
+        '<div style="display:flex;flex-direction:column;gap:1px">'+
+          '<button onclick="moverAssembleia('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir">▲</button>'+
+          '<button onclick="moverAssembleia('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer">▼</button>'+
+        '</div>'+
+        '<div class="file-ico" style="background:'+(a.bg||'#e3f0fb')+'">'+(a.ico||'📋')+'</div>'+
+        '<input value="'+esc(a.nome)+'" onchange="assembleias['+i+'].nome=this.value;salvarAssembleiasSilencioso()" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+        '<input value="'+esc(a.sub||'')+'" onchange="assembleias['+i+'].sub=this.value;salvarAssembleiasSilencioso()" placeholder="Data/detalhe" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<input value="'+esc(a.link||'')+'" onchange="assembleias['+i+'].link=this.value;salvarAssembleiasSilencioso()" placeholder="🔗 Link do arquivo" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<button onclick="excluirAssembleiaDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
       '</div>';
-    if(a.link){
-      return '<a href="'+driveLink(a.link)+'" target="_blank" class="file-row" style="text-decoration:none;color:inherit">'+inner+'<span style="color:#1565c0;font-size:18px">›</span></a>';
-    }
-    return '<div class="file-row">'+inner+'<span style="font-size:10px;color:var(--txt3)">Sem link</span></div>';
-  }).join('');
+    }).join('');
+}
+function salvarAssembleiasSilencioso(){
+  salvarNoFirestore('assembleias',assembleias,function(){renderAssembleias();});
+}
+function moverAssembleia(i,dir){
+  var j=i+dir; if(j<0||j>=assembleias.length) return;
+  var tmp=assembleias[i];assembleias[i]=assembleias[j];assembleias[j]=tmp;
+  salvarAssembleiasSilencioso();
+}
+function excluirAssembleiaDireto(i){
+  if(!assembleias[i]) return;
+  if(!confirm('Excluir "'+assembleias[i].nome+'"?')) return;
+  assembleias.splice(i,1);
+  salvarAssembleiasSilencioso();
 }
 
 function renderAssembleiasAdmin(){
