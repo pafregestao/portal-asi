@@ -346,7 +346,6 @@ textarea.fi{height:75px;resize:vertical}
     <div id="adminPainel" style="display:none">
       <div class="admin-tabs">
         <button class="at on" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
-        <button class="at" onclick="adminTab('projetos',this)">🔨 Projetos</button>
         <button class="at" onclick="adminTab('notificacoes',this)">📲 Notificações<span id="tab-notif-count"></span></button>
       </div>
       <div class="admin-sec on" id="asec-realizacoes">
@@ -361,12 +360,6 @@ textarea.fi{height:75px;resize:vertical}
         </div>
         <div id="edit-realizacoes"></div>
         <button class="save-btn" onclick="salvarRealizacoes()">💾 Salvar realizações</button>
-      </div>
-      <div class="admin-sec" id="asec-projetos">
-        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Projetos principais com barra de progresso.</div>
-        <div id="edit-projetos"></div>
-        <button class="add-btn" onclick="addProjeto()">+ Adicionar projeto</button>
-        <button class="save-btn" onclick="salvarProjetos()">💾 Salvar projetos</button>
       </div>
       <div class="admin-sec" id="asec-notificacoes">
         <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Notificações pendentes de envio pro WhatsApp do morador (defeitos e sugestões que mudaram de status ou receberam resposta). Clique em "Enviar" pra abrir o WhatsApp já com a mensagem pronta — a notificação some da lista sozinha.</div>
@@ -1608,17 +1601,6 @@ function renderAdmin(){
       '<input style="width:100%;margin-top:4px;font-size:11px" value="'+esc(r.foto||'')+'" onchange="dadosAdmin.realizacoes['+i+'].foto=this.value" placeholder="🖼️ Link da foto no Drive (opcional)">'+
       '<button class="del-btn" onclick="dadosAdmin.realizacoes.splice('+i+',1);renderAdmin()">&#x2715;</button></div>';
   }).join('');
-
-  var ep=document.getElementById('edit-projetos');
-  ep.innerHTML=dadosAdmin.projetos.map(function(p,i){
-    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
-      ordemBtns.replace('{UP}','moverItem(dadosAdmin.projetos,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.projetos,'+i+',1,renderAdmin)')+
-      '<input class="ie-txt" style="min-width:130px" value="'+esc(p.nome)+'" onchange="dadosAdmin.projetos['+i+'].nome=this.value">'+
-      '<input class="ie-sub" value="'+esc(p.sub)+'" onchange="dadosAdmin.projetos['+i+'].sub=this.value" placeholder="Detalhe">'+
-      '<input style="width:55px" type="number" min="0" max="100" value="'+p.pct+'" onchange="dadosAdmin.projetos['+i+'].pct=+this.value" placeholder="%">'+
-      '<select class="ie-sel" onchange="onStatusChange(dadosAdmin.projetos,'+i+',this.value,renderAdmin)">'+selOpts(p.status)+'</select>'+
-      '<button class="del-btn" onclick="dadosAdmin.projetos.splice('+i+',1);renderAdmin()">✕</button></div>';
-  }).join('');
 }
 function addAlerta(){dadosAdmin.alertas.push({txt:'Novo alerta',sub:'',status:'warn'});renderAdmin();}
 function addRealizacao(){dadosAdmin.realizacoes.unshift({data:'Abr/2026',txt:'Nova realização'});renderAdmin();}
@@ -1822,9 +1804,63 @@ function renderProjetosAdmin(){
   var el=document.getElementById('lista-projetos-admin');if(!el)return;
   var corBar={bad:'var(--bad)',warn:'var(--warn)',blue:'#1565c0',ok:'var(--ok)',purple:'#7c3aed',gray:'#888',construction:'#d97706',approved:'#2d7a3a',canceled:'#999'};
   var lblBar=stMap;
-  el.innerHTML=dadosAdmin.projetos.map(function(p){return '<div class="card clickable" style="margin-bottom:8px"><div class="row" style="margin-bottom:9px"><div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.sub+'</div></div><span class="badge '+p.status+'">'+(lblBar[p.status]||p.status)+'</span></div><div class="pl"><span>Andamento</span><span>'+p.pct+'%</span></div><div class="bw"><div class="br" style="width:'+p.pct+'%;background:'+(corBar[p.status]||'#888')+'"></div></div></div>';}).join('');
-  var totalProj=document.getElementById('proj-total-proj');
-  if(totalProj) totalProj.textContent=dadosAdmin.projetos.length;
+  if(!adminLogado){
+    el.innerHTML=dadosAdmin.projetos.map(function(p){return '<div class="card clickable" style="margin-bottom:8px"><div class="row" style="margin-bottom:9px"><div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.sub+'</div></div><span class="badge '+p.status+'">'+(lblBar[p.status]||p.status)+'</span></div><div class="pl"><span>Andamento</span><span>'+p.pct+'%</span></div><div class="bw"><div class="br" style="width:'+p.pct+'%;background:'+(corBar[p.status]||'#888')+'"></div></div></div>';}).join('');
+    var totalProj=document.getElementById('proj-total-proj');
+    if(totalProj) totalProj.textContent=dadosAdmin.projetos.length;
+    return;
+  }
+  var formAdd='<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo projeto</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<input id="novo-proj-nome" placeholder="Nome do projeto..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addProjetoRapido()">'+
+      '<button onclick="addProjetoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+    '</div>'+
+  '</div>';
+  el.innerHTML=formAdd+dadosAdmin.projetos.map(function(p,i){
+    return '<div class="card" style="margin-bottom:8px;padding:14px">'+
+      '<div style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px">'+
+        '<div style="display:flex;flex-direction:column;gap:1px">'+
+          '<button onclick="moverProjeto('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir">▲</button>'+
+          '<button onclick="moverProjeto('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer">▼</button>'+
+        '</div>'+
+        '<input value="'+esc(p.nome)+'" onchange="dadosAdmin.projetos['+i+'].nome=this.value;salvarProjetosSilencioso()" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:14px;font-weight:600;font-family:inherit">'+
+        '<button onclick="excluirProjetoDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
+        '<input value="'+esc(p.sub)+'" onchange="dadosAdmin.projetos['+i+'].sub=this.value;salvarProjetosSilencioso()" placeholder="Detalhe" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<select onchange="dadosAdmin.projetos['+i+'].status=this.value;salvarProjetosSilencioso()" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+selOpts(p.status)+'</select>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="font-size:12px;color:var(--txt3)">Andamento:</span>'+
+        '<input type="number" min="0" max="100" value="'+p.pct+'" onchange="dadosAdmin.projetos['+i+'].pct=Math.max(0,Math.min(100,+this.value||0));salvarProjetosSilencioso()" style="width:55px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit">'+
+        '<span style="font-size:12px;color:var(--txt3)">%</span>'+
+        '<div class="bw" style="flex:1"><div class="br" style="width:'+p.pct+'%;background:'+(corBar[p.status]||'#888')+'"></div></div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function salvarProjetosSilencioso(){
+  salvarNoFirestore('projetos',dadosAdmin.projetos,function(){renderProjetosAdmin();});
+}
+function moverProjeto(i,dir){
+  var j=i+dir; if(j<0||j>=dadosAdmin.projetos.length) return;
+  var tmp=dadosAdmin.projetos[i];dadosAdmin.projetos[i]=dadosAdmin.projetos[j];dadosAdmin.projetos[j]=tmp;
+  salvarProjetosSilencioso();
+}
+function excluirProjetoDireto(i){
+  if(!dadosAdmin.projetos[i]) return;
+  if(!confirm('Excluir o projeto "'+dadosAdmin.projetos[i].nome+'"?')) return;
+  dadosAdmin.projetos.splice(i,1);
+  salvarProjetosSilencioso();
+}
+function addProjetoRapido(){
+  var nome=document.getElementById('novo-proj-nome').value.trim();
+  if(!nome){alert('Informe o nome.');return;}
+  dadosAdmin.projetos.push({nome:nome,sub:'',pct:0,status:'blue'});
+  document.getElementById('novo-proj-nome').value='';
+  document.getElementById('novo-proj-nome').focus();
+  salvarProjetosSilencioso();
 }
 function renderContratosAdmin(){
   var el=document.getElementById('tbody-contratos');if(!el)return;
