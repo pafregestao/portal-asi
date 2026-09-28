@@ -345,22 +345,14 @@ textarea.fi{height:75px;resize:vertical}
     </div>
     <div id="adminPainel" style="display:none">
       <div class="admin-tabs">
-        <button class="at on" onclick="adminTab('alertas',this)">🔴 Alertas</button>
-        <button class="at" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
+        <button class="at on" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
         <button class="at" onclick="adminTab('projetos',this)">🔨 Projetos</button>
-        <button class="at" onclick="adminTab('contratos',this)">📋 Contratos</button>
-        <button class="at" onclick="adminTab('prestadores',this)">👤 Prestadores</button>
         <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
         <button class="at" onclick="adminTab('documentos',this)">📁 Documentos</button>
         <button class="at" onclick="adminTab('assembleias',this)">🏛 Assembleias</button>
         <button class="at" onclick="adminTab('notificacoes',this)">📲 Notificações<span id="tab-notif-count"></span></button>
       </div>
-      <div class="admin-sec on" id="asec-alertas">
-        <div id="edit-alertas"></div>
-        <button class="add-btn" onclick="addAlerta()">+ Adicionar alerta</button>
-        <button class="save-btn" onclick="salvarAlertas()">💾 Salvar alertas</button>
-      </div>
-      <div class="admin-sec" id="asec-realizacoes">
+      <div class="admin-sec on" id="asec-realizacoes">
         <!-- Formulário rápido fixo no topo -->
         <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
           <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova realização</div>
@@ -378,34 +370,6 @@ textarea.fi{height:75px;resize:vertical}
         <div id="edit-projetos"></div>
         <button class="add-btn" onclick="addProjeto()">+ Adicionar projeto</button>
         <button class="save-btn" onclick="salvarProjetos()">💾 Salvar projetos</button>
-      </div>
-      <div class="admin-sec" id="asec-contratos">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo contrato</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-con-doc" placeholder="Nome do documento..." style="flex:1;min-width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <input id="nova-con-val" placeholder="Validade (ex: Fev/2027)" style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addContratoRapido()">
-            <button onclick="addContratoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
-        <div id="edit-contratos"></div>
-        <button class="add-btn" onclick="addRamoContrato()" style="background:#f0eeff;color:#7c3aed">+ Ramo de atividade</button>
-        <button class="save-btn" onclick="salvarContratos()">💾 Salvar contratos</button>
-      </div>
-      <div class="admin-sec" id="asec-prestadores">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo prestador</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-pre-nome" placeholder="Nome..." style="flex:1;min-width:100px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <input id="nova-pre-tel" placeholder="Telefone..." style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-            <select id="nova-pre-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option>Eletricista</option><option>Jardinagem</option><option>Portaria / Cameras</option><option>Ar Condicionado</option><option>Placa Solar</option><option>FoodTruck</option><option>Smart Store</option><option>Advogado</option>
-            </select>
-            <button onclick="addPrestadorRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
-        <div id="edit-prestadores"></div>
-        <button class="save-btn" onclick="salvarPrestadores();renderPrestadores();alert('✅ Prestadores salvos!')">💾 Salvar prestadores</button>
       </div>
       <div class="admin-sec" id="asec-orcamentos">
         <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
@@ -607,7 +571,7 @@ function fazerLogout(){
 // ===== FIM AUTH =====
 
 var WA='5519989360523';
-var NAV_IDS=['inicio','projetos','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
+var NAV_IDS=['inicio','projetos','tarefas','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
 var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
 var adminLogado=false;
 
@@ -1283,24 +1247,43 @@ function renderPrestadores(){
   var filtrados=prestadores.filter(function(p){return (filtroAtualPrest==='todos'||p.cat===filtroAtualPrest)&&(p.nome+p.cat+p.ind).toLowerCase().includes(q);});
   var grupos={};
   filtrados.forEach(function(p){if(!grupos[p.cat])grupos[p.cat]=[];grupos[p.cat].push(p);});
-  var html='';
+  var html=!adminLogado?'':(
+    '<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo prestador</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        '<input id="nova-pre-nome" placeholder="Nome..." style="flex:1;min-width:100px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
+        '<input id="nova-pre-tel" placeholder="Telefone..." style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
+        '<select id="nova-pre-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+CATS_PREST.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'+
+        '<button onclick="addPrestadorRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+      '</div>'+
+    '</div>'
+  );
   Object.keys(grupos).forEach(function(cat){
     html+='<div class="card" style="padding:0 15px;margin-bottom:8px">';
     html+='<div style="padding:10px 0 6px;font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em">'+cat+'</div>';
     grupos[cat].forEach(function(p){
       var idx=prestadores.indexOf(p);
       var tel=p.tel.replace(/[^0-9]/g,''); if(tel.length>=10) tel='55'+tel;
-      html+='<div class="file-row">'+
+      if(!adminLogado){
+        html+='<div class="file-row">'+
+          '<div class="file-ico" style="background:'+(catBg[cat]||'#f0f0f0')+'">'+(catIcos[cat]||'👤')+'</div>'+
+          '<div style="flex:1"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+escHtml(p.ind):'')+'</div></div>'+
+          '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:4px">📞 Ligar</a>'+
+          '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="badge ok" style="text-decoration:none;margin-right:4px">💬 WhatsApp</a>'+
+        '</div>';
+        return;
+      }
+      html+='<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
         '<div class="file-ico" style="background:'+(catBg[cat]||'#f0f0f0')+'">'+(catIcos[cat]||'👤')+'</div>'+
-        '<div style="flex:1"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+escHtml(p.ind):'')+'</div></div>'+
-        '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:4px">📞 Ligar</a>'+
-        '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="badge ok" style="text-decoration:none;margin-right:4px">💬 WhatsApp</a>'+
-        (adminLogado?'<button class="del-btn" onclick="removerPrestador('+idx+')">✕</button>':'')+
+        '<input value="'+esc(p.nome)+'" onchange="prestadores['+idx+'].nome=this.value;salvarPrestadores();renderPrestadores()" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+        '<input value="'+esc(p.tel)+'" onchange="prestadores['+idx+'].tel=this.value;salvarPrestadores();renderPrestadores()" placeholder="Telefone" style="width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<select onchange="prestadores['+idx+'].cat=this.value;salvarPrestadores();renderPrestadores()" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+CATS_PREST.map(function(c){return '<option value="'+c+'"'+(p.cat===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>'+
+        '<input value="'+esc(p.ind)+'" onchange="prestadores['+idx+'].ind=this.value;salvarPrestadores();renderPrestadores()" placeholder="Indicação" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+        '<button onclick="removerPrestador('+idx+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
       '</div>';
     });
     html+='</div>';
   });
-  if(adminLogado) html+='<button class="btn primary" style="width:100%;margin-top:4px" onclick="addPrestador()">+ Adicionar prestador</button>';
   el.innerHTML=html;
   var e1=document.getElementById('prest-total'); if(e1) e1.textContent=prestadores.length;
   var e2=document.getElementById('prest-com-ind'); if(e2) e2.textContent=prestadores.filter(function(p){return p.ind;}).length;
@@ -1580,10 +1563,10 @@ function abrirAdmin(){
   document.getElementById('adminOverlay').classList.add('on');
   document.getElementById('adminLogin').style.display='none';
   document.getElementById('adminPainel').style.display='block';
-  // Resetar para aba Alertas
+  // Resetar para aba Realizações
   document.querySelectorAll('.admin-sec').forEach(function(s){s.classList.remove('on');});
   document.querySelectorAll('.at').forEach(function(b){b.classList.remove('on');});
-  document.getElementById('asec-alertas').classList.add('on');
+  document.getElementById('asec-realizacoes').classList.add('on');
   document.querySelector('.at').classList.add('on');
   renderAdmin();renderPrestadores();renderOrcamentos();renderTarefasAdmin();renderPrestadoresAdmin();renderOrcamentosAdmin();renderDocumentosAdmin();renderAssembleiasAdmin();renderNotificacoesPendentes();
   // Adicionar aba Usuários se ainda não existe
@@ -1632,16 +1615,6 @@ function adminTab(id,btn){
   document.getElementById('asec-'+id).classList.add('on');btn.classList.add('on');
 }
 function renderAdmin(){
-  var ea=document.getElementById('edit-alertas');
-  ea.innerHTML=dadosAdmin.alertas.map(function(a,i){
-    return '<div class="item-edit">'+
-      ordemBtns.replace('{UP}','moverItem(dadosAdmin.alertas,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.alertas,'+i+',1,renderAdmin)')+
-      '<select class="ie-sel" onchange="onStatusChange(dadosAdmin.alertas,'+i+',this.value,renderAdmin)">'+selOpts(a.status)+'</select>'+
-      '<input class="ie-txt" value="'+esc(a.txt)+'" onchange="dadosAdmin.alertas['+i+'].txt=this.value" placeholder="Título">'+
-      '<input class="ie-sub" value="'+esc(a.sub)+'" onchange="dadosAdmin.alertas['+i+'].sub=this.value" placeholder="Detalhe">'+
-      '<button class="del-btn" onclick="dadosAdmin.alertas.splice('+i+',1);renderAdmin()">✕</button></div>';
-  }).join('');
-
   var er=document.getElementById('edit-realizacoes');
   er.innerHTML=dadosAdmin.realizacoes.map(function(r,i){
     return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
@@ -1661,21 +1634,6 @@ function renderAdmin(){
       '<input style="width:55px" type="number" min="0" max="100" value="'+p.pct+'" onchange="dadosAdmin.projetos['+i+'].pct=+this.value" placeholder="%">'+
       '<select class="ie-sel" onchange="onStatusChange(dadosAdmin.projetos,'+i+',this.value,renderAdmin)">'+selOpts(p.status)+'</select>'+
       '<button class="del-btn" onclick="dadosAdmin.projetos.splice('+i+',1);renderAdmin()">✕</button></div>';
-  }).join('');
-
-  var ec=document.getElementById('edit-contratos');
-  ec.innerHTML=dadosAdmin.contratos.map(function(c,i){
-    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
-      ordemBtns.replace('{UP}','moverItem(dadosAdmin.contratos,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.contratos,'+i+',1,renderAdmin)')+
-      '<input class="ie-txt" style="min-width:110px" value="'+esc(c.doc)+'" onchange="dadosAdmin.contratos['+i+'].doc=this.value" placeholder="Documento">'+
-      '<select style="width:130px;font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:6px" onchange="dadosAdmin.contratos['+i+'].ramo=this.value">'+
-        RAMOS_CONTRATO.map(function(r){return '<option value="'+r+'"'+(r===(c.ramo||'')?' selected':'')+'>'+r+'</option>';}).join('')+
-        '<option value=""'+(!(c.ramo||'')?' selected':'')+'>— Sem ramo —</option>'+
-      '</select>'+
-      '<input style="width:75px" value="'+esc(c.emissao)+'" onchange="dadosAdmin.contratos['+i+'].emissao=this.value" placeholder="Emissão">'+
-      '<input style="width:85px" value="'+esc(c.validade)+'" onchange="dadosAdmin.contratos['+i+'].validade=this.value" placeholder="Validade">'+
-      '<select class="ie-sel" onchange="dadosAdmin.contratos['+i+'].status=this.value;renderAdmin()">'+stContratoOpts.map(function(o){return '<option value="'+o.v+'"'+(o.v===c.status?' selected':'')+'>'+o.l+'</option>';}).join('')+'</select>'+
-      '<button class="del-btn" onclick="dadosAdmin.contratos.splice('+i+',1);renderAdmin()">✕</button></div>';
   }).join('');
 }
 function addAlerta(){dadosAdmin.alertas.push({txt:'Novo alerta',sub:'',status:'warn'});renderAdmin();}
@@ -1730,7 +1688,53 @@ function renderAlertas(){
   var el=document.getElementById('lista-alertas');if(!el)return;
   var cor={bad:'#fdecea',warn:'#fff3e0',blue:'#e3f0fb',ok:'#e8f5e9'};
   var ico={bad:'🔴',warn:'🟡',blue:'🔵',ok:'🟢'};
-  el.innerHTML=dadosAdmin.alertas.map(function(a){return '<div class="file-row"><div class="file-ico" style="background:'+(cor[a.status]||'#f0efe8')+'">'+ico[a.status]+'</div><div style="flex:1"><div style="font-weight:600">'+a.txt+'</div><div style="font-size:12px;color:var(--txt3)">'+a.sub+'</div></div><span class="badge '+a.status+'">'+stMap[a.status]+'</span></div>';}).join('');
+  if(!adminLogado){
+    el.innerHTML=dadosAdmin.alertas.map(function(a){return '<div class="file-row"><div class="file-ico" style="background:'+(cor[a.status]||'#f0efe8')+'">'+ico[a.status]+'</div><div style="flex:1"><div style="font-weight:600">'+a.txt+'</div><div style="font-size:12px;color:var(--txt3)">'+a.sub+'</div></div><span class="badge '+a.status+'">'+stMap[a.status]+'</span></div>';}).join('');
+    return;
+  }
+  var formAdd='<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar novo alerta</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<input id="novo-alerta-txt" placeholder="Texto do alerta..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addAlertaRapido()">'+
+      '<button onclick="addAlertaRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+    '</div>'+
+  '</div>';
+  el.innerHTML=formAdd+dadosAdmin.alertas.map(function(a,i){
+    return '<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
+      '<div style="display:flex;flex-direction:column;gap:1px">'+
+        '<button onclick="moverAlerta('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir">▲</button>'+
+        '<button onclick="moverAlerta('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer">▼</button>'+
+      '</div>'+
+      '<div class="file-ico" style="background:'+(cor[a.status]||'#f0efe8')+'">'+ico[a.status]+'</div>'+
+      '<input value="'+esc(a.txt)+'" onchange="dadosAdmin.alertas['+i+'].txt=this.value;salvarAlertasSilencioso()" style="flex:1;min-width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+      '<input value="'+esc(a.sub)+'" onchange="dadosAdmin.alertas['+i+'].sub=this.value;salvarAlertasSilencioso()" placeholder="Detalhe" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<select onchange="dadosAdmin.alertas['+i+'].status=this.value;salvarAlertasSilencioso()" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+selOpts(a.status)+'</select>'+
+      '<button onclick="excluirAlertaDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
+    '</div>';
+  }).join('');
+}
+function salvarAlertasSilencioso(){
+  salvarNoFirestore('alertas',dadosAdmin.alertas,function(){renderAlertas();});
+}
+function moverAlerta(i,dir){
+  var j=i+dir;
+  if(j<0||j>=dadosAdmin.alertas.length) return;
+  var tmp=dadosAdmin.alertas[i];dadosAdmin.alertas[i]=dadosAdmin.alertas[j];dadosAdmin.alertas[j]=tmp;
+  salvarAlertasSilencioso();
+}
+function excluirAlertaDireto(i){
+  if(!dadosAdmin.alertas[i]) return;
+  if(!confirm('Excluir o alerta "'+dadosAdmin.alertas[i].txt+'"?')) return;
+  dadosAdmin.alertas.splice(i,1);
+  salvarAlertasSilencioso();
+}
+function addAlertaRapido(){
+  var txt=document.getElementById('novo-alerta-txt').value.trim();
+  if(!txt){alert('Informe o texto do alerta.');return;}
+  dadosAdmin.alertas.push({txt:txt,sub:'',status:'warn'});
+  document.getElementById('novo-alerta-txt').value='';
+  document.getElementById('novo-alerta-txt').focus();
+  salvarAlertasSilencioso();
 }
 function normalizarBusca(s){
   return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -1840,7 +1844,51 @@ function renderProjetosAdmin(){
 }
 function renderContratosAdmin(){
   var el=document.getElementById('tbody-contratos');if(!el)return;
-  el.innerHTML=dadosAdmin.contratos.map(function(c){return '<tr><td>'+c.doc+'</td><td><span style="font-size:11px;background:#f0efe8;padding:2px 8px;border-radius:99px;color:#555">'+(c.ramo||'—')+'</span></td><td>'+c.emissao+'</td><td>'+c.validade+'</td><td><span class="badge '+c.status+'">'+(stContratoMap[c.status]||c.status)+'</span></td></tr>';}).join('');
+  if(!adminLogado){
+    el.innerHTML=dadosAdmin.contratos.map(function(c){return '<tr><td>'+c.doc+'</td><td><span style="font-size:11px;background:#f0efe8;padding:2px 8px;border-radius:99px;color:#555">'+(c.ramo||'—')+'</span></td><td>'+c.emissao+'</td><td>'+c.validade+'</td><td><span class="badge '+c.status+'">'+(stContratoMap[c.status]||c.status)+'</span></td></tr>';}).join('');
+    return;
+  }
+  var linhaAdd='<tr><td colspan="5" style="padding:10px;background:#f0f5fb">'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+      '<input id="nova-con-doc" placeholder="Nome do documento..." style="flex:1;min-width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
+      '<input id="nova-con-val" placeholder="Validade (ex: Fev/2027)" style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addContratoRapido()">'+
+      '<button onclick="addContratoRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+      '<button onclick="addRamoContratoDireto()" style="padding:6px 10px;border-radius:7px;border:1px solid #ddd;background:#f0eeff;color:#7c3aed;font-size:12px;cursor:pointer">+ Ramo</button>'+
+    '</div>'+
+  '</td></tr>';
+  el.innerHTML=linhaAdd+dadosAdmin.contratos.map(function(c,i){
+    return '<tr>'+
+      '<td><input value="'+esc(c.doc)+'" onchange="dadosAdmin.contratos['+i+'].doc=this.value;salvarContratosSilencioso()" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit"></td>'+
+      '<td><select onchange="dadosAdmin.contratos['+i+'].ramo=this.value;salvarContratosSilencioso()" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+
+        '<option value=""'+(!(c.ramo||'')?' selected':'')+'>— Sem ramo —</option>'+
+        RAMOS_CONTRATO.map(function(r){return '<option value="'+r+'"'+(r===(c.ramo||'')?' selected':'')+'>'+r+'</option>';}).join('')+
+      '</select></td>'+
+      '<td><input value="'+esc(c.emissao)+'" onchange="dadosAdmin.contratos['+i+'].emissao=this.value;salvarContratosSilencioso()" style="width:75px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit"></td>'+
+      '<td><input value="'+esc(c.validade)+'" onchange="dadosAdmin.contratos['+i+'].validade=this.value;salvarContratosSilencioso()" style="width:85px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit"></td>'+
+      '<td><div style="display:flex;gap:4px;align-items:center">'+
+        '<select onchange="dadosAdmin.contratos['+i+'].status=this.value;salvarContratosSilencioso()" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+stContratoOpts.map(function(o){return '<option value="'+o.v+'"'+(o.v===c.status?' selected':'')+'>'+o.l+'</option>';}).join('')+'</select>'+
+        '<button onclick="excluirContratoDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;flex-shrink:0">✕</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+}
+function salvarContratosSilencioso(){
+  salvarNoFirestore('contratos',dadosAdmin.contratos,function(){renderContratosAdmin();});
+}
+function excluirContratoDireto(i){
+  if(!dadosAdmin.contratos[i]) return;
+  if(!confirm('Excluir o contrato "'+dadosAdmin.contratos[i].doc+'"?')) return;
+  dadosAdmin.contratos.splice(i,1);
+  salvarContratosSilencioso();
+}
+function addRamoContratoDireto(){
+  var r=prompt('Nome do novo ramo de atividade:');
+  if(!r||!r.trim()) return;
+  r=r.trim();
+  if(RAMOS_CONTRATO.indexOf(r)>=0){alert('Ramo já existe.');return;}
+  RAMOS_CONTRATO.push(r);
+  salvarRamosContrato();
+  renderContratosAdmin();
 }
 
 // ===== CHURRASQUEIRA SINCRONIZADA COM FIRESTORE =====
