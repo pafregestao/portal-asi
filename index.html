@@ -126,6 +126,7 @@ textarea.fi{height:75px;resize:vertical}
 <div class="nav-wrap"><div class="nav">
   <button class="nb on" onclick="nav('inicio')">Início</button>
   <button class="nb" onclick="nav('projetos')">Projetos</button>
+  <button class="nb" onclick="nav('tarefas')">Tarefas</button>
   <button class="nb admin-only" id="nav-orcamentos" style="display:none" onclick="nav('orcamentos')">Orçamentos</button>
   <button class="nb" onclick="nav('contratos')">Contratos</button>
   <button class="nb" onclick="nav('churrasqueira')">Churrasqueira</button>
@@ -180,17 +181,23 @@ textarea.fi{height:75px;resize:vertical}
 
 <!-- PROJETOS -->
 <div id="pg-projetos" class="pg">
-  <input class="fi" id="busca-proj" placeholder="🔍  Buscar projeto ou tarefa..." oninput="renderTarefas()" style="margin-bottom:12px">
   <div class="metrics">
     <div class="mc"><div class="mc-lbl">Projetos</div><div class="mc-val" id="proj-total-proj">0</div></div>
-    <div class="mc"><div class="mc-lbl">Total ações</div><div class="mc-val" id="proj-total">0</div></div>
-    <div class="mc"><div class="mc-lbl">Concluídas</div><div class="mc-val ok" id="proj-conc">0</div></div>
-    <div class="mc"><div class="mc-lbl">Pendentes</div><div class="mc-val warn" id="proj-pend">0</div></div>
   </div>
   <div class="sec">Projetos maiores 2026</div>
   <div id="lista-projetos-admin"></div>
-  <div class="sec">Todas as ações / tarefas</div>
-  <div id="proj-lista"></div>
+</div>
+
+<!-- TAREFAS -->
+<div id="pg-tarefas" class="pg">
+  <input class="fi" id="busca-tar" placeholder="🔍  Buscar tarefa..." oninput="renderTarefas()" style="margin-bottom:12px">
+  <div class="metrics">
+    <div class="mc"><div class="mc-lbl">Total</div><div class="mc-val" id="tar-total">0</div></div>
+    <div class="mc"><div class="mc-lbl">Pendentes</div><div class="mc-val warn" id="tar-pend">0</div></div>
+    <div class="mc"><div class="mc-lbl">Em andamento</div><div class="mc-val" id="tar-andamento">0</div></div>
+  </div>
+  <div class="sec">Ordem de prioridade</div>
+  <div id="lista-tarefas"></div>
 </div>
 
 <!-- ORÇAMENTOS -->
@@ -379,7 +386,7 @@ textarea.fi{height:75px;resize:vertical}
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <input id="nova-tar-txt" placeholder="Descrição da tarefa..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addTarefaRapida()">
             <select id="nova-tar-status" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option value="gray">Pendente</option><option value="warn">Parcial</option><option value="ok">Concluído</option><option value="bad">Urgente</option><option value="blue">Andamento</option>
+              <option value="gray">Pendente</option><option value="blue">Em andamento</option>
             </select>
             <button onclick="addTarefaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
           </div>
@@ -1354,31 +1361,27 @@ function renderPrestadoresAdmin(){
 
 // ===== TAREFAS =====
 var tarefas=[
-  {txt:'Revisar câmeras',sub:'Jan/2025',status:'warn'},
+  {txt:'Revisar câmeras',sub:'Jan/2025',status:'gray'},
   {txt:'Avaliar árvores da Quadra',sub:'Fev/2025',status:'gray'},
   {txt:'Comprar bebedouro da Quadra',sub:'Fev/2025',status:'gray'},
-  {txt:'Disponibilizar regras do condômino aos moradores',sub:'Enviado parcialmente',status:'warn'},
-  {txt:'Alterar abertura do portão',sub:'Fev/2025',status:'ok'},
-  {txt:'Acesso ao e-mail do condomínio',sub:'Priscila acompanhando',status:'ok'}
+  {txt:'Disponibilizar regras do condômino aos moradores',sub:'Enviado parcialmente',status:'gray'}
 ];
-var stLabel={ok:'Concluído',warn:'Parcial',gray:'Pendente',bad:'Urgente',blue:'Andamento'};
+var stLabel={ok:'Concluído',gray:'Pendente',blue:'Em andamento'};
 function salvarTarefas(){localStorage.setItem('asi_tarefas',JSON.stringify(tarefas));}
 function renderTarefas(){
-  var el=document.getElementById('proj-lista');if(!el)return;
-  var q=((document.getElementById('busca-proj')||{}).value||'').toLowerCase();
-  var icoMap={ok:'✅',warn:'📦',gray:'📌',bad:'🔴',blue:'📌'};
+  var el=document.getElementById('lista-tarefas');if(!el)return;
+  var q=((document.getElementById('busca-tar')||{}).value||'').toLowerCase();
   var fil=tarefas.filter(function(t){return (t.txt+t.sub).toLowerCase().includes(q);});
-  el.innerHTML='<div class="card" style="padding:0 15px">'+fil.map(function(t){
+  el.innerHTML='<div class="card" style="padding:0 15px">'+fil.map(function(t,i){
     return '<div class="file-row">'+
-      '<div class="file-ico" style="background:'+(t.status==='ok'?'#e8f5e9':'#fff3e0')+'">'+icoMap[t.status]+'</div>'+
+      '<div class="file-ico" style="background:'+(t.status==='blue'?'#e3f0fb':'#fff3e0')+';font-weight:700;color:var(--azul);font-size:13px">'+(i+1)+'º</div>'+
       '<div style="flex:1"><div style="font-weight:500">'+t.txt+'</div><div style="font-size:11px;color:var(--txt3)">'+t.sub+'</div></div>'+
       '<span class="badge '+t.status+'">'+stLabel[t.status]+'</span></div>';
   }).join('')+'</div>';
-  var tot=document.getElementById('proj-total'),conc=document.getElementById('proj-conc'),pend=document.getElementById('proj-pend'),totalProj=document.getElementById('proj-total-proj');
+  var tot=document.getElementById('tar-total'),pend=document.getElementById('tar-pend'),andamento=document.getElementById('tar-andamento');
   if(tot) tot.textContent=tarefas.length;
-  if(conc) conc.textContent=tarefas.filter(function(t){return t.status==='ok';}).length;
-  if(pend) pend.textContent=tarefas.filter(function(t){return t.status!=='ok';}).length;
-  if(totalProj) totalProj.textContent=dadosAdmin.projetos.length;
+  if(pend) pend.textContent=tarefas.filter(function(t){return t.status==='gray';}).length;
+  if(andamento) andamento.textContent=tarefas.filter(function(t){return t.status==='blue';}).length;
 }
 function renderTarefasAdmin(){
   var el=document.getElementById('edit-tarefas');if(!el)return;
@@ -1387,18 +1390,30 @@ function renderTarefasAdmin(){
       ordemBtns.replace('{UP}','moverItem(tarefas,'+i+',-1,renderTarefasAdmin)').replace('{DOWN}','moverItem(tarefas,'+i+',1,renderTarefasAdmin)')+
       '<input class="ie-txt" style="min-width:140px" value="'+esc(t.txt)+'" onchange="tarefas['+i+'].txt=this.value">'+
       '<input class="ie-sub" value="'+esc(t.sub)+'" onchange="tarefas['+i+'].sub=this.value" placeholder="Detalhe">'+
-      '<select class="ie-sel" onchange="onStatusChangeTarefa('+i+',this.value)">'+['ok','warn','gray','bad','blue'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+'</select>'+
+      '<select class="ie-sel" onchange="onStatusChangeTarefa('+i+',this.value)">'+['gray','blue','ok'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+'</select>'+
       '<button class="del-btn" onclick="tarefas.splice('+i+',1);renderTarefasAdmin()">✕</button></div>';
   }).join('');
 }
 function addTarefa(){tarefas.push({txt:'Nova tarefa',sub:'',status:'gray'});renderTarefasAdmin();}
 function onStatusChangeTarefa(i,val){
   if(!tarefas[i]) return;
-  tarefas[i].status=val;
   if(val==='ok'){
+    if(!confirm('Marcar "'+tarefas[i].txt+'" como concluída?\n\nEla vai sair da lista de Tarefas e entrar em Realizações.')){
+      renderTarefasAdmin();
+      return;
+    }
     var item=tarefas.splice(i,1)[0];
-    tarefas.push(item);
+    var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    var hoje=new Date();
+    var dataStr=meses[hoje.getMonth()]+'/'+hoje.getFullYear();
+    dadosAdmin.realizacoes.unshift({data:dataStr,txt:item.txt,foto:''});
+    salvarNoFirestore('realizacoes',dadosAdmin.realizacoes,function(){renderRealizacoes();});
+    salvarTarefas();
+    renderTarefasAdmin();
+    renderTarefas();
+    return;
   }
+  tarefas[i].status=val;
   renderTarefasAdmin();
   renderTarefas();
 }
@@ -1406,7 +1421,7 @@ function addTarefaRapida(){
   var txt=document.getElementById('nova-tar-txt').value.trim();
   if(!txt){alert('Informe a descrição.');return;}
   var status=document.getElementById('nova-tar-status').value;
-  tarefas.unshift({txt:txt,sub:'',status:status});
+  tarefas.push({txt:txt,sub:'',status:status});
   document.getElementById('nova-tar-txt').value='';
   document.getElementById('nova-tar-txt').focus();
   renderTarefasAdmin();
@@ -1778,6 +1793,8 @@ function renderProjetosAdmin(){
   var corBar={bad:'var(--bad)',warn:'var(--warn)',blue:'#1565c0',ok:'var(--ok)',purple:'#7c3aed',gray:'#888',construction:'#d97706',approved:'#2d7a3a',canceled:'#999'};
   var lblBar=stMap;
   el.innerHTML=dadosAdmin.projetos.map(function(p){return '<div class="card clickable" style="margin-bottom:8px"><div class="row" style="margin-bottom:9px"><div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.sub+'</div></div><span class="badge '+p.status+'">'+(lblBar[p.status]||p.status)+'</span></div><div class="pl"><span>Andamento</span><span>'+p.pct+'%</span></div><div class="bw"><div class="br" style="width:'+p.pct+'%;background:'+(corBar[p.status]||'#888')+'"></div></div></div>';}).join('');
+  var totalProj=document.getElementById('proj-total-proj');
+  if(totalProj) totalProj.textContent=dadosAdmin.projetos.length;
 }
 function renderContratosAdmin(){
   var el=document.getElementById('tbody-contratos');if(!el)return;
