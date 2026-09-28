@@ -348,7 +348,6 @@ textarea.fi{height:75px;resize:vertical}
         <button class="at on" onclick="adminTab('alertas',this)">🔴 Alertas</button>
         <button class="at" onclick="adminTab('realizacoes',this)">✅ Realizações</button>
         <button class="at" onclick="adminTab('projetos',this)">🔨 Projetos</button>
-        <button class="at" onclick="adminTab('tarefas',this)">📌 Tarefas</button>
         <button class="at" onclick="adminTab('contratos',this)">📋 Contratos</button>
         <button class="at" onclick="adminTab('prestadores',this)">👤 Prestadores</button>
         <button class="at" onclick="adminTab('orcamentos',this)">💰 Orçamentos</button>
@@ -379,20 +378,6 @@ textarea.fi{height:75px;resize:vertical}
         <div id="edit-projetos"></div>
         <button class="add-btn" onclick="addProjeto()">+ Adicionar projeto</button>
         <button class="save-btn" onclick="salvarProjetos()">💾 Salvar projetos</button>
-      </div>
-      <div class="admin-sec" id="asec-tarefas">
-        <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova tarefa</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <input id="nova-tar-txt" placeholder="Descrição da tarefa..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key==='Enter')addTarefaRapida()">
-            <select id="nova-tar-status" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
-              <option value="gray">Pendente</option><option value="blue">Em andamento</option>
-            </select>
-            <button onclick="addTarefaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>
-          </div>
-        </div>
-        <div id="edit-tarefas"></div>
-        <button class="save-btn" onclick="salvarTarefas()">💾 Salvar tarefas</button>
       </div>
       <div class="admin-sec" id="asec-contratos">
         <div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">
@@ -1368,15 +1353,57 @@ var tarefas=[
 ];
 var stLabel={ok:'Concluído',gray:'Pendente',blue:'Em andamento'};
 function salvarTarefas(){localStorage.setItem('asi_tarefas',JSON.stringify(tarefas));}
+function salvarTarefasSilencioso(){
+  salvarNoFirestore('tarefas',tarefas,function(){renderTarefas();});
+}
+function moverTarefa(i,dir){
+  var j=i+dir;
+  if(j<0||j>=tarefas.length) return;
+  var tmp=tarefas[i];tarefas[i]=tarefas[j];tarefas[j]=tmp;
+  salvarTarefasSilencioso();
+}
+function excluirTarefaDireto(i){
+  if(!tarefas[i]) return;
+  if(!confirm('Excluir a tarefa "'+tarefas[i].txt+'"?')) return;
+  tarefas.splice(i,1);
+  salvarTarefasSilencioso();
+}
 function renderTarefas(){
   var el=document.getElementById('lista-tarefas');if(!el)return;
   var q=((document.getElementById('busca-tar')||{}).value||'').toLowerCase();
-  var fil=tarefas.filter(function(t){return (t.txt+t.sub).toLowerCase().includes(q);});
-  el.innerHTML='<div class="card" style="padding:0 15px">'+fil.map(function(t,i){
-    return '<div class="file-row">'+
-      '<div class="file-ico" style="background:'+(t.status==='blue'?'#e3f0fb':'#fff3e0')+';font-weight:700;color:var(--azul);font-size:13px">'+(i+1)+'º</div>'+
-      '<div style="flex:1"><div style="font-weight:500">'+t.txt+'</div><div style="font-size:11px;color:var(--txt3)">'+t.sub+'</div></div>'+
-      '<span class="badge '+t.status+'">'+stLabel[t.status]+'</span></div>';
+  var idxFiltrados=[];
+  tarefas.forEach(function(t,i){if((t.txt+t.sub).toLowerCase().includes(q)) idxFiltrados.push(i);});
+  var formAdd=!adminLogado?'':(
+    '<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar nova tarefa</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        '<input id="nova-tar-txt" placeholder="Descrição da tarefa..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addTarefaRapida()">'+
+        '<select id="nova-tar-status" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit"><option value="gray">Pendente</option><option value="blue">Em andamento</option></select>'+
+        '<button onclick="addTarefaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+      '</div>'+
+    '</div>'
+  );
+  el.innerHTML=formAdd+'<div class="card" style="padding:0 15px">'+idxFiltrados.map(function(i,pos){
+    var t=tarefas[i];
+    if(!adminLogado){
+      return '<div class="file-row">'+
+        '<div class="file-ico" style="background:'+(t.status==='blue'?'#e3f0fb':'#fff3e0')+';font-weight:700;color:var(--azul);font-size:13px">'+(pos+1)+'º</div>'+
+        '<div style="flex:1"><div style="font-weight:500">'+t.txt+'</div><div style="font-size:11px;color:var(--txt3)">'+t.sub+'</div></div>'+
+        '<span class="badge '+t.status+'">'+stLabel[t.status]+'</span></div>';
+    }
+    return '<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
+      '<div style="display:flex;flex-direction:column;gap:1px">'+
+        '<button onclick="moverTarefa('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir prioridade">▲</button>'+
+        '<button onclick="moverTarefa('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer prioridade">▼</button>'+
+      '</div>'+
+      '<div class="file-ico" style="background:'+(t.status==='blue'?'#e3f0fb':'#fff3e0')+';font-weight:700;color:var(--azul);font-size:13px">'+(pos+1)+'º</div>'+
+      '<input value="'+esc(t.txt)+'" onchange="tarefas['+i+'].txt=this.value;salvarTarefasSilencioso()" style="flex:1;min-width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+      '<input value="'+esc(t.sub)+'" onchange="tarefas['+i+'].sub=this.value;salvarTarefasSilencioso()" placeholder="Detalhe" style="width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<select onchange="onStatusChangeTarefa('+i+',this.value)" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+
+        ['gray','blue','ok'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+
+      '</select>'+
+      '<button onclick="excluirTarefaDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
+    '</div>';
   }).join('')+'</div>';
   var tot=document.getElementById('tar-total'),pend=document.getElementById('tar-pend'),andamento=document.getElementById('tar-andamento');
   if(tot) tot.textContent=tarefas.length;
@@ -1481,7 +1508,7 @@ function carregarTodosOsDados(callback){
     realizacoes:function(d){dadosAdmin.realizacoes=d;},
     projetos:  function(d){dadosAdmin.projetos=d;},
     contratos: function(d){dadosAdmin.contratos=d;},
-    tarefas:   function(d){tarefas=d;},
+    tarefas:   function(d){tarefas=(d||[]).map(function(t){if(t.status!=='gray'&&t.status!=='blue'&&t.status!=='ok')t.status='gray';return t;});},
     orcamentos:function(d){orcamentos=d;},
     documentos:function(d){documentos=d;},
     assembleias:function(d){assembleias=d;},
