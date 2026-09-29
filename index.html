@@ -125,8 +125,9 @@ textarea.fi{height:75px;resize:vertical}
 
 <div class="nav-wrap"><div class="nav">
   <button class="nb on" onclick="nav('inicio')">Início</button>
-  <button class="nb" onclick="nav('projetos')">Projetos</button>
+  <button class="nb" onclick="nav('realizacoes')">Realizações</button>
   <button class="nb" onclick="nav('tarefas')">Tarefas</button>
+  <button class="nb" onclick="nav('projetos')">Projetos</button>
   <button class="nb admin-only" id="nav-orcamentos" style="display:none" onclick="nav('orcamentos')">Orçamentos</button>
   <button class="nb" onclick="nav('contratos')">Contratos</button>
   <button class="nb" onclick="nav('churrasqueira')">Churrasqueira</button>
@@ -161,22 +162,18 @@ textarea.fi{height:75px;resize:vertical}
   </div>
   <div class="sec">Alertas e pendências</div>
   <div class="card" id="lista-alertas"></div>
-  <div class="sec">Realizações recentes</div>
-  <input type="email" name="usuario-login-atual" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
-  <input id="busca-realizacoes" type="search" autocomplete="off" placeholder="🔍 Buscar em todas as realizações..." oninput="filtrarRealizacoes(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:8px;font-family:inherit">
-  <div class="card" id="lista-realizacoes"></div>
+  <div class="sec">Contatos úteis</div>
+  <div id="lista-contatos-uteis"></div>
   <div class="sec">Contato da administração</div>
-  <div class="card row">
-    <div class="gico" style="background:#e8f5e9">📞</div>
-    <div style="flex:1"><div style="font-weight:600">Gabriel — Síndico</div><div style="font-size:12px;color:var(--txt3)">(19) 98936-0523</div></div>
-    <button class="btn success" onclick="chamarWA()">WhatsApp</button>
-  </div>
-  <div class="card row">
-    <div class="gico" style="background:#e3f0fb">🏢</div>
-    <div style="flex:1"><div style="font-weight:600">Phoenix Global — Administradora/Boletos</div><div style="font-size:12px;color:var(--txt3)">(19) 99269-6889</div></div>
-    <button class="btn success" onclick="window.open('https://wa.me/5519992696889?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'))">WhatsApp</button>
-  </div>
+  <div id="lista-contato-admin"></div>
   <div style="text-align:center;padding:16px 0 4px;font-size:11px;color:var(--txt3)" id="versao-footer">Portal Altos Santa Izabel</div>
+</div>
+
+<!-- REALIZACOES -->
+<div id="pg-realizacoes" class="pg">
+  <input type="email" name="usuario-login-atual" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+  <input id="busca-realizacoes" type="search" autocomplete="off" placeholder="🔍 Buscar em todas as realizações..." oninput="filtrarRealizacoes(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:12px;font-family:inherit">
+  <div class="card" id="lista-realizacoes"></div>
 </div>
 
 <!-- PROJETOS -->
@@ -505,7 +502,7 @@ auth.onAuthStateChanged(function(user){
     carregarTodosOsDados(function(){
       migrarTarefasConcluidas();
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
-      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();carregarChamados();carregarSugestoes();
+      renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();renderContatosPublico();carregarChamados();carregarSugestoes();
     });
     iniciarMonitorSuporte();
     // Preencher unidade do morador no campo de defeito
@@ -528,7 +525,72 @@ function fazerLogout(){
 // ===== FIM AUTH =====
 
 var WA='5519989360523';
-var NAV_IDS=['inicio','projetos','tarefas','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
+var contatoAdmin=[
+  {nome:'Gabriel — Síndico',tel:'5519989360523'},
+  {nome:'Phoenix Global — Administradora/Boletos',tel:'5519992696889'}
+];
+var contatosUteis=[
+  {nome:'Manutenção do Elevador',tel:''},
+  {nome:'Portaria Virtual',tel:''},
+  {nome:'Zeladoria',tel:''}
+];
+function renderContatosGenerico(containerId,arrNome,formPrefix){
+  var arr=window[arrNome];
+  var el=document.getElementById(containerId);if(!el)return;
+  if(!adminLogado){
+    if(!arr.length){el.innerHTML='<div class="card" style="padding:12px;color:var(--txt3);font-size:13px">Nenhum contato cadastrado.</div>';return;}
+    el.innerHTML=arr.map(function(c){
+      var tel=(c.tel||'').replace(/[^0-9]/g,'');if(tel.length>=10)tel='55'+tel;
+      return '<div class="card row">'+
+        '<div class="gico" style="background:#e8f5e9">📞</div>'+
+        '<div style="flex:1"><div style="font-weight:600">'+c.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+(c.tel||'sem telefone cadastrado')+'</div></div>'+
+        (tel?'<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:6px">📞 Ligar</a>':'')+
+        (tel?'<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="btn success" style="text-decoration:none">WhatsApp</a>':'')+
+      '</div>';
+    }).join('');
+    return;
+  }
+  var formAdd='<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Adicionar contato</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<input id="novo-'+formPrefix+'-nome" placeholder="Nome/Função (ex: Zeladoria)..." style="flex:1;min-width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
+      '<input id="novo-'+formPrefix+'-tel" placeholder="Telefone" style="width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')adicionarContatoGenerico(\''+arrNome+'\',\''+formPrefix+'\')">'+
+      '<button onclick="adicionarContatoGenerico(\''+arrNome+'\',\''+formPrefix+'\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+    '</div>'+
+  '</div>';
+  el.innerHTML=formAdd+arr.map(function(c,i){
+    return '<div class="card row" style="flex-wrap:wrap;gap:6px">'+
+      '<input value="'+esc(c.nome)+'" onchange="'+arrNome+'['+i+'].nome=this.value;salvarContatosGenerico(\''+arrNome+'\')" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
+      '<input value="'+esc(c.tel)+'" onchange="'+arrNome+'['+i+'].tel=this.value;salvarContatosGenerico(\''+arrNome+'\')" placeholder="Telefone" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<button onclick="excluirContatoGenerico(\''+arrNome+'\','+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
+    '</div>';
+  }).join('');
+}
+function renderContatosPublico(){
+  renderContatosGenerico('lista-contato-admin','contatoAdmin','adm');
+  renderContatosGenerico('lista-contatos-uteis','contatosUteis','util');
+}
+function salvarContatosGenerico(arrNome){
+  salvarNoFirestore(arrNome,window[arrNome],function(){renderContatosPublico();});
+}
+function excluirContatoGenerico(arrNome,i){
+  var arr=window[arrNome];
+  if(!arr[i]) return;
+  if(!confirm('Excluir "'+arr[i].nome+'"?')) return;
+  arr.splice(i,1);
+  salvarContatosGenerico(arrNome);
+}
+function adicionarContatoGenerico(arrNome,formPrefix){
+  var nomeEl=document.getElementById('novo-'+formPrefix+'-nome');
+  var telEl=document.getElementById('novo-'+formPrefix+'-tel');
+  var nome=nomeEl.value.trim();
+  if(!nome){alert('Informe o nome/função.');return;}
+  var tel=telEl.value.trim();
+  window[arrNome].push({nome:nome,tel:tel});
+  nomeEl.value='';telEl.value='';nomeEl.focus();
+  salvarContatosGenerico(arrNome);
+}
+var NAV_IDS=['inicio','realizacoes','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
 var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
 var adminLogado=false;
 
@@ -1555,7 +1617,9 @@ function carregarTodosOsDados(callback){
     orcamentos:function(d){orcamentos=d;},
     documentos:function(d){documentos=d;},
     assembleias:function(d){assembleias=d;},
-    prestadores:function(d){prestadores=d;}
+    prestadores:function(d){prestadores=d;},
+    contatoAdmin:function(d){if(d&&d.length)contatoAdmin=d;},
+    contatosUteis:function(d){if(d)contatosUteis=d;}
   };
   var keys=Object.keys(secoes);
   var pendentes=keys.length;
