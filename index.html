@@ -1588,6 +1588,56 @@ var stOpts=[{v:'bad',l:'🔴 Urgente'},{v:'warn',l:'🟡 Pend. Aprovação'},{v:
 var stMap={bad:'Urgente',warn:'Pend. Aprovação',blue:'Em Orçamento',ok:'Em Andamento',construction:'Em Construção',approved:'Aprovado',purple:'Concluído',canceled:'Cancelado',gray:'Não Aprovado'};
 function esc(s){return (s||'').replace(/"/g,'&quot;');}
 function moverItem(arr,i,dir,renderFn){var j=i+dir;if(j<0||j>=arr.length)return;var tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;renderFn();}
+var arrastandoGenerico={attr:null,idx:null,onSolto:null};
+function iniciarArrastoGenerico(e,attr,idx,onSolto){
+  e.preventDefault();
+  arrastandoGenerico={attr:attr,idx:idx,onSolto:onSolto};
+  var row=document.querySelector('['+attr+'="'+idx+'"]');
+  if(row) row.style.opacity='0.4';
+  document.addEventListener('pointermove',moverDuranteGenerico);
+  document.addEventListener('pointerup',soltarGenerico);
+}
+function moverDuranteGenerico(e){
+  if(arrastandoGenerico.idx===null) return;
+  var el=document.elementFromPoint(e.clientX,e.clientY);
+  var row=el&&el.closest('['+arrastandoGenerico.attr+']');
+  document.querySelectorAll('['+arrastandoGenerico.attr+']').forEach(function(r){r.style.borderTop='';});
+  if(row) row.style.borderTop='2px solid var(--azul)';
+}
+function soltarGenerico(e){
+  document.removeEventListener('pointermove',moverDuranteGenerico);
+  document.removeEventListener('pointerup',soltarGenerico);
+  var st=arrastandoGenerico;
+  arrastandoGenerico={attr:null,idx:null,onSolto:null};
+  if(st.idx===null) return;
+  var el=document.elementFromPoint(e.clientX,e.clientY);
+  var row=el&&el.closest('['+st.attr+']');
+  document.querySelectorAll('['+st.attr+']').forEach(function(r){r.style.opacity='';r.style.borderTop='';});
+  if(!row) return;
+  var newIdx=parseInt(row.getAttribute(st.attr),10);
+  if(isNaN(newIdx)||newIdx===st.idx) return;
+  st.onSolto(st.idx,newIdx);
+}
+function moverAlertaPara(oldIdx,newIdx){
+  var item=dadosAdmin.alertas.splice(oldIdx,1)[0];
+  dadosAdmin.alertas.splice(newIdx,0,item);
+  salvarAlertasSilencioso();
+}
+function moverAssembleiaPara(oldIdx,newIdx){
+  var item=assembleias.splice(oldIdx,1)[0];
+  assembleias.splice(newIdx,0,item);
+  salvarAssembleiasSilencioso();
+}
+function moverProjetoPara(oldIdx,newIdx){
+  var item=dadosAdmin.projetos.splice(oldIdx,1)[0];
+  dadosAdmin.projetos.splice(newIdx,0,item);
+  salvarProjetosSilencioso();
+}
+function moverRealizacaoPara(oldIdx,newIdx){
+  var item=dadosAdmin.realizacoes.splice(oldIdx,1)[0];
+  dadosAdmin.realizacoes.splice(newIdx,0,item);
+  renderAdmin();
+}
 function onStatusChange(arr,i,val,renderFn){
   arr[i].status=val;
   // Se concluído ou cancelado, mover para o final
@@ -1662,7 +1712,8 @@ function adminTab(id,btn){
 function renderAdmin(){
   var er=document.getElementById('edit-realizacoes');
   er.innerHTML=dadosAdmin.realizacoes.map(function(r,i){
-    return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
+    return '<div class="item-edit" data-real-idx="'+i+'" style="flex-wrap:wrap;gap:6px">'+
+      '<span onpointerdown="iniciarArrastoGenerico(event,\'data-real-idx\','+i+',moverRealizacaoPara)" style="cursor:grab;touch-action:none;color:var(--txt3);font-size:16px;padding:0 3px;user-select:none;-webkit-user-select:none" title="Arraste para reordenar">⠷</span>'+
       ordemBtns.replace('{UP}','moverItem(dadosAdmin.realizacoes,'+i+',-1,renderAdmin)').replace('{DOWN}','moverItem(dadosAdmin.realizacoes,'+i+',1,renderAdmin)')+
       '<input style="width:75px" value="'+esc(r.data)+'" onchange="dadosAdmin.realizacoes['+i+'].data=this.value" placeholder="Data">'+
       '<input class="ie-txt" value="'+esc(r.txt)+'" onchange="dadosAdmin.realizacoes['+i+'].txt=this.value" placeholder="Descrição">'+
@@ -1734,7 +1785,8 @@ function renderAlertas(){
     '</div>'+
   '</div>';
   el.innerHTML=formAdd+dadosAdmin.alertas.map(function(a,i){
-    return '<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
+    return '<div class="file-row" data-alerta-idx="'+i+'" style="flex-wrap:wrap;gap:6px">'+
+      '<span onpointerdown="iniciarArrastoGenerico(event,\'data-alerta-idx\','+i+',moverAlertaPara)" style="cursor:grab;touch-action:none;color:var(--txt3);font-size:16px;padding:0 3px;user-select:none;-webkit-user-select:none" title="Arraste para reordenar">⠷</span>'+
       '<div style="display:flex;flex-direction:column;gap:1px">'+
         '<button onclick="moverAlerta('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir">▲</button>'+
         '<button onclick="moverAlerta('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer">▼</button>'+
@@ -1886,8 +1938,9 @@ function renderProjetosAdmin(){
     '</div>'+
   '</div>';
   el.innerHTML=formAdd+dadosAdmin.projetos.map(function(p,i){
-    return '<div class="card" style="margin-bottom:8px;padding:14px">'+
+    return '<div class="card" data-proj-idx="'+i+'" style="margin-bottom:8px;padding:14px">'+
       '<div style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px">'+
+        '<span onpointerdown="iniciarArrastoGenerico(event,\'data-proj-idx\','+i+',moverProjetoPara)" style="cursor:grab;touch-action:none;color:var(--txt3);font-size:16px;padding:2px 3px 0;user-select:none;-webkit-user-select:none" title="Arraste para reordenar">⠷</span>'+
         '<div style="display:flex;flex-direction:column;gap:1px">'+
           '<button onclick="moverProjeto('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir">▲</button>'+
           '<button onclick="moverProjeto('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer">▼</button>'+
@@ -2216,7 +2269,8 @@ function renderAssembleias(){
   '</div>';
   el.innerHTML=formAdd+'<div style="font-size:11px;color:var(--txt3);margin-bottom:8px">Cole o link do arquivo específico no Drive (não da pasta) em cada item, pra abrir o PDF direto.</div>'+
     assembleias.map(function(a,i){
-      return '<div class="file-row" style="flex-wrap:wrap;gap:6px">'+
+      return '<div class="file-row" data-asb-idx="'+i+'" style="flex-wrap:wrap;gap:6px">'+
+        '<span onpointerdown="iniciarArrastoGenerico(event,\'data-asb-idx\','+i+',moverAssembleiaPara)" style="cursor:grab;touch-action:none;color:var(--txt3);font-size:16px;padding:0 3px;user-select:none;-webkit-user-select:none" title="Arraste para reordenar">⠷</span>'+
         '<div style="display:flex;flex-direction:column;gap:1px">'+
           '<button onclick="moverAssembleia('+i+',-1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Subir">▲</button>'+
           '<button onclick="moverAssembleia('+i+',1)" style="border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt3);padding:0;line-height:1" title="Descer">▼</button>'+
