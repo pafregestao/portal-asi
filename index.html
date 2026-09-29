@@ -148,6 +148,8 @@ textarea.fi{height:75px;resize:vertical}
   <div class="alert bad"><span>🚨</span><div><strong>AVCB vencido</strong> — Renovar com urgência (venceu Mar/2026).</div></div>
   <div class="sec">Acesso rápido</div>
   <div class="grid2" id="grid-acesso-rapido">
+    <div class="gcard" onclick="nav('realizacoes')"><div class="gico" style="background:#e8f5e9">✅</div><div><div style="font-weight:600;font-size:13px">Realizações</div><div style="font-size:11px;color:var(--txt3)">Histórico de ações</div></div></div>
+    <div class="gcard" onclick="nav('tarefas')"><div class="gico" style="background:#fff3e0">📌</div><div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--txt3)">Ordem de prioridade</div></div></div>
     <div class="gcard" onclick="nav('projetos')"><div class="gico" style="background:#fff3e0">🔨</div><div><div style="font-weight:600;font-size:13px">Projetos</div><div style="font-size:11px;color:var(--txt3)">Em andamento</div></div></div>
     <div class="gcard admin-only" style="display:none" onclick="nav('orcamentos')"><div class="gico" style="background:#e8f5e9">💰</div><div><div style="font-weight:600;font-size:13px">Orçamentos</div><div style="font-size:11px;color:var(--txt3)">Propostas e cotações</div></div></div>
     <div class="gcard" onclick="nav('contratos')"><div class="gico" style="background:#e3f0fb">📋</div><div><div style="font-weight:600;font-size:13px">Contratos</div><div style="font-size:11px;color:var(--txt3)">Vigentes e vencimentos</div></div></div>
@@ -171,6 +173,7 @@ textarea.fi{height:75px;resize:vertical}
 
 <!-- REALIZACOES -->
 <div id="pg-realizacoes" class="pg">
+  <div class="metrics" id="real-metricas"></div>
   <input type="email" name="usuario-login-atual" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
   <input id="busca-realizacoes" type="search" autocomplete="off" placeholder="🔍 Buscar em todas as realizações..." oninput="filtrarRealizacoes(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:12px;font-family:inherit">
   <div class="card" id="lista-realizacoes"></div>
@@ -1894,8 +1897,22 @@ function filtrarRealizacoes(termo){
   buscaRealizacoesAtual=termo||'';
   renderRealizacoes();
 }
+function renderMetricasRealizacoes(){
+  var el=document.getElementById('real-metricas');if(!el)return;
+  var grupos={};
+  dadosAdmin.realizacoes.forEach(function(r){
+    var ano=(r.data||'').split('/')[1]||'Outros';
+    if(ano.length===2) ano='20'+ano;
+    grupos[ano]=(grupos[ano]||0)+1;
+  });
+  var anos=Object.keys(grupos).sort(function(a,b){return b-a;});
+  var total=dadosAdmin.realizacoes.length;
+  el.innerHTML='<div class="mc"><div class="mc-lbl">Total</div><div class="mc-val">'+total+'</div></div>'+
+    anos.map(function(ano){return '<div class="mc"><div class="mc-lbl">'+ano+'</div><div class="mc-val">'+grupos[ano]+'</div></div>';}).join('');
+}
 function renderRealizacoes(){
   var el=document.getElementById('lista-realizacoes');if(!el)return;
+  renderMetricasRealizacoes();
   var termo=normalizarBusca(buscaRealizacoesAtual);
   if(termo){
     var encontrados=dadosAdmin.realizacoes.filter(function(r){
@@ -2024,6 +2041,8 @@ function renderProjetosAdmin(){
       '</div>'+
     '</div>';
   }).join('');
+  var totalProj2=document.getElementById('proj-total-proj');
+  if(totalProj2) totalProj2.textContent=dadosAdmin.projetos.length;
 }
 function salvarProjetosSilencioso(){
   salvarNoFirestore('projetos',dadosAdmin.projetos,function(){renderProjetosAdmin();});
