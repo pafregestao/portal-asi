@@ -591,27 +591,33 @@ function dispensarBannerNotif(){
 function ativarNotificacoes(){
   Notification.requestPermission().then(function(permissao){
     if(permissao!=='granted'){
+      alert('Permissão não concedida. Você pode tentar novamente mais tarde.');
       dispensarBannerNotif();
       return;
     }
-    navigator.serviceWorker.ready.then(function(reg){
-      var messaging=firebase.messaging();
-      messaging.getToken({vapidKey:VAPID_KEY,serviceWorkerRegistration:reg}).then(function(token){
-        if(!token) return;
-        var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-        db.collection('push_tokens').doc(token).set({
-          uid:u.uid||'',
-          unidade:u.unidade||'',
-          nome:u.nome||'',
-          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
-        }).then(function(){
-          dispensarBannerNotif();
-        });
-      }).catch(function(e){
-        console.log('Erro ao obter token FCM:',e);
+    var messaging=firebase.messaging();
+    messaging.getToken({vapidKey:VAPID_KEY}).then(function(token){
+      if(!token){
+        alert('Não foi possível gerar o identificador de notificação. Tente novamente.');
+        return;
+      }
+      var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+      db.collection('push_tokens').doc(token).set({
+        uid:u.uid||'',
+        unidade:u.unidade||'',
+        nome:u.nome||'',
+        criadoEm:firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){
         dispensarBannerNotif();
+        alert('✅ Notificações ativadas com sucesso!');
+      }).catch(function(e){
+        alert('Erro ao salvar token: '+e.message);
       });
+    }).catch(function(e){
+      alert('Erro ao ativar notificações (getToken): '+e.message);
     });
+  }).catch(function(e){
+    alert('Erro ao pedir permissão: '+e.message);
   });
 }
 // ===== FIM NOTIFICAÇÕES PUSH =====
