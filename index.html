@@ -110,6 +110,7 @@ textarea.fi{height:75px;resize:vertical}
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
 </head>
 <body>
 
@@ -146,6 +147,9 @@ textarea.fi{height:75px;resize:vertical}
 <!-- INÍCIO -->
 <div id="pg-inicio" class="pg on">
   <div class="alert bad"><span>🚨</span><div><strong>AVCB vencido</strong> — Renovar com urgência (venceu Mar/2026).</div></div>
+  <div class="card" id="banner-notif-push" style="display:none;margin-bottom:12px;padding:14px 16px">
+    <div id="banner-notif-conteudo"></div>
+  </div>
   <div class="sec">Acesso rápido</div>
   <div class="grid2" id="grid-acesso-rapido">
     <div class="gcard" onclick="nav('realizacoes')"><div class="gico" style="background:#e8f5e9">✅</div><div><div style="font-weight:600;font-size:13px">Realizações</div><div style="font-size:11px;color:var(--txt3)">Histórico de ações</div></div></div>
@@ -520,6 +524,7 @@ auth.onAuthStateChanged(function(user){
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();renderContatosPublico();carregarChamados();carregarSugestoes();
     });
     iniciarMonitorSuporte();
+    iniciarBannerNotificacao();
     // Preencher unidade do morador no campo de defeito
     var aptoField=document.getElementById('f-apto');
     if(aptoField&&usuarioAtual&&usuarioAtual.unidade) aptoField.value=usuarioAtual.unidade;
@@ -540,6 +545,76 @@ function fazerLogout(){
 // ===== FIM AUTH =====
 
 var WA='5519989360523';
+
+// ===== NOTIFICAÇÕES PUSH =====
+// Chave gerada em: Firebase Console > Configurações do projeto > Cloud Messaging >
+// Configuração da Web > Gerar par de chaves. Cole a chave entre as aspas abaixo.
+var VAPID_KEY='BIBfWA8x4u2P3fFCGPDKqlfOXQ5qsk1Qmo74qXWhqTy2xPpvbOh9v1VLSG0wpDSe4iUR6Gtm4ndvfSegW-nSAQQ';
+
+function ehIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+}
+function appInstalado(){
+  return window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
+}
+function iniciarBannerNotificacao(){
+  if(!('Notification' in window)||!('serviceWorker' in navigator)) return;
+  if(localStorage.getItem('asi_notif_dispensado')==='1') return;
+  if(Notification.permission!=='default') return;
+  var banner=document.getElementById('banner-notif-push');
+  var conteudo=document.getElementById('banner-notif-conteudo');
+  if(!banner||!conteudo) return;
+  if(ehIOS()&&!appInstalado()){
+    conteudo.innerHTML='<div style="display:flex;gap:10px;align-items:flex-start">'+
+      '<span style="font-size:20px">🔔</span>'+
+      '<div style="flex:1"><div style="font-weight:600;font-size:13px;margin-bottom:4px">Ative as notificações no iPhone</div>'+
+      '<div style="font-size:12px;color:var(--txt2);line-height:1.5">No iPhone, isso só funciona se o portal estiver instalado na Tela de Início. Toque em <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>, abra o portal por lá e volte nessa tela.</div>'+
+      '<button onclick="dispensarBannerNotif()" style="margin-top:8px;font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">Entendi</button>'+
+      '</div></div>';
+  } else {
+    conteudo.innerHTML='<div style="display:flex;gap:10px;align-items:flex-start">'+
+      '<span style="font-size:20px">🔔</span>'+
+      '<div style="flex:1"><div style="font-weight:600;font-size:13px;margin-bottom:4px">Quer receber avisos direto no celular?</div>'+
+      '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:8px">Ative as notificações para saber na hora quando seu chamado for respondido.</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button onclick="ativarNotificacoes()" style="font-size:12px;padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-weight:600;cursor:pointer">Ativar</button>'+
+        '<button onclick="dispensarBannerNotif()" style="font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">Agora não</button>'+
+      '</div></div></div>';
+  }
+  banner.style.display='block';
+}
+function dispensarBannerNotif(){
+  localStorage.setItem('asi_notif_dispensado','1');
+  var banner=document.getElementById('banner-notif-push');
+  if(banner) banner.style.display='none';
+}
+function ativarNotificacoes(){
+  Notification.requestPermission().then(function(permissao){
+    if(permissao!=='granted'){
+      dispensarBannerNotif();
+      return;
+    }
+    navigator.serviceWorker.ready.then(function(reg){
+      var messaging=firebase.messaging();
+      messaging.getToken({vapidKey:VAPID_KEY,serviceWorkerRegistration:reg}).then(function(token){
+        if(!token) return;
+        var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+        db.collection('push_tokens').doc(token).set({
+          uid:u.uid||'',
+          unidade:u.unidade||'',
+          nome:u.nome||'',
+          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function(){
+          dispensarBannerNotif();
+        });
+      }).catch(function(e){
+        console.log('Erro ao obter token FCM:',e);
+        dispensarBannerNotif();
+      });
+    });
+  });
+}
+// ===== FIM NOTIFICAÇÕES PUSH =====
 var contatoAdmin=[
   {nome:'Gabriel — Síndico',tel:'5519989360523'},
   {nome:'Phoenix Global — Administradora/Boletos',tel:'5519992696889'}
