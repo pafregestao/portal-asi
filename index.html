@@ -323,6 +323,18 @@ textarea.fi{height:75px;resize:vertical}
     <textarea class="fi" id="f-desc" placeholder="Descreva o problema..."></textarea>
     <label class="fl">Urgência</label>
     <select class="fi" id="f-urg"><option>Normal</option><option>Urgente</option><option>Emergência</option></select>
+    <label class="fl">Foto ou vídeo (opcional)</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <label style="flex:1;min-width:140px;text-align:center;padding:10px;border:1px dashed var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--txt2)">
+        📷 Tirar foto/vídeo
+        <input type="file" accept="image/*,video/*" capture="environment" style="display:none" onchange="selecionarMidiaDefeito(this)">
+      </label>
+      <label style="flex:1;min-width:140px;text-align:center;padding:10px;border:1px dashed var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--txt2)">
+        📎 Escolher arquivo
+        <input type="file" accept="image/*,video/*" style="display:none" onchange="selecionarMidiaDefeito(this)">
+      </label>
+    </div>
+    <div id="midia-preview-defeito" style="margin-bottom:10px"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn primary" onclick="registrar()">Registrar defeito</button>
     </div>
@@ -879,6 +891,45 @@ function carregarChamados(){
   }).catch(function(e){console.log('Erro chamados:',e);});
 }
 
+var midiaDefeitoPendente=null;
+function selecionarMidiaDefeito(input){
+  var file=input.files[0];
+  if(!file) return;
+  var maxMB=30;
+  if(file.size>maxMB*1024*1024){
+    alert('Arquivo muito grande (máx. '+maxMB+'MB).');
+    input.value='';
+    return;
+  }
+  var preview=document.getElementById('midia-preview-defeito');
+  var ehVideo=file.type.indexOf('video')===0;
+  preview.innerHTML='<div style="font-size:12px;color:var(--txt3)">⏳ Enviando '+(ehVideo?'vídeo':'foto')+'...</div>';
+  var form=new FormData();
+  form.append('file',file);
+  form.append('upload_preset','pafrestaizabel');
+  fetch('https://api.cloudinary.com/v1_1/odiwvd9n/auto/upload',{method:'POST',body:form})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data.secure_url){
+        midiaDefeitoPendente={url:data.secure_url,tipo:data.resource_type};
+        var isVideo=data.resource_type==='video';
+        preview.innerHTML='<div style="position:relative;display:inline-block">'+
+          (isVideo?'<video src="'+data.secure_url+'" style="max-width:160px;max-height:160px;border-radius:8px" controls></video>':'<img src="'+data.secure_url+'" style="max-width:160px;max-height:160px;border-radius:8px;object-fit:cover">')+
+          '<button onclick="removerMidiaDefeito()" style="position:absolute;top:-8px;right:-8px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer">✕</button>'+
+        '</div>';
+      } else {
+        preview.innerHTML='<div style="font-size:12px;color:var(--bad)">Erro ao enviar arquivo.</div>';
+      }
+    }).catch(function(e){
+      preview.innerHTML='<div style="font-size:12px;color:var(--bad)">Erro ao enviar: '+e.message+'</div>';
+    });
+}
+function removerMidiaDefeito(){
+  midiaDefeitoPendente=null;
+  var preview=document.getElementById('midia-preview-defeito');
+  if(preview) preview.innerHTML='';
+  document.querySelectorAll('#pg-defeitos input[type="file"]').forEach(function(i){i.value='';});
+}
 function registrar(){
   var apto=document.getElementById('f-apto').value.trim();
   if(!apto){alert('Informe o apartamento ou local');return;}
@@ -894,6 +945,8 @@ function registrar(){
     unidade:u.unidade||'',
     uid:u.uid||'',
     celular:u.celular||'',
+    midiaUrl:midiaDefeitoPendente?midiaDefeitoPendente.url:'',
+    midiaTipo:midiaDefeitoPendente?midiaDefeitoPendente.tipo:'',
     criadoEm:firebase.firestore.FieldValue.serverTimestamp()
   };
   db.collection('chamados').add(chamado).then(function(ref){
@@ -901,6 +954,7 @@ function registrar(){
     chamados.unshift(chamado);
     document.getElementById('f-apto').value='';
     document.getElementById('f-desc').value='';
+    removerMidiaDefeito();
     renderChamados();
     alert('✅ Chamado registrado! O síndico receberá uma notificação.');
     // Enviar email
@@ -1049,6 +1103,7 @@ function renderChamados(){
         '</div>'+
         '<div id="corpo-cham-'+x.id+'" style="display:none;margin-top:8px">'+
           '<div style="font-size:13px;color:var(--txt2);margin-bottom:6px;white-space:pre-wrap">'+escHtml(x.desc)+'</div>'+
+          (x.midiaUrl?(x.midiaTipo==='video'?'<video src="'+x.midiaUrl+'" controls style="max-width:220px;max-height:220px;border-radius:8px;margin-bottom:8px;display:block"></video>':'<a href="'+x.midiaUrl+'" target="_blank"><img src="'+x.midiaUrl+'" style="max-width:220px;max-height:220px;border-radius:8px;margin-bottom:8px;object-fit:cover;display:block"></a>'):'')+
           '<div style="font-size:11px;color:var(--txt3);margin-bottom:8px">'+escHtml(x.data)+(x.usuario?' · '+escHtml(x.usuario):'')+'</div>'+
           (adminLogado?statusBtns:'')+
           (adminLogado?'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin:0 0 8px;cursor:pointer"><input type="checkbox" id="notif-off-cham-'+x.id+'" style="cursor:pointer">🔕 Não notificar o morador desta vez</label>':'')+
