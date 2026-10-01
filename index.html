@@ -559,17 +559,25 @@ function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFra
 function calcularSugeridoCiclo(c){return (c.valorAtual||0)*(1+(c.ipca||0)/100);}
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
-    var mapa={};
+    var porAno={};
+    var mesesOrdem={'Jan':1,'Fev':2,'Mar':3,'Abr':4,'Mai':5,'Jun':6,'Jul':7,'Ago':8,'Set':9,'Out':10,'Nov':11,'Dez':12};
     snap.forEach(function(doc){
       var d=doc.data();
       var partes=(d.mes||'').split('/');
       if(partes.length<2) return;
       var ano=parseInt('20'+partes[1].slice(-2),10);
-      if(!mapa[ano]) mapa[ano]={receitas:0,despesas:0};
-      mapa[ano].receitas+=d.receitas||0;
-      mapa[ano].despesas+=d.despesas||0;
+      if(!porAno[ano]) porAno[ano]={receitas:0,despesas:0,meses:[]};
+      porAno[ano].receitas+=d.receitas||0;
+      porAno[ano].despesas+=d.despesas||0;
+      porAno[ano].meses.push({ordem:mesesOrdem[partes[0]]||0,saldo:d.saldoOrdinario||0});
     });
-    Object.keys(mapa).forEach(function(ano){mapa[ano].resultado=mapa[ano].receitas-mapa[ano].despesas;});
+    var mapa={};
+    Object.keys(porAno).forEach(function(ano){
+      var info=porAno[ano];
+      info.meses.sort(function(a,b){return a.ordem-b.ordem;});
+      var saldoFinal=info.meses.length?info.meses[info.meses.length-1].saldo:0;
+      mapa[ano]={receitas:info.receitas,despesas:info.despesas,saldoFinal:saldoFinal,mesesFechados:info.meses.length};
+    });
     resumosFinanceiroPorAno=mapa;
     if(callback) callback();
   }).catch(function(){if(callback) callback();});
@@ -633,7 +641,7 @@ function renderCicloPublico(c){
     ((c.taxasExtras&&c.taxasExtras.length)?('<div style="font-size:12px;font-weight:700;color:var(--txt3);margin-bottom:6px">Taxas extras</div>'+
       c.taxasExtras.map(function(t){return '<div style="font-size:13px;margin-bottom:4px">• '+escHtml(t.descricao||'')+' — '+fmtReaisCiclo(t.valor)+(t.periodo?' ('+escHtml(t.periodo)+')':'')+'</div>';}).join('')):'')+
     '<div style="font-size:12px;font-weight:700;color:var(--txt3);margin:10px 0 6px">Resultado financeiro do ano ('+c.ano+')</div>'+
-    '<div style="font-size:13px">Receitas: '+fmtReaisCiclo(resumo.receitas)+' · Despesas: '+fmtReaisCiclo(resumo.despesas)+' · Resultado: <strong style="color:'+((resumo.resultado||0)>=0?'var(--ok)':'var(--bad)')+'">'+fmtReaisCiclo(resumo.resultado)+'</strong></div>'+
+    '<div style="font-size:13px">Receitas: '+fmtReaisCiclo(resumo.receitas)+' · Despesas: '+fmtReaisCiclo(resumo.despesas)+' · Saldo final ('+(resumo.mesesFechados||0)+' meses fechados): <strong style="color:'+((resumo.saldoFinal||0)>=0?'var(--ok)':'var(--bad)')+'">'+fmtReaisCiclo(resumo.saldoFinal)+'</strong></div>'+
     (c.observacoes?('<div style="margin-top:10px;font-size:13px;color:var(--txt2);white-space:pre-wrap">'+escHtml(c.observacoes)+'</div>'):'')+
   '</div>';
 }
@@ -661,7 +669,7 @@ function renderCicloAdmin(c,i){
       '<div class="mc"><div class="mc-lbl">Sugerido p/ '+(c.ano+1)+'</div><div class="mc-val">'+fmtReaisCiclo(sugerido)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Receitas do ano</div><div class="mc-val ok">'+fmtReaisCiclo(resumo.receitas)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Despesas do ano</div><div class="mc-val bad">'+fmtReaisCiclo(resumo.despesas)+'</div></div>'+
-      '<div class="mc"><div class="mc-lbl">Resultado</div><div class="mc-val '+((resumo.resultado||0)>=0?'ok':'bad')+'">'+fmtReaisCiclo(resumo.resultado)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Saldo final ('+(resumo.mesesFechados||0)+'m)</div><div class="mc-val '+((resumo.saldoFinal||0)>=0?'ok':'bad')+'">'+fmtReaisCiclo(resumo.saldoFinal)+'</div></div>'+
     '</div>'+
     '<label class="fl">Taxas extras</label>'+
     taxasHtml+
