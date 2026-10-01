@@ -525,6 +525,7 @@ auth.onAuthStateChanged(function(user){
     });
     iniciarMonitorSuporte();
     iniciarBannerNotificacao();
+    iniciarRecebimentoForeground();
     // Preencher unidade do morador no campo de defeito
     var aptoField=document.getElementById('f-apto');
     if(aptoField&&usuarioAtual&&usuarioAtual.unidade) aptoField.value=usuarioAtual.unidade;
@@ -587,6 +588,17 @@ function dispensarBannerNotif(){
   localStorage.setItem('asi_notif_dispensado','1');
   var banner=document.getElementById('banner-notif-push');
   if(banner) banner.style.display='none';
+}
+function iniciarRecebimentoForeground(){
+  if(!('Notification' in window)||Notification.permission!=='granted') return;
+  try{
+    var messaging=firebase.messaging();
+    messaging.onMessage(function(payload){
+      var title=(payload.notification&&payload.notification.title)||'Portal Altos Santa Izabel';
+      var body=(payload.notification&&payload.notification.body)||'';
+      new Notification(title,{body:body,icon:'./icon-192.png'});
+    });
+  }catch(e){console.log('Erro ao configurar recebimento em primeiro plano:',e);}
 }
 function ativarNotificacoes(){
   Notification.requestPermission().then(function(permissao){
