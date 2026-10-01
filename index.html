@@ -133,6 +133,7 @@ textarea.fi{height:75px;resize:vertical}
   <button class="nb" onclick="nav('contratos')">Contratos</button>
   <button class="nb" onclick="nav('churrasqueira')">Churrasqueira</button>
   <button class="nb" onclick="nav('financeiro')">Financeiro</button>
+  <button class="nb" onclick="nav('ciclos')">📈 Próximos Ciclos</button>
   <button class="nb" id="nav-documentos" onclick="nav('documentos')">Documentos</button>
   <button class="nb" onclick="nav('prestadores')">Prestadores</button>
   <button class="nb admin-only" id="nav-assembleias" style="display:none" onclick="nav('assembleias')">Assembleias</button>
@@ -202,6 +203,11 @@ textarea.fi{height:75px;resize:vertical}
   </div>
   <div class="sec">Ordem de prioridade</div>
   <div id="lista-tarefas"></div>
+</div>
+
+<!-- PROXIMOS CICLOS -->
+<div id="pg-ciclos" class="pg">
+  <div id="ciclos-container"></div>
 </div>
 
 <!-- ORÇAMENTOS -->
@@ -522,6 +528,7 @@ auth.onAuthStateChanged(function(user){
       migrarTarefasConcluidas();
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();renderContatosPublico();carregarChamados();carregarSugestoes();
+      carregarResumosFinanceiros(function(){renderCiclos();});
     });
     iniciarMonitorSuporte();
     iniciarBannerNotificacao();
@@ -546,6 +553,143 @@ function fazerLogout(){
 // ===== FIM AUTH =====
 
 var WA='5519989360523';
+var ciclos=[];
+var resumosFinanceiroPorAno={};
+function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function calcularSugeridoCiclo(c){return (c.valorAtual||0)*(1+(c.ipca||0)/100);}
+function carregarResumosFinanceiros(callback){
+  db.collection('financeiro').get().then(function(snap){
+    var mapa={};
+    snap.forEach(function(doc){
+      var d=doc.data();
+      var partes=(d.mes||'').split('/');
+      if(partes.length<2) return;
+      var ano=parseInt('20'+partes[1].slice(-2),10);
+      if(!mapa[ano]) mapa[ano]={receitas:0,despesas:0};
+      mapa[ano].receitas+=d.receitas||0;
+      mapa[ano].despesas+=d.despesas||0;
+    });
+    Object.keys(mapa).forEach(function(ano){mapa[ano].resultado=mapa[ano].receitas-mapa[ano].despesas;});
+    resumosFinanceiroPorAno=mapa;
+    if(callback) callback();
+  }).catch(function(){if(callback) callback();});
+}
+function salvarCiclosSilencioso(){
+  salvarNoFirestore('ciclos',ciclos,function(){renderCiclos();});
+}
+function adicionarCiclo(){
+  var anoEl=document.getElementById('novo-ciclo-ano');
+  var ano=parseInt(anoEl.value,10);
+  if(!ano){alert('Informe o ano.');return;}
+  if(ciclos.some(function(c){return c.ano===ano;})){alert('Já existe um ciclo cadastrado para '+ano+'.');return;}
+  ciclos.push({ano:ano,valorAtual:0,taxasExtras:[],ipca:0,valorAprovado:null,observacoes:'',status:'rascunho',publicadoEm:null});
+  anoEl.value='';
+  salvarCiclosSilencioso();
+}
+function adicionarTaxaExtra(i){
+  if(!ciclos[i]) return;
+  if(!ciclos[i].taxasExtras) ciclos[i].taxasExtras=[];
+  ciclos[i].taxasExtras.push({descricao:'',valor:0,periodo:''});
+  salvarCiclosSilencioso();
+}
+function publicarCiclo(i){
+  if(!ciclos[i]) return;
+  if(!confirm('Publicar o ciclo '+ciclos[i].ano+'? Ele fica visível a todos os moradores.')) return;
+  ciclos[i].status='publicado';
+  ciclos[i].publicadoEm=new Date().toISOString();
+  salvarCiclosSilencioso();
+}
+function despublicarCiclo(i){
+  if(!ciclos[i]) return;
+  if(!confirm('Voltar este ciclo para rascunho? Ele deixa de aparecer pros moradores.')) return;
+  ciclos[i].status='rascunho';
+  salvarCiclosSilencioso();
+}
+function excluirCiclo(i){
+  if(!ciclos[i]) return;
+  if(!confirm('Excluir o ciclo '+ciclos[i].ano+' definitivamente?')) return;
+  ciclos.splice(i,1);
+  salvarCiclosSilencioso();
+}
+function renderCicloPublico(c){
+  var resumo=resumosFinanceiroPorAno[c.ano]||{};
+  return '<div class="card" style="margin-bottom:10px;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'+
+      '<div style="font-weight:700;font-size:16px;color:var(--azul)">Ciclo '+c.ano+'</div>'+
+      '<span class="badge ok">Publicado</span>'+
+    '</div>'+
+    '<div class="metrics" style="margin-bottom:10px">'+
+      '<div class="mc"><div class="mc-lbl">Valor atual</div><div class="mc-val">'+fmtReaisCiclo(c.valorAtual)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">IPCA do ano</div><div class="mc-val">'+(c.ipca||0)+'%</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Valor sugerido</div><div class="mc-val">'+fmtReaisCiclo(calcularSugeridoCiclo(c))+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Valor aprovado</div><div class="mc-val ok">'+(c.valorAprovado?fmtReaisCiclo(c.valorAprovado):'—')+'</div></div>'+
+    '</div>'+
+    ((c.taxasExtras&&c.taxasExtras.length)?('<div style="font-size:12px;font-weight:700;color:var(--txt3);margin-bottom:6px">Taxas extras</div>'+
+      c.taxasExtras.map(function(t){return '<div style="font-size:13px;margin-bottom:4px">• '+escHtml(t.descricao||'')+' — '+fmtReaisCiclo(t.valor)+(t.periodo?' ('+escHtml(t.periodo)+')':'')+'</div>';}).join('')):'')+
+    '<div style="font-size:12px;font-weight:700;color:var(--txt3);margin:10px 0 6px">Resultado financeiro do ano ('+c.ano+')</div>'+
+    '<div style="font-size:13px">Receitas: '+fmtReaisCiclo(resumo.receitas)+' · Despesas: '+fmtReaisCiclo(resumo.despesas)+' · Resultado: <strong style="color:'+((resumo.resultado||0)>=0?'var(--ok)':'var(--bad)')+'">'+fmtReaisCiclo(resumo.resultado)+'</strong></div>'+
+    (c.observacoes?('<div style="margin-top:10px;font-size:13px;color:var(--txt2);white-space:pre-wrap">'+escHtml(c.observacoes)+'</div>'):'')+
+  '</div>';
+}
+function renderCicloAdmin(c,i){
+  var sugerido=calcularSugeridoCiclo(c);
+  var resumo=resumosFinanceiroPorAno[c.ano]||{};
+  var taxasHtml=(c.taxasExtras||[]).map(function(t,ti){
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;align-items:center">'+
+      '<input value="'+esc(t.descricao||'')+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].descricao=this.value;salvarCiclosSilencioso()" placeholder="Descrição" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<input type="number" step="0.01" value="'+(t.valor||0)+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].valor=+this.value||0;salvarCiclosSilencioso()" placeholder="Valor" style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<input value="'+esc(t.periodo||'')+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].periodo=this.value;salvarCiclosSilencioso()" placeholder="Período" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<button onclick="ciclos['+i+'].taxasExtras.splice('+ti+',1);salvarCiclosSilencioso()" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;flex-shrink:0">✕</button>'+
+    '</div>';
+  }).join('');
+  return '<div class="card" style="margin-bottom:10px;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'+
+      '<div style="font-weight:700;font-size:16px;color:var(--azul)">Ciclo '+c.ano+'</div>'+
+      '<span class="badge '+(c.status==='publicado'?'ok':'warn')+'">'+(c.status==='publicado'?'Publicado':'Rascunho')+'</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+      '<div style="flex:1;min-width:160px"><label class="fl" style="margin-top:0">Valor atual do condomínio</label><input type="number" step="0.01" value="'+(c.valorAtual||0)+'" onchange="ciclos['+i+'].valorAtual=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
+      '<div style="flex:1;min-width:140px"><label class="fl" style="margin-top:0">IPCA do ano (%)</label><input type="number" step="0.01" value="'+(c.ipca||0)+'" onchange="ciclos['+i+'].ipca=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
+    '</div>'+
+    '<div class="metrics" style="margin-bottom:10px">'+
+      '<div class="mc"><div class="mc-lbl">Valor sugerido</div><div class="mc-val">'+fmtReaisCiclo(sugerido)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Receitas do ano</div><div class="mc-val ok">'+fmtReaisCiclo(resumo.receitas)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Despesas do ano</div><div class="mc-val bad">'+fmtReaisCiclo(resumo.despesas)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Resultado</div><div class="mc-val '+((resumo.resultado||0)>=0?'ok':'bad')+'">'+fmtReaisCiclo(resumo.resultado)+'</div></div>'+
+    '</div>'+
+    '<label class="fl">Taxas extras</label>'+
+    taxasHtml+
+    '<button onclick="adicionarTaxaExtra('+i+')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1px dashed var(--border);background:#fff;cursor:pointer;margin-bottom:10px">+ Taxa extra</button>'+
+    '<label class="fl">Valor final aprovado (após assembleia)</label>'+
+    '<input type="number" step="0.01" value="'+(c.valorAprovado||'')+'" onchange="ciclos['+i+'].valorAprovado=this.value?+this.value:null;salvarCiclosSilencioso()" placeholder="Preencher após decisão" class="fi">'+
+    '<label class="fl">Observações</label>'+
+    '<textarea onchange="ciclos['+i+'].observacoes=this.value;salvarCiclosSilencioso()" style="width:100%;min-height:60px;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'+esc(c.observacoes||'')+'</textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+      (c.status==='publicado'
+        ?'<button onclick="despublicarCiclo('+i+')" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">Voltar para rascunho</button>'
+        :'<button onclick="publicarCiclo('+i+')" style="font-size:12px;padding:7px 14px;border-radius:7px;border:none;background:var(--ok);color:#fff;font-weight:600;cursor:pointer">📢 Publicar</button>')+
+      '<button onclick="excluirCiclo('+i+')" style="font-size:12px;padding:7px 14px;border-radius:7px;border:none;background:#fdecea;color:#c0392b;cursor:pointer">Excluir ciclo</button>'+
+    '</div>'+
+  '</div>';
+}
+function renderCiclos(){
+  var el=document.getElementById('ciclos-container');if(!el)return;
+  if(!adminLogado){
+    var publicados=ciclos.filter(function(c){return c.status==='publicado';}).sort(function(a,b){return b.ano-a.ano;});
+    if(!publicados.length){el.innerHTML='<div class="card" style="padding:12px;color:var(--txt3);font-size:13px">Nenhum ciclo publicado ainda.</div>';return;}
+    el.innerHTML=publicados.map(renderCicloPublico).join('');
+    return;
+  }
+  var formAdd='<div style="background:#f0f5fb;border:1px solid #bbdefb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">➕ Novo ciclo</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<input id="novo-ciclo-ano" type="number" placeholder="Ano (ex: 2026)" style="width:140px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
+      '<button onclick="adicionarCiclo()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
+    '</div>'+
+  '</div>';
+  var ordenados=ciclos.slice().sort(function(a,b){return b.ano-a.ano;});
+  el.innerHTML=formAdd+ordenados.map(function(c){return renderCicloAdmin(c,ciclos.indexOf(c));}).join('');
+}
 
 // ===== NOTIFICAÇÕES PUSH =====
 // Chave gerada em: Firebase Console > Configurações do projeto > Cloud Messaging >
@@ -704,7 +848,7 @@ function adicionarContatoGenerico(arrNome,formPrefix){
   nomeEl.value='';telEl.value='';nomeEl.focus();
   salvarContatosGenerico(arrNome);
 }
-var NAV_IDS=['inicio','realizacoes','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
+var NAV_IDS=['inicio','realizacoes','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
 var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
 var adminLogado=false;
 
@@ -1778,7 +1922,8 @@ function carregarTodosOsDados(callback){
     assembleias:function(d){assembleias=d;},
     prestadores:function(d){prestadores=d;},
     contatoAdmin:function(d){if(d&&d.length)contatoAdmin=d;},
-    contatosUteis:function(d){if(d)contatosUteis=d;}
+    contatosUteis:function(d){if(d)contatosUteis=d;},
+    ciclos:function(d){ciclos=d||[];}
   };
   var keys=Object.keys(secoes);
   var pendentes=keys.length;
