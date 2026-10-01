@@ -643,9 +643,11 @@ function renderContatosGenerico(containerId,arrNome,formPrefix){
       var tel=(c.tel||'').replace(/[^0-9]/g,'');if(tel.length>=10)tel='55'+tel;
       return '<div class="card row">'+
         '<div class="gico" style="background:#e8f5e9">📞</div>'+
-        '<div style="flex:1"><div style="font-weight:600">'+c.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+(c.tel||'sem telefone cadastrado')+'</div></div>'+
-        (tel?'<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:6px">📞 Ligar</a>':'')+
-        (tel?'<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="btn success" style="text-decoration:none">WhatsApp</a>':'')+
+        '<div style="flex:1;min-width:140px"><div style="font-weight:600">'+c.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+(c.tel||'sem telefone cadastrado')+'</div></div>'+
+        (tel?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+          '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none">📞 Ligar</a>'+
+          '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="btn success" style="text-decoration:none">WhatsApp</a>'+
+        '</div>':'')+
       '</div>';
     }).join('');
     return;
@@ -1449,9 +1451,11 @@ function renderPrestadores(){
       if(!adminLogado){
         html+='<div class="file-row">'+
           '<div class="file-ico" style="background:'+(catBg[cat]||'#f0f0f0')+'">'+(catIcos[cat]||'👤')+'</div>'+
-          '<div style="flex:1"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+escHtml(p.ind):'')+'</div></div>'+
-          '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none;margin-right:4px">📞 Ligar</a>'+
-          '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="badge ok" style="text-decoration:none;margin-right:4px">💬 WhatsApp</a>'+
+          '<div style="flex:1;min-width:120px"><div style="font-weight:600">'+p.nome+'</div><div style="font-size:12px;color:var(--txt3)">'+p.tel+(p.ind?' · Ind: '+escHtml(p.ind):'')+'</div></div>'+
+          '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+            '<a href="tel:+'+tel+'" class="badge blue" style="text-decoration:none">📞 Ligar</a>'+
+            '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.')+'" target="_blank" class="badge ok" style="text-decoration:none">💬 WhatsApp</a>'+
+          '</div>'+
         '</div>';
         return;
       }
