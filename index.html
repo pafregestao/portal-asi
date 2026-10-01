@@ -556,7 +556,8 @@ var WA='5519989360523';
 var ciclos=[];
 var resumosFinanceiroPorAno={};
 function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function calcularSugeridoCiclo(c){return (c.valorAtual||0)*(1+(c.ipca||0)/100);}
+function calcularValorAtualTotalCiclo(c){return (c.cotaOrdinaria||0)+(c.cotaFundoReserva||0);}
+function calcularSugeridoCiclo(c){return calcularValorAtualTotalCiclo(c)*(1+(c.ipca||0)/100);}
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
     var porAno={};
@@ -596,14 +597,14 @@ function adicionarCiclo(){
   var ano=parseInt(anoEl.value,10);
   if(!ano){alert('Informe o ano.');return;}
   if(ciclos.some(function(c){return c.ano===ano;})){alert('Já existe um ciclo cadastrado para '+ano+'.');return;}
-  ciclos.push({ano:ano,valorAtual:0,taxasExtras:[],ipca:0,valorAprovado:null,observacoes:'',status:'rascunho',publicadoEm:null});
+  ciclos.push({ano:ano,cotaOrdinaria:0,cotaFundoReserva:0,taxasExtras:[],ipca:0,valorAprovado:null,observacoes:'',status:'rascunho',publicadoEm:null});
   anoEl.value='';
   salvarCiclosSilencioso();
 }
 function adicionarTaxaExtra(i){
   if(!ciclos[i]) return;
   if(!ciclos[i].taxasExtras) ciclos[i].taxasExtras=[];
-  ciclos[i].taxasExtras.push({descricao:'',valor:0,periodo:''});
+  ciclos[i].taxasExtras.push({descricao:'',valorMensal:0,parcelas:1});
   salvarCiclosSilencioso();
 }
 function publicarCiclo(i){
@@ -627,20 +628,27 @@ function excluirCiclo(i){
 }
 function renderCicloPublico(c){
   var resumo=resumosFinanceiroPorAno[c.ano]||{};
+  var valorAtualTotal=calcularValorAtualTotalCiclo(c);
   return '<div class="card" style="margin-bottom:10px;padding:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'+
       '<div style="font-weight:700;font-size:16px;color:var(--azul)">Ciclo '+c.ano+'</div>'+
       '<span class="badge ok">Publicado</span>'+
     '</div>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Valores do condomínio</div>'+
     '<div class="metrics" style="margin-bottom:10px">'+
-      '<div class="mc"><div class="mc-lbl">Valor atual</div><div class="mc-val">'+fmtReaisCiclo(c.valorAtual)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Cota ordinária</div><div class="mc-val">'+fmtReaisCiclo(c.cotaOrdinaria)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Cota fundo reserva</div><div class="mc-val">'+fmtReaisCiclo(c.cotaFundoReserva)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Valor atual total</div><div class="mc-val">'+fmtReaisCiclo(valorAtualTotal)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">IPCA do ano</div><div class="mc-val">'+(c.ipca||0)+'%</div></div>'+
       '<div class="mc"><div class="mc-lbl">Sugerido p/ '+(c.ano+1)+'</div><div class="mc-val">'+fmtReaisCiclo(calcularSugeridoCiclo(c))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Aprovado p/ '+(c.ano+1)+'</div><div class="mc-val ok">'+(c.valorAprovado?fmtReaisCiclo(c.valorAprovado):'—')+'</div></div>'+
     '</div>'+
     ((c.taxasExtras&&c.taxasExtras.length)?('<div style="font-size:12px;font-weight:700;color:var(--txt3);margin-bottom:6px">Taxas extras</div>'+
-      c.taxasExtras.map(function(t){return '<div style="font-size:13px;margin-bottom:4px">• '+escHtml(t.descricao||'')+' — '+fmtReaisCiclo(t.valor)+(t.periodo?' ('+escHtml(t.periodo)+')':'')+'</div>';}).join('')):'')+
-    '<div style="font-size:12px;font-weight:700;color:var(--txt3);margin:10px 0 6px">Resultado financeiro do ano ('+c.ano+')</div>'+
+      c.taxasExtras.map(function(t){
+        var total=(t.valorMensal||0)*(t.parcelas||0);
+        return '<div style="font-size:13px;margin-bottom:4px">• '+escHtml(t.descricao||'')+' — '+fmtReaisCiclo(t.valorMensal)+'/mês × '+(t.parcelas||0)+' = <strong>'+fmtReaisCiclo(total)+'</strong></div>';
+      }).join('')):'')+
+    '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px">Financeiro do ano ('+c.ano+')</div>'+
     '<div style="font-size:13px">Receitas: '+fmtReaisCiclo(resumo.receitas)+' · Despesas: '+fmtReaisCiclo(resumo.despesas)+' · Saldo final ('+(resumo.mesesFechados||0)+' meses fechados): <strong style="color:'+((resumo.saldoFinal||0)>=0?'var(--ok)':'var(--bad)')+'">'+fmtReaisCiclo(resumo.saldoFinal)+'</strong></div>'+
     (c.observacoes?('<div style="margin-top:10px;font-size:13px;color:var(--txt2);white-space:pre-wrap">'+escHtml(c.observacoes)+'</div>'):'')+
   '</div>';
@@ -649,10 +657,12 @@ function renderCicloAdmin(c,i){
   var sugerido=calcularSugeridoCiclo(c);
   var resumo=resumosFinanceiroPorAno[c.ano]||{};
   var taxasHtml=(c.taxasExtras||[]).map(function(t,ti){
+    var totalTaxa=(t.valorMensal||0)*(t.parcelas||0);
     return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;align-items:center">'+
       '<input value="'+esc(t.descricao||'')+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].descricao=this.value;salvarCiclosSilencioso()" placeholder="Descrição" style="flex:1;min-width:120px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
-      '<input type="number" step="0.01" value="'+(t.valor||0)+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].valor=+this.value||0;salvarCiclosSilencioso()" placeholder="Valor" style="width:90px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
-      '<input value="'+esc(t.periodo||'')+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].periodo=this.value;salvarCiclosSilencioso()" placeholder="Período" style="width:130px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<input type="number" step="0.01" value="'+(t.valorMensal||0)+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].valorMensal=+this.value||0;salvarCiclosSilencioso()" placeholder="Valor mensal" title="Valor mensal (R$)" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<input type="number" step="1" min="1" value="'+(t.parcelas||1)+'" onchange="ciclos['+i+'].taxasExtras['+ti+'].parcelas=+this.value||0;salvarCiclosSilencioso()" placeholder="Parcelas" title="Quantidade de meses/parcelas" style="width:80px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
+      '<span style="font-size:12px;color:var(--txt3);white-space:nowrap">= '+fmtReaisCiclo(totalTaxa)+'</span>'+
       '<button onclick="ciclos['+i+'].taxasExtras.splice('+ti+',1);salvarCiclosSilencioso()" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;flex-shrink:0">✕</button>'+
     '</div>';
   }).join('');
@@ -662,16 +672,18 @@ function renderCicloAdmin(c,i){
       '<span class="badge '+(c.status==='publicado'?'ok':'warn')+'">'+(c.status==='publicado'?'Publicado':'Rascunho')+'</span>'+
     '</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
-      '<div style="flex:1;min-width:160px"><label class="fl" style="margin-top:0">Valor atual do condomínio</label><input type="number" step="0.01" value="'+(c.valorAtual||0)+'" onchange="ciclos['+i+'].valorAtual=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
-      '<div style="flex:1;min-width:140px"><label class="fl" style="margin-top:0">IPCA do ano (%)</label><input type="number" step="0.01" value="'+(c.ipca||0)+'" onchange="ciclos['+i+'].ipca=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
+      '<div style="flex:1;min-width:140px"><label class="fl" style="margin-top:0">Cota ordinária atual</label><input type="number" step="0.01" value="'+(c.cotaOrdinaria||0)+'" onchange="ciclos['+i+'].cotaOrdinaria=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
+      '<div style="flex:1;min-width:140px"><label class="fl" style="margin-top:0">Cota fundo de reserva atual</label><input type="number" step="0.01" value="'+(c.cotaFundoReserva||0)+'" onchange="ciclos['+i+'].cotaFundoReserva=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
+      '<div style="flex:1;min-width:120px"><label class="fl" style="margin-top:0">IPCA do ano (%)</label><input type="number" step="0.01" value="'+(c.ipca||0)+'" onchange="ciclos['+i+'].ipca=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
     '</div>'+
     '<div class="metrics" style="margin-bottom:10px">'+
+      '<div class="mc"><div class="mc-lbl">Valor atual total</div><div class="mc-val">'+fmtReaisCiclo(calcularValorAtualTotalCiclo(c))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Sugerido p/ '+(c.ano+1)+'</div><div class="mc-val">'+fmtReaisCiclo(sugerido)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Receitas do ano</div><div class="mc-val ok">'+fmtReaisCiclo(resumo.receitas)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Despesas do ano</div><div class="mc-val bad">'+fmtReaisCiclo(resumo.despesas)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Saldo final ('+(resumo.mesesFechados||0)+'m)</div><div class="mc-val '+((resumo.saldoFinal||0)>=0?'ok':'bad')+'">'+fmtReaisCiclo(resumo.saldoFinal)+'</div></div>'+
     '</div>'+
-    '<label class="fl">Taxas extras</label>'+
+    '<label class="fl">Taxas extras <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(valor mensal × quantidade de parcelas/meses no ano)</span></label>'+
     taxasHtml+
     '<button onclick="adicionarTaxaExtra('+i+')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1px dashed var(--border);background:#fff;cursor:pointer;margin-bottom:10px">+ Taxa extra</button>'+
     '<label class="fl">Valor final aprovado para '+(c.ano+1)+' (após assembleia)</label>'+
