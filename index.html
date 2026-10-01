@@ -577,6 +577,12 @@ function carregarResumosFinanceiros(callback){
 function salvarCiclosSilencioso(){
   salvarNoFirestore('ciclos',ciclos,function(){renderCiclos();});
 }
+function salvarRascunhoCiclo(){
+  salvarNoFirestore('ciclos',ciclos,function(){
+    alert('✅ Rascunho salvo!');
+    renderCiclos();
+  });
+}
 function adicionarCiclo(){
   var anoEl=document.getElementById('novo-ciclo-ano');
   var ano=parseInt(anoEl.value,10);
@@ -665,6 +671,7 @@ function renderCicloAdmin(c,i){
     '<label class="fl">Observações</label>'+
     '<textarea onchange="ciclos['+i+'].observacoes=this.value;salvarCiclosSilencioso()" style="width:100%;min-height:60px;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'+esc(c.observacoes||'')+'</textarea>'+
     '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+      '<button onclick="salvarRascunhoCiclo()" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">💾 Salvar rascunho</button>'+
       (c.status==='publicado'
         ?'<button onclick="despublicarCiclo('+i+')" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">Voltar para rascunho</button>'
         :'<button onclick="publicarCiclo('+i+')" style="font-size:12px;padding:7px 14px;border-radius:7px;border:none;background:var(--ok);color:#fff;font-weight:600;cursor:pointer">📢 Publicar</button>')+
