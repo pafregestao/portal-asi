@@ -595,26 +595,30 @@ function ativarNotificacoes(){
       dispensarBannerNotif();
       return;
     }
-    var messaging=firebase.messaging();
-    messaging.getToken({vapidKey:VAPID_KEY}).then(function(token){
-      if(!token){
-        alert('Não foi possível gerar o identificador de notificação. Tente novamente.');
-        return;
-      }
-      var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-      db.collection('push_tokens').doc(token).set({
-        uid:u.uid||'',
-        unidade:u.unidade||'',
-        nome:u.nome||'',
-        criadoEm:firebase.firestore.FieldValue.serverTimestamp()
-      }).then(function(){
-        dispensarBannerNotif();
-        alert('✅ Notificações ativadas com sucesso!');
+    navigator.serviceWorker.register('./firebase-messaging-sw.js').then(function(swReg){
+      var messaging=firebase.messaging();
+      messaging.getToken({vapidKey:VAPID_KEY,serviceWorkerRegistration:swReg}).then(function(token){
+        if(!token){
+          alert('Não foi possível gerar o identificador de notificação. Tente novamente.');
+          return;
+        }
+        var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+        db.collection('push_tokens').doc(token).set({
+          uid:u.uid||'',
+          unidade:u.unidade||'',
+          nome:u.nome||'',
+          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function(){
+          dispensarBannerNotif();
+          alert('✅ Notificações ativadas com sucesso!');
+        }).catch(function(e){
+          alert('Erro ao salvar token: '+e.message);
+        });
       }).catch(function(e){
-        alert('Erro ao salvar token: '+e.message);
+        alert('Erro ao ativar notificações (getToken): '+e.message);
       });
     }).catch(function(e){
-      alert('Erro ao ativar notificações (getToken): '+e.message);
+      alert('Erro ao registrar o service worker de notificações: '+e.message);
     });
   }).catch(function(e){
     alert('Erro ao pedir permissão: '+e.message);
