@@ -560,11 +560,14 @@ function calcularValorAtualTotalCiclo(c){return (c.cotaOrdinaria||0)+(c.cotaFund
 function calcularSugeridoCiclo(c){return calcularValorAtualTotalCiclo(c)*(1+(c.ipca||0)/100);}
 function calcularValorParaProjecaoCiclo(c){return c.valorAprovado||calcularSugeridoCiclo(c);}
 function calcularMontanteArrecadarCiclo(c){return calcularValorParaProjecaoCiclo(c)*(c.unidades||0)*12;}
-function calcularDespesaProjetadaCiclo(c,resumo){
+function calcularDespesaProjetadaAutomaticaCiclo(c,resumo){
   var meses=(resumo&&resumo.mesesFechados)||0;
   if(!meses) return 0;
   var anualizada=((resumo.despesas||0)/meses)*12;
   return anualizada*(1+(c.ipca||0)/100);
+}
+function calcularDespesaProjetadaCiclo(c,resumo){
+  return (c.despesaProjetadaAjustada!=null)?c.despesaProjetadaAjustada:calcularDespesaProjetadaAutomaticaCiclo(c,resumo);
 }
 function calcularResultadoProjetadoCiclo(c,resumo){
   return calcularMontanteArrecadarCiclo(c)-calcularDespesaProjetadaCiclo(c,resumo);
@@ -610,7 +613,7 @@ function adicionarCiclo(){
   if(ciclos.some(function(c){return c.ano===ano;})){alert('Já existe um ciclo cadastrado para '+ano+'.');return;}
   var ultimoCiclo=ciclos.slice().sort(function(a,b){return b.ano-a.ano;})[0];
   var unidadesDefault=(ultimoCiclo&&ultimoCiclo.unidades)?ultimoCiclo.unidades:128;
-  ciclos.push({ano:ano,cotaOrdinaria:0,cotaFundoReserva:0,taxasExtras:[],ipca:0,unidades:unidadesDefault,valorAprovado:null,observacoes:'',status:'rascunho',publicadoEm:null});
+  ciclos.push({ano:ano,cotaOrdinaria:0,cotaFundoReserva:0,taxasExtras:[],ipca:0,unidades:unidadesDefault,valorAprovado:null,despesaProjetadaAjustada:null,observacoes:'',status:'rascunho',publicadoEm:null});
   anoEl.value='';
   salvarCiclosSilencioso();
 }
@@ -658,11 +661,12 @@ function renderCicloPublico(c){
       '<div class="mc"><div class="mc-lbl">Aprovado p/ '+(c.ano+1)+'</div><div class="mc-val ok">'+(c.valorAprovado?fmtReaisCiclo(c.valorAprovado):'—')+'</div></div>'+
     '</div>'+
     '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Projeção para '+(c.ano+1)+(c.valorAprovado?' (com base no valor aprovado)':' (com base no valor sugerido — ainda sem aprovação)')+'</div>'+
-    '<div class="metrics" style="margin-bottom:10px">'+
+    '<div class="metrics" style="margin-bottom:6px">'+
       '<div class="mc"><div class="mc-lbl">Montante a arrecadar</div><div class="mc-val">'+fmtReaisCiclo(calcularMontanteArrecadarCiclo(c))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Despesa projetada</div><div class="mc-val bad">'+fmtReaisCiclo(calcularDespesaProjetadaCiclo(c,resumo))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Resultado projetado</div><div class="mc-val '+(calcularResultadoProjetadoCiclo(c,resumo)>=0?'ok':'bad')+'">'+fmtReaisCiclo(calcularResultadoProjetadoCiclo(c,resumo))+'</div></div>'+
     '</div>'+
+    '<div style="font-size:11px;color:var(--txt3);margin-bottom:10px">'+(c.despesaProjetadaAjustada!=null?'Despesa ajustada manualmente pelo síndico.':'Despesa estimada a partir de '+(resumo.mesesFechados||0)+' meses fechados, anualizada e corrigida pelo IPCA do ano.')+'</div>'+
     ((c.taxasExtras&&c.taxasExtras.length)?('<div style="font-size:12px;font-weight:700;color:var(--txt3);margin-bottom:6px">Taxas extras</div>'+
       c.taxasExtras.map(function(t){
         var total=(t.valorMensal||0)*(t.parcelas||0);
@@ -705,11 +709,14 @@ function renderCicloAdmin(c,i){
       '<div class="mc"><div class="mc-lbl">Saldo final ('+(resumo.mesesFechados||0)+'m)</div><div class="mc-val '+((resumo.saldoFinal||0)>=0?'ok':'bad')+'">'+fmtReaisCiclo(resumo.saldoFinal)+'</div></div>'+
     '</div>'+
     '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Projeção para '+(c.ano+1)+(c.valorAprovado?' (com base no valor aprovado)':' (com base no valor sugerido — ainda sem aprovação)')+'</div>'+
-    '<div class="metrics" style="margin-bottom:10px">'+
+    '<div class="metrics" style="margin-bottom:6px">'+
       '<div class="mc"><div class="mc-lbl">Montante a arrecadar</div><div class="mc-val">'+fmtReaisCiclo(calcularMontanteArrecadarCiclo(c))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Despesa projetada</div><div class="mc-val bad">'+fmtReaisCiclo(calcularDespesaProjetadaCiclo(c,resumo))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Resultado projetado</div><div class="mc-val '+(calcularResultadoProjetadoCiclo(c,resumo)>=0?'ok':'bad')+'">'+fmtReaisCiclo(calcularResultadoProjetadoCiclo(c,resumo))+'</div></div>'+
     '</div>'+
+    '<div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Estimativa automática: '+fmtReaisCiclo(resumo.despesas)+' em '+(resumo.mesesFechados||0)+' meses fechados → média '+fmtReaisCiclo((resumo.despesas||0)/(resumo.mesesFechados||1))+'/mês × 12 × IPCA '+(c.ipca||0)+'% = '+fmtReaisCiclo(calcularDespesaProjetadaAutomaticaCiclo(c,resumo))+'</div>'+
+    '<label class="fl">Ajustar despesa projetada <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(opcional — use se algum gasto deste ano foi pontual e não deve se repetir)</span></label>'+
+    '<input type="number" step="0.01" value="'+(c.despesaProjetadaAjustada!=null?c.despesaProjetadaAjustada:'')+'" onchange="ciclos['+i+'].despesaProjetadaAjustada=this.value?+this.value:null;salvarCiclosSilencioso()" placeholder="Deixe vazio para usar a estimativa automática" class="fi">'+
     '<label class="fl">Taxas extras <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(valor mensal × quantidade de parcelas/meses no ano)</span></label>'+
     taxasHtml+
     '<button onclick="adicionarTaxaExtra('+i+')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1px dashed var(--border);background:#fff;cursor:pointer;margin-bottom:10px">+ Taxa extra</button>'+
