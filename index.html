@@ -558,6 +558,17 @@ var resumosFinanceiroPorAno={};
 function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function calcularValorAtualTotalCiclo(c){return (c.cotaOrdinaria||0)+(c.cotaFundoReserva||0);}
 function calcularSugeridoCiclo(c){return calcularValorAtualTotalCiclo(c)*(1+(c.ipca||0)/100);}
+function calcularValorParaProjecaoCiclo(c){return c.valorAprovado||calcularSugeridoCiclo(c);}
+function calcularMontanteArrecadarCiclo(c){return calcularValorParaProjecaoCiclo(c)*(c.unidades||0)*12;}
+function calcularDespesaProjetadaCiclo(c,resumo){
+  var meses=(resumo&&resumo.mesesFechados)||0;
+  if(!meses) return 0;
+  var anualizada=((resumo.despesas||0)/meses)*12;
+  return anualizada*(1+(c.ipca||0)/100);
+}
+function calcularResultadoProjetadoCiclo(c,resumo){
+  return calcularMontanteArrecadarCiclo(c)-calcularDespesaProjetadaCiclo(c,resumo);
+}
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
     var porAno={};
@@ -597,7 +608,9 @@ function adicionarCiclo(){
   var ano=parseInt(anoEl.value,10);
   if(!ano){alert('Informe o ano.');return;}
   if(ciclos.some(function(c){return c.ano===ano;})){alert('Já existe um ciclo cadastrado para '+ano+'.');return;}
-  ciclos.push({ano:ano,cotaOrdinaria:0,cotaFundoReserva:0,taxasExtras:[],ipca:0,valorAprovado:null,observacoes:'',status:'rascunho',publicadoEm:null});
+  var ultimoCiclo=ciclos.slice().sort(function(a,b){return b.ano-a.ano;})[0];
+  var unidadesDefault=(ultimoCiclo&&ultimoCiclo.unidades)?ultimoCiclo.unidades:128;
+  ciclos.push({ano:ano,cotaOrdinaria:0,cotaFundoReserva:0,taxasExtras:[],ipca:0,unidades:unidadesDefault,valorAprovado:null,observacoes:'',status:'rascunho',publicadoEm:null});
   anoEl.value='';
   salvarCiclosSilencioso();
 }
@@ -639,9 +652,16 @@ function renderCicloPublico(c){
       '<div class="mc"><div class="mc-lbl">Cota ordinária</div><div class="mc-val">'+fmtReaisCiclo(c.cotaOrdinaria)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Cota fundo reserva</div><div class="mc-val">'+fmtReaisCiclo(c.cotaFundoReserva)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Valor atual total</div><div class="mc-val">'+fmtReaisCiclo(valorAtualTotal)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Unidades</div><div class="mc-val">'+(c.unidades||0)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">IPCA do ano</div><div class="mc-val">'+(c.ipca||0)+'%</div></div>'+
       '<div class="mc"><div class="mc-lbl">Sugerido p/ '+(c.ano+1)+'</div><div class="mc-val">'+fmtReaisCiclo(calcularSugeridoCiclo(c))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Aprovado p/ '+(c.ano+1)+'</div><div class="mc-val ok">'+(c.valorAprovado?fmtReaisCiclo(c.valorAprovado):'—')+'</div></div>'+
+    '</div>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Projeção para '+(c.ano+1)+(c.valorAprovado?' (com base no valor aprovado)':' (com base no valor sugerido — ainda sem aprovação)')+'</div>'+
+    '<div class="metrics" style="margin-bottom:10px">'+
+      '<div class="mc"><div class="mc-lbl">Montante a arrecadar</div><div class="mc-val">'+fmtReaisCiclo(calcularMontanteArrecadarCiclo(c))+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Despesa projetada</div><div class="mc-val bad">'+fmtReaisCiclo(calcularDespesaProjetadaCiclo(c,resumo))+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Resultado projetado</div><div class="mc-val '+(calcularResultadoProjetadoCiclo(c,resumo)>=0?'ok':'bad')+'">'+fmtReaisCiclo(calcularResultadoProjetadoCiclo(c,resumo))+'</div></div>'+
     '</div>'+
     ((c.taxasExtras&&c.taxasExtras.length)?('<div style="font-size:12px;font-weight:700;color:var(--txt3);margin-bottom:6px">Taxas extras</div>'+
       c.taxasExtras.map(function(t){
@@ -675,6 +695,7 @@ function renderCicloAdmin(c,i){
       '<div style="flex:1;min-width:140px"><label class="fl" style="margin-top:0">Cota ordinária atual</label><input type="number" step="0.01" value="'+(c.cotaOrdinaria||0)+'" onchange="ciclos['+i+'].cotaOrdinaria=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
       '<div style="flex:1;min-width:140px"><label class="fl" style="margin-top:0">Cota fundo de reserva atual</label><input type="number" step="0.01" value="'+(c.cotaFundoReserva||0)+'" onchange="ciclos['+i+'].cotaFundoReserva=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
       '<div style="flex:1;min-width:120px"><label class="fl" style="margin-top:0">IPCA do ano (%)</label><input type="number" step="0.01" value="'+(c.ipca||0)+'" onchange="ciclos['+i+'].ipca=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
+      '<div style="flex:1;min-width:120px"><label class="fl" style="margin-top:0">Número de unidades</label><input type="number" step="1" value="'+(c.unidades||0)+'" onchange="ciclos['+i+'].unidades=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
     '</div>'+
     '<div class="metrics" style="margin-bottom:10px">'+
       '<div class="mc"><div class="mc-lbl">Valor atual total</div><div class="mc-val">'+fmtReaisCiclo(calcularValorAtualTotalCiclo(c))+'</div></div>'+
@@ -682,6 +703,12 @@ function renderCicloAdmin(c,i){
       '<div class="mc"><div class="mc-lbl">Receitas do ano</div><div class="mc-val ok">'+fmtReaisCiclo(resumo.receitas)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Despesas do ano</div><div class="mc-val bad">'+fmtReaisCiclo(resumo.despesas)+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Saldo final ('+(resumo.mesesFechados||0)+'m)</div><div class="mc-val '+((resumo.saldoFinal||0)>=0?'ok':'bad')+'">'+fmtReaisCiclo(resumo.saldoFinal)+'</div></div>'+
+    '</div>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Projeção para '+(c.ano+1)+(c.valorAprovado?' (com base no valor aprovado)':' (com base no valor sugerido — ainda sem aprovação)')+'</div>'+
+    '<div class="metrics" style="margin-bottom:10px">'+
+      '<div class="mc"><div class="mc-lbl">Montante a arrecadar</div><div class="mc-val">'+fmtReaisCiclo(calcularMontanteArrecadarCiclo(c))+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Despesa projetada</div><div class="mc-val bad">'+fmtReaisCiclo(calcularDespesaProjetadaCiclo(c,resumo))+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Resultado projetado</div><div class="mc-val '+(calcularResultadoProjetadoCiclo(c,resumo)>=0?'ok':'bad')+'">'+fmtReaisCiclo(calcularResultadoProjetadoCiclo(c,resumo))+'</div></div>'+
     '</div>'+
     '<label class="fl">Taxas extras <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(valor mensal × quantidade de parcelas/meses no ano)</span></label>'+
     taxasHtml+
