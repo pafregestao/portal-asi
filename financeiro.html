@@ -277,9 +277,16 @@ function processarPDFs(files){
   }).catch(function(e){document.getElementById('spinner2').style.display='none';alert('Erro PDF: '+e.message);});
 }
 
+function chaveMes(m){var p=(m||'').split('/');var a=p[1]||'';if(a.length===2)a='20'+a;return a+'-'+p[0];}
 function adicionarPeriodo(p){
-  var ex=periodos.find(function(x){return x.mes===p.mes;});
-  if(ex){if((PRIO[p.tipo]||0)<=(PRIO[ex.tipo]||0))return false;periodos=periodos.filter(function(x){return x.mes!==p.mes;});db.collection('financeiro').doc(ex.id).delete();}
+  var k=chaveMes(p.mes);
+  var exs=periodos.filter(function(x){return chaveMes(x.mes)===k;});
+  if(exs.length){
+    var maiorPrio=Math.max.apply(null,exs.map(function(x){return PRIO[x.tipo]||0;}));
+    if((PRIO[p.tipo]||0)<maiorPrio)return false;
+    periodos=periodos.filter(function(x){return chaveMes(x.mes)!==k;});
+    exs.forEach(function(x){if(x.id!==p.id)db.collection('financeiro').doc(x.id).delete();});
+  }
   periodos.push(p);periodos.sort(function(a,b){return a.periodo.localeCompare(b.periodo);});return true;
 }
 function limparTudo(){if(!confirm('Remover TODO o historico?'))return;Promise.all(periodos.map(function(p){return db.collection('financeiro').doc(p.id).delete();})).then(function(){periodos=[];renderPeriodosTags();renderTudo();});}
@@ -388,8 +395,19 @@ function parsePDF(pages,filename){
     // W020G: formato Garbens — seções separadas por conta (Demonstrativo Analítico)
     var isW020G=linhas.some(function(l){return l.indexOf('Demonstrativo Anal')>=0;});
     var inO=false,inD=false;
+    // Conta Ordinaria isolada (campos novos, nao altera os campos antigos)
+    var inOrdBloco=false,temOrd=false,ordRec=null,ordDesp=null,ordCota=0,ordSaldo=null;
     for(var i=0;i<linhas.length;i++){
       var l=linhas[i].trim(),v=nf(l);
+      var mcta=l.match(/Despesas da Conta\s+["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]/);
+      if(mcta){inOrdBloco=/^Conta (Ordin|Principal)/i.test(normStr(mcta[1]));if(inOrdBloco)temOrd=true;}
+      if(l.indexOf('Resumo Financeiro')>=0)inOrdBloco=false;
+      if(inOrdBloco){
+        if(/^Total de Receitas\b/.test(l)&&v)ordRec=toNum(v);
+        if(/^Total de Despesas\b/.test(l)&&v)ordDesp=toNum(v);
+        if(/^Cota Ordinaria\b/i.test(normStr(l))&&v)ordCota+=toNum(v);
+        if(/^Saldo em \d{2}\/\d{2}\/\d{4}/.test(l)&&v)ordSaldo=toNum(v);
+      }
       if(isW020G){
         // W020G: inO ativa no cabeçalho da seção Conta Principal
         if(/Demonstrativo Anal.+Conta (Ordin|Principal)/i.test(l))inO=true;
@@ -463,7 +481,9 @@ function parsePDF(pages,filename){
   }
 
   var docId=mes.replace('/','_')+'_'+(t16?'16A':'20C');
-  return{id:docId,filename:filename,tipo:t16?'16A':'20C',mes:mes,periodo:periodo,receitas:rec,despesas:desp,churr:ch,saldoOrdinario:saldo,catTotais:ct,itens:Object.keys(its).map(function(k){return{nome:k,cat:its[k].cat,v:its[k].v};}),contas:contas};
+  var saida={id:docId,filename:filename,tipo:t16?'16A':'20C',mes:mes,periodo:periodo,receitas:rec,despesas:desp,churr:ch,saldoOrdinario:saldo,catTotais:ct,itens:Object.keys(its).map(function(k){return{nome:k,cat:its[k].cat,v:its[k].v};}),contas:contas};
+  if(t16&&temOrd&&ordRec!=null&&ordDesp!=null&&ordCota>0) saida.ord={receitas:ordRec,despesas:ordDesp,cota:ordCota,saldo:ordSaldo};
+  return saida;
 }
 
 function merge(){
