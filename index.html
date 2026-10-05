@@ -574,24 +574,35 @@ function calcularResultadoProjetadoCiclo(c,resumo){
 }
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
-    var porAno={};
+    var PRIO={'16A':3,'11A':2,'20C':1};
     var mesesOrdem={'Jan':1,'Fev':2,'Mar':3,'Abr':4,'Mai':5,'Jun':6,'Jul':7,'Ago':8,'Set':9,'Out':10,'Nov':11,'Dez':12};
+    var escolhidos={};
+    var duplicados={};
     snap.forEach(function(doc){
       var d=doc.data();
       var partes=(d.mes||'').split('/');
       if(partes.length<2) return;
       var ano=parseInt('20'+partes[1].slice(-2),10);
-      if(!porAno[ano]) porAno[ano]={receitas:0,despesas:0,meses:[]};
-      porAno[ano].receitas+=d.receitas||0;
-      porAno[ano].despesas+=d.despesas||0;
-      porAno[ano].meses.push({ordem:mesesOrdem[partes[0]]||0,saldo:d.saldoOrdinario||0});
+      var ordem=mesesOrdem[partes[0]]||0;
+      var chave=ano+'-'+ordem;
+      var item={ano:ano,ordem:ordem,mes:d.mes,tipo:d.tipo||'',receitas:d.receitas||0,despesas:d.despesas||0,saldo:d.saldoOrdinario||0};
+      var atual=escolhidos[chave];
+      if(!atual){escolhidos[chave]=item;return;}
+      duplicados[ano]=(duplicados[ano]||0)+1;
+      if((PRIO[item.tipo]||0)>(PRIO[atual.tipo]||0)) escolhidos[chave]=item;
+    });
+    var porAno={};
+    Object.keys(escolhidos).forEach(function(k){
+      var it=escolhidos[k];
+      if(!porAno[it.ano]) porAno[it.ano]=[];
+      porAno[it.ano].push(it);
     });
     var mapa={};
     Object.keys(porAno).forEach(function(ano){
-      var info=porAno[ano];
-      info.meses.sort(function(a,b){return a.ordem-b.ordem;});
-      var saldoFinal=info.meses.length?info.meses[info.meses.length-1].saldo:0;
-      mapa[ano]={receitas:info.receitas,despesas:info.despesas,saldoFinal:saldoFinal,mesesFechados:info.meses.length};
+      var lista=porAno[ano].sort(function(a,b){return a.ordem-b.ordem;});
+      var rec=0,desp=0;
+      lista.forEach(function(it){rec+=it.receitas;desp+=it.despesas;});
+      mapa[ano]={receitas:rec,despesas:desp,saldoFinal:lista.length?lista[lista.length-1].saldo:0,mesesFechados:lista.length,detalhes:lista,duplicadosIgnorados:duplicados[ano]||0};
     });
     resumosFinanceiroPorAno=mapa;
     if(callback) callback();
@@ -715,6 +726,12 @@ function renderCicloAdmin(c,i){
       '<div class="mc"><div class="mc-lbl">Resultado projetado</div><div class="mc-val '+(calcularResultadoProjetadoCiclo(c,resumo)>=0?'ok':'bad')+'">'+fmtReaisCiclo(calcularResultadoProjetadoCiclo(c,resumo))+'</div></div>'+
     '</div>'+
     '<div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Estimativa automática: '+fmtReaisCiclo(resumo.despesas)+' em '+(resumo.mesesFechados||0)+' meses fechados → média '+fmtReaisCiclo((resumo.despesas||0)/(resumo.mesesFechados||1))+'/mês × 12 × IPCA '+(c.ipca||0)+'% = '+fmtReaisCiclo(calcularDespesaProjetadaAutomaticaCiclo(c,resumo))+'</div>'+
+    '<details style="margin-bottom:8px"><summary style="font-size:12px;cursor:pointer;color:var(--azul)">Ver meses usados nesta conta ('+(resumo.mesesFechados||0)+')'+(resumo.duplicadosIgnorados?' — '+resumo.duplicadosIgnorados+' duplicado(s) ignorado(s)':'')+'</summary>'+
+      '<div style="font-size:12px;margin-top:6px">'+
+        '<div style="display:flex;gap:8px;font-weight:700;color:var(--txt3);padding:3px 0"><span style="width:70px">Mês</span><span style="flex:1">Receita</span><span style="flex:1">Despesa</span></div>'+
+        ((resumo.detalhes||[]).map(function(it){return '<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border)"><span style="width:70px">'+escHtml(it.mes||'')+'</span><span style="flex:1">'+fmtReaisCiclo(it.receitas)+'</span><span style="flex:1">'+fmtReaisCiclo(it.despesas)+'</span></div>';}).join('')||'<div style="color:var(--txt3)">Nenhum mês encontrado.</div>')+
+      '</div>'+
+    '</details>'+
     '<label class="fl">Ajustar despesa projetada <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(opcional — use se algum gasto deste ano foi pontual e não deve se repetir)</span></label>'+
     '<input type="number" step="0.01" value="'+(c.despesaProjetadaAjustada!=null?c.despesaProjetadaAjustada:'')+'" onchange="ciclos['+i+'].despesaProjetadaAjustada=this.value?+this.value:null;salvarCiclosSilencioso()" placeholder="Deixe vazio para usar a estimativa automática" class="fi">'+
     '<label class="fl">Taxas extras <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(valor mensal × quantidade de parcelas/meses no ano)</span></label>'+
