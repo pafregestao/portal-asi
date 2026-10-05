@@ -76,6 +76,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <div style="font-size:12px;color:var(--txt3)">Formatos 11A, 16A ou 20C — Dados salvos para todos os moradores</div>
       <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('filePdf').click()">Selecionar PDF</button>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button onclick="baixarBackupFinanceiro()" style="font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--azul);cursor:pointer">💾 Baixar backup do histórico</button>
+      <label style="font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--txt2);cursor:pointer">↩ Restaurar backup<input type="file" accept=".json,application/json" style="display:none" onchange="restaurarBackupFinanceiro(this)"></label>
+    </div>
     <div id="periodosWrap" style="display:none;margin-bottom:16px">
       <div style="font-size:12px;font-weight:600;color:var(--txt3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Periodos no historico</div>
       <div id="periodosTags"></div>
@@ -136,7 +140,7 @@ var auth=firebase.auth(),db=firebase.firestore(),chartSaldo,filtroAtual='todos',
 var PRIO={'16A':3,'11A':2,'20C':1};
 var catCores={terceiros:'#1a3a5c',tarifas:'#b8630a',preventiva:'#2d7a3a',conservacao:'#7c3aed',admin:'#c0392b',bancarias:'#888'};
 var catNomes={terceiros:'Despesas com Terceiros',tarifas:'Tarifas Publicas',preventiva:'Manutencao Preventiva',conservacao:'Manutencao e Conservacao',admin:'Despesas Administrativas',bancarias:'Despesas Bancarias'};
-var PALAVRAS_RECEITA=['Cota Ordinaria','Cota Fundo','Conta Ordin','Conta Principal','Cota Extra','Cota Churrasqueira','Consumo de agua','Receitas Eventuais','Rendimentos','Taxa de Leitura','Tarifa Garantidora','Fundo de Reserva','Fundo de Melhoria','Saldo em','Saldo anterior','Saldo Final','Saldo Inicial','Mov. Liquido','Transf. da conta','(+) Transf','(-) Transf','Total de Receitas','Total de RECEITAS','Total de Despesas','Total de DESPESAS','Multa Regulamentar','Receita Mercado','CONTA SALAO'];
+var PALAVRAS_RECEITA=['Cota Ordinaria','Cota Fundo','Conta Ordin','Conta Principal','Cota Extra','Cota Churrasqueira','Consumo de agua','Receitas Eventuais','Rendimentos','Taxa de Leitura','Tarifa Garantidora','Fundo de Reserva','Fundo de Melhoria','Saldo em','Saldo anterior','Saldo Final','Saldo Inicial','Mov. Liquido','Transf. da conta','(+) Transf','(-) Transf','Total de Receitas','Total de RECEITAS','Total de Despesas','Total de DESPESAS','Multa Regulamentar','Receita Mercado','CONTA SALAO','Cota de Pintura','Cota Pintura'];
 var GRUPOS={
   // Terceiros
   'Servicos Gerais':'Servicos Gerais',
@@ -279,6 +283,34 @@ function adicionarPeriodo(p){
   periodos.push(p);periodos.sort(function(a,b){return a.periodo.localeCompare(b.periodo);});return true;
 }
 function limparTudo(){if(!confirm('Remover TODO o historico?'))return;Promise.all(periodos.map(function(p){return db.collection('financeiro').doc(p.id).delete();})).then(function(){periodos=[];renderPeriodosTags();renderTudo();});}
+function baixarBackupFinanceiro(){
+  if(!isAdmin){alert('Apenas administradores.');return;}
+  if(!periodos.length){alert('Não há histórico para salvar.');return;}
+  var blob=new Blob([JSON.stringify(periodos,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='backup-financeiro-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
+function restaurarBackupFinanceiro(input){
+  if(!isAdmin){alert('Apenas administradores.');return;}
+  var file=input.files&&input.files[0];
+  if(!file) return;
+  var r=new FileReader();
+  r.onload=function(e){
+    var dados;
+    try{dados=JSON.parse(e.target.result);}catch(err){alert('Arquivo inválido.');input.value='';return;}
+    if(!Array.isArray(dados)||!dados.length||!dados.every(function(p){return p&&p.id&&p.mes&&p.tipo;})){alert('Este arquivo não parece ser um backup do Financeiro.');input.value='';return;}
+    if(!confirm('Restaurar o backup?\n\nIsso SUBSTITUI todo o histórico atual ('+periodos.length+' períodos) pelo do arquivo ('+dados.length+' períodos).')){input.value='';return;}
+    var ids=dados.map(function(p){return p.id;});
+    var ops=[];
+    periodos.forEach(function(p){if(ids.indexOf(p.id)<0) ops.push(db.collection('financeiro').doc(p.id).delete());});
+    dados.forEach(function(p){ops.push(db.collection('financeiro').doc(p.id).set(p));});
+    Promise.all(ops).then(function(){input.value='';alert('✅ Backup restaurado.');carregarFirestore();}).catch(function(err){alert('Erro ao restaurar: '+err.message);});
+  };
+  r.readAsText(file);
+}
 function removerPeriodo(id){if(!isAdmin||!confirm('Remover este periodo?'))return;db.collection('financeiro').doc(id).delete().then(function(){periodos=periodos.filter(function(p){return p.id!==id;});renderPeriodosTags();renderTudo();});}
 
 function lerPDF(file){
@@ -441,7 +473,7 @@ function merge(){
   var tR=0,tD=0,tC=0,contasU={};
   periodos.forEach(function(p){
     if(!meses.includes(p.mes)){meses.push(p.mes);rec.push(p.receitas||0);desp.push(p.despesas||0);sald.push(p.saldoOrdinario||0);ch.push(p.churr||0);}
-    (p.itens||[]).forEach(function(it){if(!iM[it.nome])iM[it.nome]={nome:it.nome,cat:it.cat,meses:[],vals:[]};if(!iM[it.nome].meses.includes(p.mes)){iM[it.nome].meses.push(p.mes);iM[it.nome].vals.push(it.v);}});
+    (p.itens||[]).forEach(function(it){if(isReceita(it.nome))return;if(!iM[it.nome])iM[it.nome]={nome:it.nome,cat:it.cat,meses:[],vals:[]};if(!iM[it.nome].meses.includes(p.mes)){iM[it.nome].meses.push(p.mes);iM[it.nome].vals.push(it.v);}});
     Object.keys(catT).forEach(function(k){catT[k]+=((p.catTotais||{})[k]||0);});
     tR+=p.receitas||0;tD+=p.despesas||0;tC+=p.churr||0;
   });
