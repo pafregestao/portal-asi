@@ -558,12 +558,34 @@ var classifDespesas=[];
 var cicloEmPreparo=null;
 var prepLista=[];
 var detAberto={};
+var opcaoSel={};
 var prepChaves=[];
 var resumosFinanceiroPorAno={};
 function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function calcularValorAtualTotalCiclo(c){return (c.cotaOrdinaria||0)+(c.cotaFundoReserva||0);}
 function calcularSugeridoCiclo(c){return calcularValorAtualTotalCiclo(c)*(1+(c.ipca||0)/100);}
-function calcularValorParaProjecaoCiclo(c){return c.valorAprovado||calcularSugeridoCiclo(c);}
+function opcoesCiclo(c){
+  var lista=[{chave:'ipca',rotulo:'Só IPCA ('+(c.ipca||0)+'%)',valor:calcularSugeridoCiclo(c)}];
+  (c.opcoes||[]).forEach(function(o,i){
+    if(o&&o.valor>0) lista.push({chave:'o'+i,rotulo:(o.nome&&String(o.nome).trim())||('Opção '+String.fromCharCode(66+i)),valor:o.valor});
+  });
+  if(c.valorAprovado) lista.push({chave:'aprovado',rotulo:'Aprovada em assembleia',valor:c.valorAprovado});
+  return lista;
+}
+function opcaoAtivaCiclo(c){
+  var lista=opcoesCiclo(c),k=opcaoSel[c.ano];
+  var a=lista.filter(function(x){return x.chave===k;})[0];
+  return a||lista.filter(function(x){return x.chave==='aprovado';})[0]||lista[0];
+}
+function calcularValorParaProjecaoCiclo(c){return opcaoAtivaCiclo(c).valor;}
+function selecionarOpcaoCiclo(ano,chave){opcaoSel[ano]=chave;renderCiclos();}
+function salvarOpcaoCiclo(i,k,campo,val){
+  var c=ciclos[i];
+  c.opcoes=c.opcoes||[];
+  while(c.opcoes.length<2) c.opcoes.push({nome:'',valor:0});
+  c.opcoes[k][campo]=(campo==='valor')?(+val||0):val;
+  salvarCiclosSilencioso();
+}
 function calcularMontanteArrecadarCiclo(c){return calcularValorParaProjecaoCiclo(c)*(c.unidades||0)*12;}
 var FIXAS_PADRAO=['Servicos Gerais','Monitoramento / Portaria','Agua e Esgoto','Energia Eletrica','Gas','Telefone e Internet','Manutencao de Elevador','Honorarios Sindico','Taxa de Administracao','INSS','PIS-COFINS-CSLL','IR Retido','ISSQN','Manutencao de Conta Bancaria','Tarifa Bancaria','Copias e Impressos','Correios','Pasta Mensal','Material de Limpeza','Seguro Predial','Medicao de Agua','Conservacao de Jardins'];
 function limparDescParcela(d,minusculo){
@@ -660,13 +682,13 @@ function calcularDespesasPorGrupoCiclo(resumo,c){
   removidos.sort(function(a,b){return b.anual-a.anual;});
   return {meses:ag.meses,fixasAnual:fix,variaveisAnual:vari,nFixas:nf,nVariaveis:nv,removidoAnual:remA,removidos:removidos,ag:ag};
 }
-function calcularProjecaoOrdinariaCiclo(c,resumo){
+function calcularProjecaoOrdinariaCiclo(c,resumo,valorOverride){
   var ord=resumo&&resumo.ord;
   var dg=calcularDespesasPorGrupoCiclo(resumo,c);
   if(!ord||!ord.meses||!dg) return null;
   var total=calcularValorAtualTotalCiclo(c);
   var shareOrd=total>0?(c.cotaOrdinaria||0)/total:1;
-  var valor=calcularValorParaProjecaoCiclo(c);
+  var valor=(valorOverride!=null)?valorOverride:calcularValorParaProjecaoCiclo(c);
   var unid=c.unidades||0;
   var cotaOrdAnual=valor*shareOrd*unid*12;
   var reservaAnual=valor*(1-shareOrd)*unid*12;
@@ -737,13 +759,47 @@ function htmlGraficoMensalCiclo(resumo){
 }
 function fraseResumoCiclo(c,proj){
   var anoP=c.ano+1,r=proj.resultadoTotal,f=fmtReaisCiclo;
-  var s1='Com a cota proposta, a conta ordinária de '+anoP+(r>=0?' fecharia com <strong>sobra de '+f(r)+'</strong>.':' fecharia com <strong>falta de '+f(-r)+'</strong>.');
+  var varias=opcoesCiclo(c).length>1,at=opcaoAtivaCiclo(c);
+  var s1=(varias?'Com a cota de <strong>'+f(at.valor)+'</strong> ('+escHtml(at.rotulo)+'), a conta ordinária de ':'Com a cota proposta, a conta ordinária de ')+anoP+(r>=0?' fecharia com <strong>sobra de '+f(r)+'</strong>.':' fecharia com <strong>falta de '+f(-r)+'</strong>.');
   var s2=proj.resultadoFixas>=0
     ?' As contas de todo mês ficam cobertas (sobram '+f(proj.resultadoFixas)+')'+(r<0?'; o que falta vem das manutenções e gastos eventuais ('+f(proj.variaveis)+' no ano).':'.')
     :' Nem as contas de todo mês ficam cobertas (faltam '+f(-proj.resultadoFixas)+').';
-  var s3=r<0?' Para fechar no zero, a cota ordinária precisaria ser <strong>'+f(proj.cotaEquilibrioTotal)+'</strong>; a proposta prevê '+f(proj.cotaOrdSugerida)+'.':'';
+  var s3=r<0?' Para fechar no zero, a cota ordinária precisaria ser <strong>'+f(proj.cotaEquilibrioTotal)+'</strong>; '+(varias?'esta opção prevê ':'a proposta prevê ')+f(proj.cotaOrdSugerida)+'.':'';
   var s4=proj.removidoAnual>0.5?' Já estão descontados '+f(proj.removidoAnual)+' por ano de gastos de '+c.ano+' que não se repetem em '+anoP+'.':'';
   return s1+s2+s3+s4;
+}
+function htmlOpcoesCiclo(c,resumo){
+  var lista=opcoesCiclo(c),anoP=c.ano+1,f=fmtReaisCiclo;
+  if(lista.length<2){
+    if(!adminLogado) return '';
+    return '<div style="margin-bottom:10px"><button onclick="detAberto[\'opcoes'+c.ano+'\']=true;renderCiclos();setTimeout(function(){var e=document.getElementById(\'opcoes-ed-'+c.ano+'\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'center\'});},60)" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px dashed var(--azul);background:#fff;color:var(--azul);cursor:pointer">➕ Comparar com outras opções de cota (assembleia)</button></div>';
+  }
+  var atual=calcularValorAtualTotalCiclo(c),ativa=opcaoAtivaCiclo(c);
+  var cards=lista.map(function(o){
+    var pr=calcularProjecaoOrdinariaCiclo(c,resumo,o.valor);
+    var pct=atual>0?(o.valor/atual-1)*100:0;
+    var ativo=o.chave===ativa.chave;
+    var res=pr?'<div style="font-size:11px;font-weight:700;margin-top:2px;color:'+(pr.resultadoTotal>=0?'var(--ok)':'var(--bad)')+'">'+(pr.resultadoTotal>=0?'Sobra ':'Falta ')+f(Math.abs(pr.resultadoTotal))+'</div>':'';
+    return '<button onclick="selecionarOpcaoCiclo('+c.ano+',\''+o.chave+'\')" style="text-align:left;cursor:pointer;font-family:inherit;border-radius:10px;padding:8px 10px;border:'+(ativo?'2px solid var(--azul)':'1px solid var(--border)')+';background:'+(ativo?'#f0f5fb':'#fff')+'">'+
+      '<div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em">'+escHtml(o.rotulo)+(ativo?' ✓':'')+'</div>'+
+      '<div style="font-size:16px;font-weight:700;color:var(--azul)">'+f(o.valor)+'</div>'+
+      '<div style="font-size:11px;color:var(--txt3)">'+(pct>=0?'+':'')+pct.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'% sobre hoje</div>'+res+'</button>';
+  }).join('');
+  return '<div style="font-size:12px;font-weight:700;color:var(--txt2);margin:0 0 6px">Opções de cota para '+anoP+' — toque para ver os números de cada uma</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px">'+cards+'</div>';
+}
+function htmlEditorOpcoesCiclo(c,i){
+  var o=c.opcoes||[];
+  var n=o.filter(function(x){return x&&x.valor>0;}).length;
+  var inp='border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;font-family:inherit;box-sizing:border-box';
+  var linha=function(k){
+    var x=o[k]||{nome:'',valor:0};
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;align-items:center">'+
+      '<input value="'+esc(x.nome||'')+'" placeholder="Nome (ex.: Opção '+String.fromCharCode(66+k)+')" onchange="salvarOpcaoCiclo('+i+','+k+',\'nome\',this.value)" style="flex:1;min-width:130px;'+inp+'">'+
+      '<input type="number" step="0.01" value="'+(x.valor||'')+'" placeholder="Cota total R$" onchange="salvarOpcaoCiclo('+i+','+k+',\'valor\',this.value)" style="width:130px;'+inp+'"></div>';
+  };
+  return '<details id="opcoes-ed-'+c.ano+'" style="margin-top:2px"'+attrDet('opcoes'+c.ano,false)+'><summary style="font-size:13px;font-weight:600;cursor:pointer;color:var(--azul);padding:6px 0">Opções de cota para a assembleia ('+n+')</summary>'+
+    '<div style="margin-top:6px"><div style="font-size:11px;color:var(--txt3);margin-bottom:6px;line-height:1.5">Além do valor com IPCA, informe até 2 opções de <strong>cota total por unidade/mês</strong> (ordinária + reserva). A divisão entre as duas segue a proporção atual. As opções aparecem lado a lado para comparar e, ao tocar em uma, a tela inteira se atualiza. Deixe o valor vazio para remover a opção.</div>'+linha(0)+linha(1)+'</div></details>';
 }
 function htmlResumoCiclo(c,resumo,acaoAposTabela){
   var proj=calcularProjecaoOrdinariaCiclo(c,resumo);
@@ -751,14 +807,16 @@ function htmlResumoCiclo(c,resumo,acaoAposTabela){
   if(!proj) return htmlAvisoCiclo('Ainda não há despesas da Conta Ordinária de '+c.ano+' para avaliar.'+(adminLogado?' Reenvie os PDFs 16A no Financeiro.':''));
   var valor=calcularValorParaProjecaoCiclo(c);
   var atual=calcularValorAtualTotalCiclo(c);
-  var eqTotal=proj.cotaEquilibrioTotal+(valor-proj.cotaOrdSugerida);
+  var ativa=opcaoAtivaCiclo(c);
+  var shareOrd=calcularValorAtualTotalCiclo(c)>0?(c.cotaOrdinaria||0)/calcularValorAtualTotalCiclo(c):1;
+  var eqTotal=proj.cotaEquilibrioTotal+calcularSugeridoCiclo(c)*(1-shareOrd);
   var r=proj.resultadoTotal;
   var parcial=(resumo.mesesFechados&&proj.mesesDesp<resumo.mesesFechados)?htmlAvisoCiclo('Avaliação feita com '+proj.mesesDesp+' dos '+resumo.mesesFechados+' meses fechados.'):'';
   var box='<div style="border-left:4px solid '+(r>=0?'#2d7a3a':'#c0392b')+';background:'+(r>=0?'#e8f5e9':'#fdecea')+';border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.55;margin-bottom:10px">'+fraseResumoCiclo(c,proj)+'</div>';
   var sub=function(t){return '<div style="font-size:11px;color:var(--txt3)">'+t+'</div>';};
   var cards='<div class="metrics" style="margin-bottom:10px">'+
     '<div class="mc"><div class="mc-lbl">Cota hoje</div><div class="mc-val">'+f(atual)+'</div>'+sub('por unidade, por mês')+'</div>'+
-    '<div class="mc"><div class="mc-lbl">Cota proposta '+anoP+'</div><div class="mc-val">'+f(valor)+'</div>'+sub(c.valorAprovado?'aprovada em assembleia':'sugerida (IPCA '+(c.ipca||0)+'%)')+'</div>'+
+    '<div class="mc"><div class="mc-lbl">Cota proposta '+anoP+'</div><div class="mc-val">'+f(valor)+'</div>'+sub(ativa.chave==='ipca'?'sugerida (IPCA '+(c.ipca||0)+'%)':escHtml(ativa.rotulo))+'</div>'+
     '<div class="mc"><div class="mc-lbl">Cota que equilibra</div><div class="mc-val '+(eqTotal>valor?'bad':'ok')+'">'+f(eqTotal)+'</div>'+sub('só a ordinária: '+f(proj.cotaEquilibrioTotal))+'</div>'+
     '<div class="mc"><div class="mc-lbl">Total a arrecadar</div><div class="mc-val">'+f(calcularMontanteArrecadarCiclo(c))+'</div>'+sub('cotas de '+(c.unidades||0)+' unidades × 12 meses')+'</div>'+
   '</div>';
@@ -784,7 +842,7 @@ function htmlResumoCiclo(c,resumo,acaoAposTabela){
         return '<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--border)"><span>'+escHtml(nomeBonitoDespesa(x.nome))+(x.rotulo?' — '+escHtml(rotuloParteCurto(x.nome,x.rotulo)):'')+'</span><span style="white-space:nowrap;color:var(--txt2)">'+f(x.periodo)+' pagos em '+c.ano+'</span></div>';
       }).join('')+'</div></details>';
   }
-  return parcial+box+cards+tabela+fora+(acaoAposTabela||'')+htmlGraficoMensalCiclo(resumo)+sit;
+  return parcial+htmlOpcoesCiclo(c,resumo)+box+cards+tabela+fora+(acaoAposTabela||'')+htmlGraficoMensalCiclo(resumo)+sit;
 }
 function infoParcelaCiclo(desc){
   var m=(desc||'').match(/(\d+) de (\d+)/);
@@ -1004,6 +1062,7 @@ function renderCicloAdmin(c,i){
         '<div style="flex:1;min-width:120px"><label class="fl" style="margin-top:0">Número de unidades</label><input type="number" step="1" value="'+(c.unidades||0)+'" onchange="ciclos['+i+'].unidades=+this.value||0;salvarCiclosSilencioso()" class="fi"></div>'+
       '</div>'+
     '</details>'+
+    htmlEditorOpcoesCiclo(c,i)+
     '<details style="margin-top:2px"'+attrDet('conf'+c.ano,false)+'><summary style="font-size:13px;font-weight:600;cursor:pointer;color:var(--azul);padding:6px 0">Conferir os dados usados ('+(resumo.mesesFechados||0)+' meses)'+(resumo.duplicadosIgnorados?' — '+resumo.duplicadosIgnorados+' duplicado(s) ignorado(s)':'')+'</summary>'+
       '<div style="font-size:12px;margin-top:6px">'+avisoOrd+
         '<div style="color:var(--txt2);line-height:1.5;margin-bottom:8px">Como é calculado: cada despesa vale a média dos meses fechados × 12, sem inflação automática. A receita ordinária é a cota ordinária proposta × unidades × 12, mais a média mensal de água e outras receitas × 12. Fundo de reserva e fundo de pintura ficam de fora.</div>'+
