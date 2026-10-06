@@ -558,6 +558,7 @@ var classifDespesas=[];
 var cicloEmPreparo=null;
 var prepLista=[];
 var detAberto={};
+var prepChaves=[];
 var resumosFinanceiroPorAno={};
 function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function calcularValorAtualTotalCiclo(c){return (c.cotaOrdinaria||0)+(c.cotaFundoReserva||0);}
@@ -565,7 +566,29 @@ function calcularSugeridoCiclo(c){return calcularValorAtualTotalCiclo(c)*(1+(c.i
 function calcularValorParaProjecaoCiclo(c){return c.valorAprovado||calcularSugeridoCiclo(c);}
 function calcularMontanteArrecadarCiclo(c){return calcularValorParaProjecaoCiclo(c)*(c.unidades||0)*12;}
 var FIXAS_PADRAO=['Servicos Gerais','Monitoramento / Portaria','Agua e Esgoto','Energia Eletrica','Gas','Telefone e Internet','Manutencao de Elevador','Honorarios Sindico','Taxa de Administracao','INSS','PIS-COFINS-CSLL','IR Retido','ISSQN','Manutencao de Conta Bancaria','Tarifa Bancaria','Copias e Impressos','Correios','Pasta Mensal','Material de Limpeza','Seguro Predial','Medicao de Agua','Conservacao de Jardins'];
-function agregarDespesasOrdCiclo(resumo){
+function limparDescParcela(d,minusculo){
+  var s=String(d||'');
+  if(minusculo) s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  s=s.replace(/\bparc\.?\s*\d+\s*de\s*\d+/gi,'').replace(/\b\d+\s*de\s*\d+\b/g,'').replace(/\bNF[-\s]?\d+/gi,'').replace(/\b\d{2}\/\d{4}\b/g,'').replace(/\s*[-–]\s*$/,'').replace(/\s{2,}/g,' ').trim();
+  return s;
+}
+function chaveParteDespesa(d){return limparDescParcela(d,true);}
+function rotuloParteDespesa(d){return limparDescParcela(d,false);}
+function cicloPorAno(ano){return ciclos.filter(function(c){return c.ano===ano;})[0];}
+function estaRemovida(c,nome,parteKey){
+  var r=(c&&c.despesasRemovidas)||[];
+  return r.indexOf(nome)>=0||(parteKey!=null&&r.indexOf(nome+'::'+parteKey)>=0);
+}
+function alternarRemocaoIdx(i){
+  var chave=prepChaves[i];
+  var c=cicloPorAno(cicloEmPreparo);
+  if(!chave||!c) return;
+  c.despesasRemovidas=c.despesasRemovidas||[];
+  var pos=c.despesasRemovidas.indexOf(chave);
+  if(pos>=0) c.despesasRemovidas.splice(pos,1); else c.despesasRemovidas.push(chave);
+  salvarCiclosSilencioso();
+}
+function agregarDespesasOrdCiclo(resumo,c){
   var det=(resumo&&resumo.detalhes)||[];
   var meses=det.filter(function(m){return m.ord&&m.ord.itens;});
   if(!meses.length) return null;
@@ -573,9 +596,19 @@ function agregarDespesasOrdCiclo(resumo){
   meses.forEach(function(m){
     m.ord.itens.forEach(function(it){
       var x=mapa[it.nome];
-      if(!x) x=mapa[it.nome]={nome:it.nome,cat:it.cat,total:0,porMes:[]};
-      x.total+=it.v;
-      x.porMes.push({mes:m.mes,v:it.v,linhas:it.linhas||[]});
+      if(!x) x=mapa[it.nome]={nome:it.nome,cat:it.cat,total:0,bruto:0,porMes:[],partes:{}};
+      var linhas=(it.linhas&&it.linhas.length)?it.linhas:[{d:it.nome,v:it.v}];
+      var mantido=0;
+      linhas.forEach(function(l){
+        var k=chaveParteDespesa(l.d);
+        var p=x.partes[k];
+        if(!p) p=x.partes[k]={key:k,rotulo:rotuloParteDespesa(l.d),total:0,meses:{},ultima:l.d,removida:estaRemovida(c,it.nome,k)};
+        p.total+=l.v;p.meses[m.mes]=1;p.ultima=l.d;
+        x.bruto+=l.v;
+        if(!p.removida) mantido+=l.v;
+      });
+      x.total+=mantido;
+      x.porMes.push({mes:m.mes,v:mantido,linhas:linhas});
     });
   });
   var n=meses.length;
@@ -584,6 +617,9 @@ function agregarDespesasOrdCiclo(resumo){
     x.mesesComGasto=x.porMes.length;
     x.mediaMensal=x.total/n;
     x.anual=x.mediaMensal*12;
+    x.removidoPeriodo=x.bruto-x.total;
+    x.removidoAnual=(x.removidoPeriodo/n)*12;
+    x.removidaInteira=estaRemovida(c,x.nome,null);
     return x;
   });
   return {meses:n,itens:lista};
@@ -601,18 +637,32 @@ function moverDespesaIdx(i){
   if(!achou) classifDespesas.push({nome:it.nome,grupo:novo});
   salvarNoFirestore('classifDespesas',classifDespesas,function(){renderCiclos();});
 }
-function calcularDespesasPorGrupoCiclo(resumo){
-  var ag=agregarDespesasOrdCiclo(resumo);
+function calcularDespesasPorGrupoCiclo(resumo,c){
+  var ag=agregarDespesasOrdCiclo(resumo,c);
   if(!ag) return null;
-  var fix=0,vari=0,nf=0,nv=0;
+  var fix=0,vari=0,nf=0,nv=0,remA=0,removidos=[];
   ag.itens.forEach(function(it){
-    if(grupoDespesaCiclo(it.nome)==='fixa'){fix+=it.anual;nf++;}else{vari+=it.anual;nv++;}
+    if(it.total>0.005){
+      if(grupoDespesaCiclo(it.nome)==='fixa'){fix+=it.anual;nf++;}else{vari+=it.anual;nv++;}
+    }
+    if(it.removidoPeriodo>0.005){
+      remA+=it.removidoAnual;
+      if(it.removidaInteira){
+        removidos.push({nome:it.nome,rotulo:null,chave:it.nome,periodo:it.removidoPeriodo,anual:it.removidoAnual});
+      }else{
+        Object.keys(it.partes).forEach(function(k){
+          var p=it.partes[k];
+          if(p.removida) removidos.push({nome:it.nome,rotulo:p.rotulo,chave:it.nome+'::'+p.key,periodo:p.total,anual:p.total/ag.meses*12});
+        });
+      }
+    }
   });
-  return {meses:ag.meses,fixasAnual:fix,variaveisAnual:vari,nFixas:nf,nVariaveis:nv,ag:ag};
+  removidos.sort(function(a,b){return b.anual-a.anual;});
+  return {meses:ag.meses,fixasAnual:fix,variaveisAnual:vari,nFixas:nf,nVariaveis:nv,removidoAnual:remA,removidos:removidos,ag:ag};
 }
 function calcularProjecaoOrdinariaCiclo(c,resumo){
   var ord=resumo&&resumo.ord;
-  var dg=calcularDespesasPorGrupoCiclo(resumo);
+  var dg=calcularDespesasPorGrupoCiclo(resumo,c);
   if(!ord||!ord.meses||!dg) return null;
   var total=calcularValorAtualTotalCiclo(c);
   var shareOrd=total>0?(c.cotaOrdinaria||0)/total:1;
@@ -624,7 +674,7 @@ function calcularProjecaoOrdinariaCiclo(c,resumo){
   var receita=cotaOrdAnual+outrasAnual;
   var u=unid*12;
   return {meses:ord.meses,mesesDesp:dg.meses,cotaOrdAnual:cotaOrdAnual,reservaAnual:reservaAnual,outrasAnual:outrasAnual,receita:receita,
-    fixas:dg.fixasAnual,variaveis:dg.variaveisAnual,nFixas:dg.nFixas,nVariaveis:dg.nVariaveis,
+    fixas:dg.fixasAnual,variaveis:dg.variaveisAnual,nFixas:dg.nFixas,nVariaveis:dg.nVariaveis,removidoAnual:dg.removidoAnual,removidos:dg.removidos,
     resultadoFixas:receita-dg.fixasAnual,resultadoTotal:receita-dg.fixasAnual-dg.variaveisAnual,
     cotaOrdSugerida:valor*shareOrd,
     cotaEquilibrioFixas:u>0?(dg.fixasAnual-outrasAnual)/u:0,
@@ -645,6 +695,15 @@ function nomeBonitoDespesa(nome){
     var k=p.toLowerCase();
     return NOMES_ACENTO[k]&&p.length===k.length?NOMES_ACENTO[k]:p;
   }).join(' ');
+}
+function rotuloParteCurto(nome,rotulo){
+  var nz=function(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
+  var a=nz(nomeBonitoDespesa(nome)),b=nz(rotulo);
+  if(b.indexOf(a)===0&&String(rotulo).length===b.length){
+    var r=String(rotulo).slice(a.length).replace(/^[\s\-–:,]+/,'').trim();
+    return r||'(sem detalhe no informe)';
+  }
+  return rotulo;
 }
 function attrDet(chave,padrao){
   var v=detAberto[chave];
@@ -683,7 +742,8 @@ function fraseResumoCiclo(c,proj){
     ?' As contas de todo mês ficam cobertas (sobram '+f(proj.resultadoFixas)+')'+(r<0?'; o que falta vem das manutenções e gastos eventuais ('+f(proj.variaveis)+' no ano).':'.')
     :' Nem as contas de todo mês ficam cobertas (faltam '+f(-proj.resultadoFixas)+').';
   var s3=r<0?' Para fechar no zero, a cota ordinária precisaria ser <strong>'+f(proj.cotaEquilibrioTotal)+'</strong>; a proposta prevê '+f(proj.cotaOrdSugerida)+'.':'';
-  return s1+s2+s3;
+  var s4=proj.removidoAnual>0.5?' Já estão descontados '+f(proj.removidoAnual)+' por ano de gastos de '+c.ano+' que não se repetem em '+anoP+'.':'';
+  return s1+s2+s3+s4;
 }
 function htmlResumoCiclo(c,resumo,acaoAposTabela){
   var proj=calcularProjecaoOrdinariaCiclo(c,resumo);
@@ -717,7 +777,14 @@ function htmlResumoCiclo(c,resumo,acaoAposTabela){
   if(sRes!=null)partes.push('Fundo de reserva '+f(sRes));
   if(sPin!=null)partes.push('Fundo de pintura '+f(sPin));
   var sit=partes.length?'<div style="font-size:12px;color:var(--txt2);margin-top:8px;line-height:1.5">Saldos hoje: '+partes.join(' · ')+'. Fundo de reserva e de pintura não entram na conta acima.</div>':'';
-  return parcial+box+cards+tabela+(acaoAposTabela||'')+htmlGraficoMensalCiclo(resumo)+sit;
+  var fora='';
+  if(proj.removidoAnual>0.5){
+    fora='<details style="margin:-4px 0 10px"'+attrDet('fora'+c.ano,false)+'><summary style="font-size:12px;cursor:pointer;color:var(--azul)">Ficou de fora da conta: '+f(proj.removidoAnual)+' por ano (gastos de '+c.ano+' que não se repetem em '+anoP+')</summary>'+
+      '<div style="margin-top:6px;font-size:12px">'+proj.removidos.map(function(x){
+        return '<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--border)"><span>'+escHtml(nomeBonitoDespesa(x.nome))+(x.rotulo?' — '+escHtml(rotuloParteCurto(x.nome,x.rotulo)):'')+'</span><span style="white-space:nowrap;color:var(--txt2)">'+f(x.periodo)+' pagos em '+c.ano+'</span></div>';
+      }).join('')+'</div></details>';
+  }
+  return parcial+box+cards+tabela+fora+(acaoAposTabela||'')+htmlGraficoMensalCiclo(resumo)+sit;
 }
 function infoParcelaCiclo(desc){
   var m=(desc||'').match(/(\d+) de (\d+)/);
@@ -726,10 +793,24 @@ function infoParcelaCiclo(desc){
   if(!t||a>t) return '';
   return ' · parcela '+a+' de '+t+(t>a?' (restam '+(t-a)+')':' (última)');
 }
-function linhaPreparoItemCiclo(it,nMeses,destino){
+function htmlPartesItemCiclo(it,nMeses,c){
+  var ks=Object.keys(it.partes);
+  if(ks.length<2) return '';
+  var linhas=ks.map(function(k){return it.partes[k];}).sort(function(a,b){return b.total-a.total;}).map(function(p){
+    var j=prepChaves.push(it.nome+'::'+p.key)-1;
+    var rm=p.removida;
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;border-top:1px solid var(--border)'+(rm?';opacity:.6':'')+'">'+
+      '<span style="flex:1;min-width:140px;font-size:12px'+(rm?';text-decoration:line-through':'')+'">'+escHtml(rotuloParteCurto(it.nome,p.rotulo))+'<span style="display:block;font-size:11px;color:var(--txt3)">'+Object.keys(p.meses).length+' de '+nMeses+' meses · '+fmtReaisCiclo(p.total)+' pagos'+infoParcelaCiclo(p.ultima)+'</span></span>'+
+      '<button onclick="alternarRemocaoIdx('+j+')" style="font-size:11px;padding:4px 9px;border-radius:7px;border:1px solid '+(rm?'var(--border)':'#f5c6c0')+';background:'+(rm?'#fff':'#fdecea')+';color:'+(rm?'var(--txt2)':'#c0392b')+';cursor:pointer;white-space:nowrap">'+(rm?'Incluir':'Remover esta parte')+'</button></div>';
+  }).join('');
+  return '<div style="margin:2px 0 8px"><div style="font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:2px">Por tipo de gasto — você pode tirar só uma parte</div>'+linhas+'</div>';
+}
+function linhaPreparoItemCiclo(it,nMeses,destino,c){
   var idx=prepLista.push(it)-1;
+  var iRem=prepChaves.push(it.nome)-1;
+  var partes=htmlPartesItemCiclo(it,nMeses,c);
   var det=it.porMes.map(function(pm){
-    var ls=(pm.linhas||[]).map(function(l){return '<div style="color:var(--txt3);padding-left:10px">'+escHtml(l.d)+' — '+fmtReaisCiclo(l.v)+infoParcelaCiclo(l.d)+'</div>';}).join('');
+    var ls=(pm.linhas||[]).map(function(l){var rm=estaRemovida(c,it.nome,chaveParteDespesa(l.d));return '<div style="color:var(--txt3);padding-left:10px'+(rm?';text-decoration:line-through;opacity:.6':'')+'">'+escHtml(l.d)+' — '+fmtReaisCiclo(l.v)+infoParcelaCiclo(l.d)+'</div>';}).join('');
     return '<div style="padding:3px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+escHtml(pm.mes)+'</span><strong>'+fmtReaisCiclo(pm.v)+'</strong></div>'+ls+'</div>';
   }).join('');
   return '<details style="border-bottom:1px solid var(--border)">'+
@@ -737,8 +818,9 @@ function linhaPreparoItemCiclo(it,nMeses,destino){
       '<span style="flex:1;min-width:160px;font-size:13px;font-weight:600">'+escHtml(nomeBonitoDespesa(it.nome))+'<span style="display:block;font-size:11px;color:var(--txt3);font-weight:400">'+it.mesesComGasto+' de '+nMeses+' meses · média '+fmtReaisCiclo(it.mediaMensal)+'/mês</span></span>'+
       '<span style="font-size:13px;font-weight:700;color:var(--azul);white-space:nowrap">'+fmtReaisCiclo(it.anual)+'/ano</span>'+
       '<button onclick="event.preventDefault();event.stopPropagation();moverDespesaIdx('+idx+')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;white-space:nowrap">'+destino+'</button>'+
+      '<button onclick="event.preventDefault();event.stopPropagation();alternarRemocaoIdx('+iRem+')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid #f5c6c0;background:#fdecea;color:#c0392b;cursor:pointer;white-space:nowrap">Remover</button>'+
     '</summary>'+
-    '<div style="font-size:12px;padding:2px 0 10px 4px">'+det+'</div>'+
+    '<div style="font-size:12px;padding:2px 0 10px 4px">'+partes+det+'</div>'+
   '</details>';
 }
 function outrosFundosCiclo(resumo){
@@ -761,27 +843,34 @@ function outrosFundosCiclo(resumo){
 }
 function renderPreparoDespesas(ano){
   var resumo=resumosFinanceiroPorAno[ano]||{};
-  var dg=calcularDespesasPorGrupoCiclo(resumo);
+  var c=cicloPorAno(ano)||{ano:ano};
+  var dg=calcularDespesasPorGrupoCiclo(resumo,c);
   var voltar='<button onclick="cicloEmPreparo=null;renderCiclos()" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-bottom:12px">← Voltar aos ciclos</button>';
   var cab='<div style="font-weight:700;font-size:16px;color:var(--azul);margin-bottom:4px">Preparar despesas — '+ano+'</div>'+
-    '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:12px"><strong>Fixa</strong> = existe todo mês, mesmo que o valor mude (água, luz, monitoramento...). <strong>Variável</strong> = só acontece quando há manutenção ou evento. Cada despesa vale a média dos meses fechados × 12, sem inflação. Toque numa despesa para ver os meses e as linhas do informe; use o botão para mudar de grupo.</div>';
+    '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:12px"><strong>Fixa</strong> = existe todo mês, mesmo que o valor mude (água, luz, monitoramento...). <strong>Variável</strong> = só acontece quando há manutenção ou evento. Cada despesa vale a média dos meses fechados × 12, sem inflação. Toque numa despesa para ver os meses e as linhas do informe. Use <strong>→ Variável/Fixa</strong> para mudar de grupo e <strong>Remover</strong> para tirar da conta o que não vai se repetir em '+(ano+1)+'.</div>';
   if(!dg) return voltar+cab+htmlAvisoCiclo('Nenhum mês de '+ano+' tem os itens da Conta Ordinária. Reenvie os PDFs 16A no Financeiro.');
   var faltam=(resumo.detalhes||[]).filter(function(m){return !(m.ord&&m.ord.itens);}).map(function(m){return m.mes;});
   var aviso=faltam.length?htmlAvisoCiclo('⚠ Usando '+dg.meses+' de '+(resumo.mesesFechados||0)+' meses. Sem os itens da Conta Ordinária: '+faltam.join(', ')+'. Reenvie esses PDFs 16A no Financeiro.'):'';
-  prepLista=[];
+  prepLista=[];prepChaves=[];
   var ordenar=function(a,b){return b.anual-a.anual;};
-  var fixas=dg.ag.itens.filter(function(it){return grupoDespesaCiclo(it.nome)==='fixa';}).sort(ordenar);
-  var vari=dg.ag.itens.filter(function(it){return grupoDespesaCiclo(it.nome)!=='fixa';}).sort(ordenar);
+  var fixas=dg.ag.itens.filter(function(it){return it.total>0.005&&grupoDespesaCiclo(it.nome)==='fixa';}).sort(ordenar);
+  var vari=dg.ag.itens.filter(function(it){return it.total>0.005&&grupoDespesaCiclo(it.nome)!=='fixa';}).sort(ordenar);
   var cards='<div class="metrics" style="margin-bottom:12px">'+
     '<div class="mc"><div class="mc-lbl">Fixas ('+dg.nFixas+')</div><div class="mc-val">'+fmtReaisCiclo(dg.fixasAnual)+'</div><div style="font-size:11px;color:var(--txt3)">'+fmtReaisCiclo(dg.fixasAnual/12)+'/mês</div></div>'+
     '<div class="mc"><div class="mc-lbl">Variáveis ('+dg.nVariaveis+')</div><div class="mc-val">'+fmtReaisCiclo(dg.variaveisAnual)+'</div><div style="font-size:11px;color:var(--txt3)">'+fmtReaisCiclo(dg.variaveisAnual/12)+'/mês</div></div>'+
     '<div class="mc"><div class="mc-lbl">Total</div><div class="mc-val">'+fmtReaisCiclo(dg.fixasAnual+dg.variaveisAnual)+'</div><div style="font-size:11px;color:var(--txt3)">'+fmtReaisCiclo((dg.fixasAnual+dg.variaveisAnual)/12)+'/mês</div></div>'+
+    (dg.removidoAnual>0.5?'<div class="mc"><div class="mc-lbl">Fora do cálculo</div><div class="mc-val">'+fmtReaisCiclo(dg.removidoAnual)+'</div><div style="font-size:11px;color:var(--txt3)">gastos que não se repetem</div></div>':'')+
   '</div>';
-  var blocoFixas='<div class="sec">Fixas — existem todo mês</div><div class="card" style="padding:4px 14px">'+(fixas.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Variável');}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa fixa.</div>')+'</div>';
-  var blocoVari='<div class="sec">Variáveis — só quando há manutenção ou evento</div><div class="card" style="padding:4px 14px">'+(vari.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Fixa');}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa variável.</div>')+'</div>';
+  var blocoFixas='<div class="sec">Fixas — existem todo mês</div><div class="card" style="padding:4px 14px">'+(fixas.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Variável',c);}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa fixa.</div>')+'</div>';
+  var blocoVari='<div class="sec">Variáveis — só quando há manutenção ou evento</div><div class="card" style="padding:4px 14px">'+(vari.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Fixa',c);}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa variável.</div>')+'</div>';
   var outros=outrosFundosCiclo(resumo);
+  var blocoRemov=dg.removidos.length?('<div class="sec">Removidas do cálculo — não se repetem em '+(ano+1)+'</div><div class="card" style="padding:4px 14px">'+dg.removidos.map(function(x){
+    var j=prepChaves.push(x.chave)-1;
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--border)"><span style="flex:1;min-width:160px;font-size:13px;font-weight:600">'+escHtml(nomeBonitoDespesa(x.nome))+(x.rotulo?'<span style="font-weight:400"> — '+escHtml(rotuloParteCurto(x.nome,x.rotulo))+'</span>':'')+'<span style="display:block;font-size:11px;color:var(--txt3);font-weight:400">'+fmtReaisCiclo(x.periodo)+' pagos em '+ano+' · valeria '+fmtReaisCiclo(x.anual)+'/ano se continuasse</span></span>'+
+      '<button onclick="alternarRemocaoIdx('+j+')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;white-space:nowrap">Incluir de novo</button></div>';
+  }).join('')+'</div>'):'';
   var blocoOutros=outros.length?('<div class="sec">Pagas por outros fundos — fora do resultado</div><div class="card" style="padding:4px 14px">'+outros.map(function(x){return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px"><strong>'+escHtml(nomeBonitoDespesa(x.nome))+'</strong><span>'+fmtReaisCiclo(x.total)+' no período</span></div><div style="font-size:11px;color:var(--txt3)">'+x.meses.map(function(m){return escHtml(m.mes)+' '+fmtReaisCiclo(m.v);}).join(' · ')+'</div></div>';}).join('')+'<div style="font-size:11px;color:var(--txt3);padding:8px 0">Saíram de outros fundos, não da Conta Ordinária, e não pesam no resultado acima.</div></div>'):'';
-  return voltar+cab+aviso+cards+blocoFixas+blocoVari+blocoOutros;
+  return voltar+cab+aviso+cards+blocoFixas+blocoVari+blocoRemov+blocoOutros;
 }
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
