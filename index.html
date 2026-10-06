@@ -554,27 +554,80 @@ function fazerLogout(){
 
 var WA='5519989360523';
 var ciclos=[];
+var classifDespesas=[];
+var cicloEmPreparo=null;
+var prepLista=[];
 var resumosFinanceiroPorAno={};
 function fmtReaisCiclo(v){return 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function calcularValorAtualTotalCiclo(c){return (c.cotaOrdinaria||0)+(c.cotaFundoReserva||0);}
 function calcularSugeridoCiclo(c){return calcularValorAtualTotalCiclo(c)*(1+(c.ipca||0)/100);}
 function calcularValorParaProjecaoCiclo(c){return c.valorAprovado||calcularSugeridoCiclo(c);}
 function calcularMontanteArrecadarCiclo(c){return calcularValorParaProjecaoCiclo(c)*(c.unidades||0)*12;}
+var FIXAS_PADRAO=['Servicos Gerais','Monitoramento / Portaria','Agua e Esgoto','Energia Eletrica','Gas','Telefone e Internet','Manutencao de Elevador','Honorarios Sindico','Taxa de Administracao','INSS','PIS-COFINS-CSLL','IR Retido','ISSQN','Manutencao de Conta Bancaria','Tarifa Bancaria','Copias e Impressos','Correios','Pasta Mensal','Material de Limpeza','Seguro Predial','Medicao de Agua','Conservacao de Jardins'];
+function agregarDespesasOrdCiclo(resumo){
+  var det=(resumo&&resumo.detalhes)||[];
+  var meses=det.filter(function(m){return m.ord&&m.ord.itens;});
+  if(!meses.length) return null;
+  var mapa={};
+  meses.forEach(function(m){
+    m.ord.itens.forEach(function(it){
+      var x=mapa[it.nome];
+      if(!x) x=mapa[it.nome]={nome:it.nome,cat:it.cat,total:0,porMes:[]};
+      x.total+=it.v;
+      x.porMes.push({mes:m.mes,v:it.v,linhas:it.linhas||[]});
+    });
+  });
+  var n=meses.length;
+  var lista=Object.keys(mapa).map(function(k){
+    var x=mapa[k];
+    x.mesesComGasto=x.porMes.length;
+    x.mediaMensal=x.total/n;
+    x.anual=x.mediaMensal*12;
+    return x;
+  });
+  return {meses:n,itens:lista};
+}
+function grupoDespesaCiclo(nome){
+  for(var i=0;i<classifDespesas.length;i++){if(classifDespesas[i].nome===nome) return classifDespesas[i].grupo;}
+  return FIXAS_PADRAO.indexOf(nome)>=0?'fixa':'variavel';
+}
+function moverDespesaIdx(i){
+  var it=prepLista[i];
+  if(!it) return;
+  var novo=grupoDespesaCiclo(it.nome)==='fixa'?'variavel':'fixa';
+  var achou=false;
+  classifDespesas.forEach(function(c){if(c.nome===it.nome){c.grupo=novo;achou=true;}});
+  if(!achou) classifDespesas.push({nome:it.nome,grupo:novo});
+  salvarNoFirestore('classifDespesas',classifDespesas,function(){renderCiclos();});
+}
+function calcularDespesasPorGrupoCiclo(resumo){
+  var ag=agregarDespesasOrdCiclo(resumo);
+  if(!ag) return null;
+  var fix=0,vari=0,nf=0,nv=0;
+  ag.itens.forEach(function(it){
+    if(grupoDespesaCiclo(it.nome)==='fixa'){fix+=it.anual;nf++;}else{vari+=it.anual;nv++;}
+  });
+  return {meses:ag.meses,fixasAnual:fix,variaveisAnual:vari,nFixas:nf,nVariaveis:nv,ag:ag};
+}
 function calcularProjecaoOrdinariaCiclo(c,resumo){
   var ord=resumo&&resumo.ord;
-  if(!ord||!ord.meses) return null;
-  var f=1+(c.ipca||0)/100;
+  var dg=calcularDespesasPorGrupoCiclo(resumo);
+  if(!ord||!ord.meses||!dg) return null;
   var total=calcularValorAtualTotalCiclo(c);
   var shareOrd=total>0?(c.cotaOrdinaria||0)/total:1;
   var valor=calcularValorParaProjecaoCiclo(c);
   var unid=c.unidades||0;
   var cotaOrdAnual=valor*shareOrd*unid*12;
   var reservaAnual=valor*(1-shareOrd)*unid*12;
-  var outrasAnual=((ord.receitas-ord.cota)/ord.meses)*12*f;
-  var despesaAuto=(ord.despesas/ord.meses)*12*f;
-  var despesa=(c.despesaProjetadaAjustada!=null)?c.despesaProjetadaAjustada:despesaAuto;
+  var outrasAnual=((ord.receitas-ord.cota)/ord.meses)*12;
   var receita=cotaOrdAnual+outrasAnual;
-  return {meses:ord.meses,cotaOrdAnual:cotaOrdAnual,reservaAnual:reservaAnual,outrasAnual:outrasAnual,receita:receita,despesaAuto:despesaAuto,despesaMensalMedia:ord.despesas/ord.meses,despesa:despesa,resultado:receita-despesa};
+  var u=unid*12;
+  return {meses:ord.meses,mesesDesp:dg.meses,cotaOrdAnual:cotaOrdAnual,reservaAnual:reservaAnual,outrasAnual:outrasAnual,receita:receita,
+    fixas:dg.fixasAnual,variaveis:dg.variaveisAnual,nFixas:dg.nFixas,nVariaveis:dg.nVariaveis,
+    resultadoFixas:receita-dg.fixasAnual,resultadoTotal:receita-dg.fixasAnual-dg.variaveisAnual,
+    cotaOrdSugerida:valor*shareOrd,
+    cotaEquilibrioFixas:u>0?(dg.fixasAnual-outrasAnual)/u:0,
+    cotaEquilibrioTotal:u>0?(dg.fixasAnual+dg.variaveisAnual-outrasAnual)/u:0};
 }
 function saldoFundoCiclo(resumo,termo){
   var lista=(resumo&&resumo.fundos)||[];
@@ -584,18 +637,67 @@ function saldoFundoCiclo(resumo,termo){
   }
   return null;
 }
+function htmlAvisoCiclo(txt){return '<div style="font-size:12px;color:#b8630a;background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:8px 10px;margin-bottom:10px">'+txt+'</div>';}
 function htmlProjecaoCiclo(c,resumo){
   var proj=calcularProjecaoOrdinariaCiclo(c,resumo);
   var titulo='<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Projeção para '+(c.ano+1)+(c.valorAprovado?' (com base no valor aprovado)':' (com base no valor sugerido — ainda sem aprovação)')+'</div>';
-  if(!proj) return titulo+'<div style="font-size:12px;color:#b8630a;background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:8px 10px;margin-bottom:10px">Sem dados da Conta Ordinária para '+c.ano+'. Reenvie os PDFs 16A no Financeiro para calcular a projeção.</div>';
-  return titulo+
+  if(!proj) return titulo+htmlAvisoCiclo('Sem despesas da Conta Ordinária para '+c.ano+'.'+(adminLogado?' Reenvie os PDFs 16A no Financeiro e use "Preparar despesas".':''));
+  var parcial=(resumo.mesesFechados&&proj.mesesDesp<resumo.mesesFechados)?htmlAvisoCiclo('Baseado em '+proj.mesesDesp+' de '+resumo.mesesFechados+' meses fechados.'):'';
+  return titulo+parcial+
     '<div class="metrics" style="margin-bottom:6px">'+
       '<div class="mc"><div class="mc-lbl">Montante a arrecadar (cotas)</div><div class="mc-val">'+fmtReaisCiclo(calcularMontanteArrecadarCiclo(c))+'</div></div>'+
       '<div class="mc"><div class="mc-lbl">Receita ordinária projetada</div><div class="mc-val ok">'+fmtReaisCiclo(proj.receita)+'</div></div>'+
-      '<div class="mc"><div class="mc-lbl">Despesa ordinária projetada</div><div class="mc-val bad">'+fmtReaisCiclo(proj.despesa)+'</div></div>'+
-      '<div class="mc"><div class="mc-lbl">Resultado projetado</div><div class="mc-val '+(proj.resultado>=0?'ok':'bad')+'">'+fmtReaisCiclo(proj.resultado)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Despesas fixas ('+proj.nFixas+')</div><div class="mc-val bad">'+fmtReaisCiclo(proj.fixas)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Resultado só com as fixas</div><div class="mc-val '+(proj.resultadoFixas>=0?'ok':'bad')+'">'+fmtReaisCiclo(proj.resultadoFixas)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Despesas variáveis ('+proj.nVariaveis+')</div><div class="mc-val bad">'+fmtReaisCiclo(proj.variaveis)+'</div></div>'+
+      '<div class="mc"><div class="mc-lbl">Resultado juntando tudo</div><div class="mc-val '+(proj.resultadoTotal>=0?'ok':'bad')+'">'+fmtReaisCiclo(proj.resultadoTotal)+'</div></div>'+
     '</div>'+
-    '<div style="font-size:11px;color:var(--txt3);margin-bottom:10px;line-height:1.5">Receita ordinária = cota ordinária '+fmtReaisCiclo(proj.cotaOrdAnual)+' + água e outras receitas '+fmtReaisCiclo(proj.outrasAnual)+'. '+(c.despesaProjetadaAjustada!=null?'Despesa ajustada manualmente pelo síndico.':'Despesa estimada pela média de '+proj.meses+' meses fechados × 12, com IPCA de '+(c.ipca||0)+'%.')+' Fundo de reserva ('+fmtReaisCiclo(proj.reservaAnual)+'/ano) e fundo de pintura ficam fora do resultado.</div>';
+    '<div style="font-size:12px;color:var(--txt2);margin-bottom:6px;line-height:1.5">Cota ordinária que zera a conta: <strong>'+fmtReaisCiclo(proj.cotaEquilibrioFixas)+'</strong> só com as fixas · <strong>'+fmtReaisCiclo(proj.cotaEquilibrioTotal)+'</strong> com tudo · considerada neste ciclo: '+fmtReaisCiclo(proj.cotaOrdSugerida)+'</div>'+
+    '<div style="font-size:11px;color:var(--txt3);margin-bottom:10px;line-height:1.5">Receita ordinária = cota ordinária '+fmtReaisCiclo(proj.cotaOrdAnual)+' + água e outras receitas '+fmtReaisCiclo(proj.outrasAnual)+'. Cada despesa vale a média dos '+proj.mesesDesp+' meses fechados × 12, sem inflação automática. Fundo de reserva ('+fmtReaisCiclo(proj.reservaAnual)+'/ano) e fundo de pintura ficam fora do resultado.</div>';
+}
+function infoParcelaCiclo(desc){
+  var m=(desc||'').match(/(\d+) de (\d+)/);
+  if(!m) return '';
+  var a=+m[1],t=+m[2];
+  if(!t||a>t) return '';
+  return ' · parcela '+a+' de '+t+(t>a?' (restam '+(t-a)+')':' (última)');
+}
+function linhaPreparoItemCiclo(it,nMeses,destino){
+  var idx=prepLista.push(it)-1;
+  var det=it.porMes.map(function(pm){
+    var ls=(pm.linhas||[]).map(function(l){return '<div style="color:var(--txt3);padding-left:10px">'+escHtml(l.d)+' — '+fmtReaisCiclo(l.v)+infoParcelaCiclo(l.d)+'</div>';}).join('');
+    return '<div style="padding:3px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+escHtml(pm.mes)+'</span><strong>'+fmtReaisCiclo(pm.v)+'</strong></div>'+ls+'</div>';
+  }).join('');
+  return '<details style="border-bottom:1px solid var(--border)">'+
+    '<summary style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0;cursor:pointer">'+
+      '<span style="flex:1;min-width:160px;font-size:13px;font-weight:600">'+escHtml(it.nome)+'<span style="display:block;font-size:11px;color:var(--txt3);font-weight:400">'+it.mesesComGasto+' de '+nMeses+' meses · média '+fmtReaisCiclo(it.mediaMensal)+'/mês</span></span>'+
+      '<span style="font-size:13px;font-weight:700;color:var(--azul);white-space:nowrap">'+fmtReaisCiclo(it.anual)+'/ano</span>'+
+      '<button onclick="event.preventDefault();event.stopPropagation();moverDespesaIdx('+idx+')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;white-space:nowrap">'+destino+'</button>'+
+    '</summary>'+
+    '<div style="font-size:12px;padding:2px 0 10px 4px">'+det+'</div>'+
+  '</details>';
+}
+function renderPreparoDespesas(ano){
+  var resumo=resumosFinanceiroPorAno[ano]||{};
+  var dg=calcularDespesasPorGrupoCiclo(resumo);
+  var voltar='<button onclick="cicloEmPreparo=null;renderCiclos()" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-bottom:12px">← Voltar aos ciclos</button>';
+  var cab='<div style="font-weight:700;font-size:16px;color:var(--azul);margin-bottom:4px">Preparar despesas — '+ano+'</div>'+
+    '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:12px"><strong>Fixa</strong> = existe todo mês, mesmo que o valor mude (água, luz, monitoramento...). <strong>Variável</strong> = só acontece quando há manutenção ou evento. Cada despesa vale a média dos meses fechados × 12, sem inflação. Toque numa despesa para ver os meses e as linhas do informe; use o botão para mudar de grupo.</div>';
+  if(!dg) return voltar+cab+htmlAvisoCiclo('Nenhum mês de '+ano+' tem os itens da Conta Ordinária. Reenvie os PDFs 16A no Financeiro.');
+  var faltam=(resumo.detalhes||[]).filter(function(m){return !(m.ord&&m.ord.itens);}).map(function(m){return m.mes;});
+  var aviso=faltam.length?htmlAvisoCiclo('⚠ Usando '+dg.meses+' de '+(resumo.mesesFechados||0)+' meses. Sem os itens da Conta Ordinária: '+faltam.join(', ')+'. Reenvie esses PDFs 16A no Financeiro.'):'';
+  prepLista=[];
+  var ordenar=function(a,b){return b.anual-a.anual;};
+  var fixas=dg.ag.itens.filter(function(it){return grupoDespesaCiclo(it.nome)==='fixa';}).sort(ordenar);
+  var vari=dg.ag.itens.filter(function(it){return grupoDespesaCiclo(it.nome)!=='fixa';}).sort(ordenar);
+  var cards='<div class="metrics" style="margin-bottom:12px">'+
+    '<div class="mc"><div class="mc-lbl">Fixas ('+dg.nFixas+')</div><div class="mc-val">'+fmtReaisCiclo(dg.fixasAnual)+'</div><div style="font-size:11px;color:var(--txt3)">'+fmtReaisCiclo(dg.fixasAnual/12)+'/mês</div></div>'+
+    '<div class="mc"><div class="mc-lbl">Variáveis ('+dg.nVariaveis+')</div><div class="mc-val">'+fmtReaisCiclo(dg.variaveisAnual)+'</div><div style="font-size:11px;color:var(--txt3)">'+fmtReaisCiclo(dg.variaveisAnual/12)+'/mês</div></div>'+
+    '<div class="mc"><div class="mc-lbl">Total</div><div class="mc-val">'+fmtReaisCiclo(dg.fixasAnual+dg.variaveisAnual)+'</div><div style="font-size:11px;color:var(--txt3)">'+fmtReaisCiclo((dg.fixasAnual+dg.variaveisAnual)/12)+'/mês</div></div>'+
+  '</div>';
+  var blocoFixas='<div class="sec">Fixas — existem todo mês</div><div class="card" style="padding:4px 14px">'+(fixas.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Variável');}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa fixa.</div>')+'</div>';
+  var blocoVari='<div class="sec">Variáveis — só quando há manutenção ou evento</div><div class="card" style="padding:4px 14px">'+(vari.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Fixa');}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa variável.</div>')+'</div>';
+  return voltar+cab+aviso+cards+blocoFixas+blocoVari;
 }
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
@@ -755,15 +857,13 @@ function renderCicloAdmin(c,i){
     '</div>'+
     avisoOrd+
     htmlProjecaoCiclo(c,resumo)+
-    (proj?'<div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Estimativa automática da despesa: média de '+fmtReaisCiclo(proj.despesaMensalMedia)+'/mês × 12 × IPCA '+(c.ipca||0)+'% = '+fmtReaisCiclo(proj.despesaAuto)+'</div>':'')+
     '<details style="margin-bottom:8px"><summary style="font-size:12px;cursor:pointer;color:var(--azul)">Ver meses usados nesta conta ('+(resumo.mesesFechados||0)+')'+(resumo.duplicadosIgnorados?' — '+resumo.duplicadosIgnorados+' duplicado(s) ignorado(s)':'')+'</summary>'+
       '<div style="font-size:12px;margin-top:6px">'+
         '<div style="display:flex;gap:8px;font-weight:700;color:var(--txt3);padding:3px 0"><span style="width:70px">Mês</span><span style="flex:1">Receita ord.</span><span style="flex:1">Despesa ord.</span></div>'+
         ((resumo.detalhes||[]).map(function(it){var o=it.ord;return '<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border)"><span style="width:70px">'+escHtml(it.mes||'')+'</span>'+(o?'<span style="flex:1">'+fmtReaisCiclo(o.receitas)+'</span><span style="flex:1">'+fmtReaisCiclo(o.despesas)+'</span>':'<span style="flex:2;color:#b8630a">sem dados da Conta Ordinária — reenviar PDF</span>')+'</div>';}).join('')||'<div style="color:var(--txt3)">Nenhum mês encontrado.</div>')+
       '</div>'+
     '</details>'+
-    '<label class="fl">Ajustar despesa projetada <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(opcional — use se algum gasto deste ano foi pontual e não deve se repetir)</span></label>'+
-    '<input type="number" step="0.01" value="'+(c.despesaProjetadaAjustada!=null?c.despesaProjetadaAjustada:'')+'" onchange="ciclos['+i+'].despesaProjetadaAjustada=this.value?+this.value:null;salvarCiclosSilencioso()" placeholder="Deixe vazio para usar a estimativa automática" class="fi">'+
+    '<div style="font-size:12px;color:var(--txt2);margin-bottom:8px">As despesas ficam separadas em fixas e variáveis na tela <strong>🧮 Preparar despesas</strong> (botão abaixo).</div>'+
     '<label class="fl">Taxas extras <span style="font-weight:400;color:var(--txt3);text-transform:none;font-size:11px">(valor mensal × quantidade de parcelas/meses no ano)</span></label>'+
     taxasHtml+
     '<button onclick="adicionarTaxaExtra('+i+')" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1px dashed var(--border);background:#fff;cursor:pointer;margin-bottom:10px">+ Taxa extra</button>'+
@@ -772,6 +872,7 @@ function renderCicloAdmin(c,i){
     '<label class="fl">Observações</label>'+
     '<textarea onchange="ciclos['+i+'].observacoes=this.value;salvarCiclosSilencioso()" style="width:100%;min-height:60px;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'+esc(c.observacoes||'')+'</textarea>'+
     '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+      '<button onclick="cicloEmPreparo='+c.ano+';renderCiclos();window.scrollTo(0,0)" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--azul);background:#fff;color:var(--azul);font-weight:600;cursor:pointer">🧮 Preparar despesas</button>'+
       '<button onclick="salvarRascunhoCiclo()" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">💾 Salvar rascunho</button>'+
       (c.status==='publicado'
         ?'<button onclick="despublicarCiclo('+i+')" style="font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer">Voltar para rascunho</button>'
@@ -782,6 +883,7 @@ function renderCicloAdmin(c,i){
 }
 function renderCiclos(){
   var el=document.getElementById('ciclos-container');if(!el)return;
+  if(adminLogado&&cicloEmPreparo!=null){el.innerHTML=renderPreparoDespesas(cicloEmPreparo);return;}
   if(!adminLogado){
     var publicados=ciclos.filter(function(c){return c.status==='publicado';}).sort(function(a,b){return b.ano-a.ano;});
     if(!publicados.length){el.innerHTML='<div class="card" style="padding:12px;color:var(--txt3);font-size:13px">Nenhum ciclo publicado ainda.</div>';return;}
@@ -2031,7 +2133,8 @@ function carregarTodosOsDados(callback){
     prestadores:function(d){prestadores=d;},
     contatoAdmin:function(d){if(d&&d.length)contatoAdmin=d;},
     contatosUteis:function(d){if(d)contatosUteis=d;},
-    ciclos:function(d){ciclos=d||[];}
+    ciclos:function(d){ciclos=d||[];},
+    classifDespesas:function(d){classifDespesas=d||[];}
   };
   var keys=Object.keys(secoes);
   var pendentes=keys.length;
