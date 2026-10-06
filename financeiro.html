@@ -259,19 +259,45 @@ function dragOver(e){e.preventDefault();document.getElementById('uploadArea').cl
 function dragLeave(){document.getElementById('uploadArea').classList.remove('drag');}
 function dropFile(e){e.preventDefault();document.getElementById('uploadArea').classList.remove('drag');processarPDFs(e.dataTransfer.files);}
 
+function atualizarInfoPeriodo(){
+  var ip=document.getElementById('info-periodo');
+  if(!ip)return;
+  if(!periodos.length){ip.style.display='none';return;}
+  var mMap={Jan:1,Fev:2,Mar:3,Abr:4,Mai:5,Jun:6,Jul:7,Ago:8,Set:9,Out:10,Nov:11,Dez:12};
+  var sorted=periodos.map(function(p){return p.mes;}).sort(function(a,b){
+    var pa=a.split('/'),pb=b.split('/');
+    var ya=parseInt(pa[1].length===2?'20'+pa[1]:pa[1]),yb=parseInt(pb[1].length===2?'20'+pb[1]:pb[1]);
+    return ya!==yb?ya-yb:(mMap[pa[0]]||0)-(mMap[pb[0]]||0);
+  });
+  ip.textContent='Dados do período: '+sorted[0]+' a '+sorted[sorted.length-1]+' ('+sorted.length+' meses)';
+  ip.style.display='block';
+}
+function avisosDeLeitura(ps){
+  var semOrd=[],naoFecha=[];
+  ps.forEach(function(p){
+    if(p.tipo!=='16A')return;
+    if(!p.ord){semOrd.push(p.mes);return;}
+    if(Math.abs(p.ord.itensDif||0)>0.05)naoFecha.push(p.mes+' ('+p.ord.itensDif.toFixed(2).replace('.',',')+')');
+  });
+  var msg='';
+  if(semOrd.length)msg+='\n\n⚠ Sem dados da Conta Ordinária (formato diferente?): '+semOrd.join(', ');
+  if(naoFecha.length)msg+='\n\n⚠ Itens não fecham com o total da Conta Ordinária: '+naoFecha.join(', ');
+  return msg;
+}
 function processarPDFs(files){
   if(!isAdmin){alert('Apenas administradores podem carregar.');return;}
   var arr=Array.from(files).filter(function(f){return f.type==='application/pdf';});
   if(!arr.length) return;
   document.getElementById('spinner2').style.display='block';
   Promise.all(arr.map(lerPDF)).then(function(rs){
-    var ignorados=[],saves=[];
-    rs.forEach(function(r){if(!r)return;(Array.isArray(r)?r:[r]).forEach(function(p){var ok=adicionarPeriodo(p);if(ok===false)ignorados.push(p.mes);else saves.push(salvarFirestore(p));});});
+    var ignorados=[],saves=[],salvos=[];
+    rs.forEach(function(r){if(!r)return;(Array.isArray(r)?r:[r]).forEach(function(p){var ok=adicionarPeriodo(p);if(ok===false)ignorados.push(p.mes);else{saves.push(salvarFirestore(p));salvos.push(p);}});});
     Promise.all(saves).then(function(){
       document.getElementById('spinner2').style.display='none';
       renderPeriodosTags();renderTudo();atualizarInfoPeriodo();
       var msg=saves.length+' periodo(s) salvo(s)!';
       if(ignorados.length) msg+='\n\nIgnorados: '+ignorados.join(', ');
+      msg+=avisosDeLeitura(salvos);
       alert(msg);
     }).catch(function(e){document.getElementById('spinner2').style.display='none';alert('Erro: '+e.message);});
   }).catch(function(e){document.getElementById('spinner2').style.display='none';alert('Erro PDF: '+e.message);});
@@ -396,17 +422,33 @@ function parsePDF(pages,filename){
     var isW020G=linhas.some(function(l){return l.indexOf('Demonstrativo Anal')>=0;});
     var inO=false,inD=false;
     // Conta Ordinaria isolada (campos novos, nao altera os campos antigos)
-    var inOrdBloco=false,temOrd=false,ordRec=null,ordDesp=null,ordCota=0,ordSaldo=null;
+    var inOrdBloco=false,temOrd=false,ordRec=null,ordDesp=null,ordCota=0,ordSaldo=null,inDOrd=false,itsOrd={};
     for(var i=0;i<linhas.length;i++){
       var l=linhas[i].trim(),v=nf(l);
       var mcta=l.match(/Despesas da Conta\s+["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]/);
-      if(mcta){inOrdBloco=/^Conta (Ordin|Principal)/i.test(normStr(mcta[1]));if(inOrdBloco)temOrd=true;}
+      if(mcta){inOrdBloco=/^Conta (Ordin|Principal)/i.test(normStr(mcta[1]));if(inOrdBloco)temOrd=true;inDOrd=false;}
       if(l.indexOf('Resumo Financeiro')>=0)inOrdBloco=false;
       if(inOrdBloco){
+        if(l==='Despesas'||l==='Despesas ')inDOrd=true;
         if(/^Total de Receitas\b/.test(l)&&v)ordRec=toNum(v);
         if(/^Total de Despesas\b/.test(l)&&v)ordDesp=toNum(v);
         if(/^Cota Ordinaria\b/i.test(normStr(l))&&v)ordCota+=toNum(v);
         if(/^Saldo em \d{2}\/\d{2}\/\d{4}/.test(l)&&v)ordSaldo=toNum(v);
+        if(inDOrd&&v&&!l.startsWith('Total')&&!l.startsWith('Saldo')&&!l.startsWith('Mov.')&&!l.startsWith('Transf')&&!isReceita(l)&&l.toLowerCase().indexOf('descontado')<0&&l.toLowerCase().indexOf('estorno')<0){
+          var vvo=toNum(v);
+          if(vvo>0){
+            var desco=l.slice(0,l.lastIndexOf(v)).trim();
+            var nmo=desco.replace(/\s+(\d{2}\/\d{4}|\d{2}\/\d{2})\b.*/,'').replace(/\s+(NF[-\s]?\S+|REF\s+\S+)\s*.*$/i,'').replace(/\s+(\d+ de \d+)\s*.*$/,'').replace(/\s*[-–]\s*$/,'').replace(/\s{2,}.*$/,'').trim();
+            if(nmo&&nmo.length>2){
+              var prox=(linhas[i+1]||'').trim();
+              if(/^[a-z\u00e0-\u00fa]/.test(prox)&&!nf(prox))desco+=' '+prox;
+              var gro=getGrupo(nmo);
+              if(!itsOrd[gro.nome])itsOrd[gro.nome]={cat:gro.cat,v:0,linhas:[]};
+              itsOrd[gro.nome].v+=vvo;
+              itsOrd[gro.nome].linhas.push({d:desco.substring(0,160),v:vvo});
+            }
+          }
+        }
       }
       if(isW020G){
         // W020G: inO ativa no cabeçalho da seção Conta Principal
@@ -482,7 +524,11 @@ function parsePDF(pages,filename){
 
   var docId=mes.replace('/','_')+'_'+(t16?'16A':'20C');
   var saida={id:docId,filename:filename,tipo:t16?'16A':'20C',mes:mes,periodo:periodo,receitas:rec,despesas:desp,churr:ch,saldoOrdinario:saldo,catTotais:ct,itens:Object.keys(its).map(function(k){return{nome:k,cat:its[k].cat,v:its[k].v};}),contas:contas};
-  if(t16&&temOrd&&ordRec!=null&&ordDesp!=null&&ordCota>0) saida.ord={receitas:ordRec,despesas:ordDesp,cota:ordCota,saldo:ordSaldo};
+  if(t16&&temOrd&&ordRec!=null&&ordDesp!=null&&ordCota>0){
+    var itensOrd=Object.keys(itsOrd).map(function(k){return{nome:k,cat:itsOrd[k].cat,v:Math.round(itsOrd[k].v*100)/100,linhas:itsOrd[k].linhas};});
+    var somaOrd=itensOrd.reduce(function(s,it){return s+it.v;},0);
+    saida.ord={receitas:ordRec,despesas:ordDesp,cota:ordCota,saldo:ordSaldo,itens:itensOrd,itensDif:Math.round((somaOrd-ordDesp)*100)/100};
+  }
   return saida;
 }
 
