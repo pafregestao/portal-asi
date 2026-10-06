@@ -677,6 +677,24 @@ function linhaPreparoItemCiclo(it,nMeses,destino){
     '<div style="font-size:12px;padding:2px 0 10px 4px">'+det+'</div>'+
   '</details>';
 }
+function outrosFundosCiclo(resumo){
+  var det=(resumo&&resumo.detalhes)||[];
+  var mapa={};
+  det.forEach(function(m){
+    if(!(m.ord&&m.ord.itens)) return;
+    var O={},L={};
+    m.ord.itens.forEach(function(i){O[i.nome]=(O[i.nome]||0)+i.v;});
+    (m.itens||[]).forEach(function(i){L[i.nome]=(L[i.nome]||0)+i.v;});
+    Object.keys(L).forEach(function(k){
+      var dif=Math.round((L[k]-(O[k]||0))*100)/100;
+      if(dif>0.005){
+        var x=mapa[k]||(mapa[k]={nome:k,total:0,meses:[]});
+        x.total+=dif;x.meses.push({mes:m.mes,v:dif});
+      }
+    });
+  });
+  return Object.keys(mapa).map(function(k){return mapa[k];}).sort(function(a,b){return b.total-a.total;});
+}
 function renderPreparoDespesas(ano){
   var resumo=resumosFinanceiroPorAno[ano]||{};
   var dg=calcularDespesasPorGrupoCiclo(resumo);
@@ -697,7 +715,9 @@ function renderPreparoDespesas(ano){
   '</div>';
   var blocoFixas='<div class="sec">Fixas — existem todo mês</div><div class="card" style="padding:4px 14px">'+(fixas.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Variável');}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa fixa.</div>')+'</div>';
   var blocoVari='<div class="sec">Variáveis — só quando há manutenção ou evento</div><div class="card" style="padding:4px 14px">'+(vari.map(function(it){return linhaPreparoItemCiclo(it,dg.meses,'→ Fixa');}).join('')||'<div style="padding:10px 0;font-size:12px;color:var(--txt3)">Nenhuma despesa variável.</div>')+'</div>';
-  return voltar+cab+aviso+cards+blocoFixas+blocoVari;
+  var outros=outrosFundosCiclo(resumo);
+  var blocoOutros=outros.length?('<div class="sec">Pagas por outros fundos — fora do resultado</div><div class="card" style="padding:4px 14px">'+outros.map(function(x){return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px"><strong>'+escHtml(x.nome)+'</strong><span>'+fmtReaisCiclo(x.total)+' no período</span></div><div style="font-size:11px;color:var(--txt3)">'+x.meses.map(function(m){return escHtml(m.mes)+' '+fmtReaisCiclo(m.v);}).join(' · ')+'</div></div>';}).join('')+'<div style="font-size:11px;color:var(--txt3);padding:8px 0">Saíram de outros fundos, não da Conta Ordinária, e não pesam no resultado acima.</div></div>'):'';
+  return voltar+cab+aviso+cards+blocoFixas+blocoVari+blocoOutros;
 }
 function carregarResumosFinanceiros(callback){
   db.collection('financeiro').get().then(function(snap){
@@ -712,7 +732,7 @@ function carregarResumosFinanceiros(callback){
       var ano=parseInt('20'+partes[1].slice(-2),10);
       var ordem=mesesOrdem[partes[0]]||0;
       var chave=ano+'-'+ordem;
-      var item={ano:ano,ordem:ordem,mes:d.mes,tipo:d.tipo||'',receitas:d.receitas||0,despesas:d.despesas||0,saldo:d.saldoOrdinario||0,ord:d.ord||null,contas:d.contas||[]};
+      var item={ano:ano,ordem:ordem,mes:d.mes,tipo:d.tipo||'',receitas:d.receitas||0,despesas:d.despesas||0,saldo:d.saldoOrdinario||0,ord:d.ord||null,contas:d.contas||[],itens:d.itens||[]};
       var atual=escolhidos[chave];
       if(!atual){escolhidos[chave]=item;return;}
       duplicados[ano]=(duplicados[ano]||0)+1;
@@ -860,7 +880,7 @@ function renderCicloAdmin(c,i){
     '<details style="margin-bottom:8px"><summary style="font-size:12px;cursor:pointer;color:var(--azul)">Ver meses usados nesta conta ('+(resumo.mesesFechados||0)+')'+(resumo.duplicadosIgnorados?' — '+resumo.duplicadosIgnorados+' duplicado(s) ignorado(s)':'')+'</summary>'+
       '<div style="font-size:12px;margin-top:6px">'+
         '<div style="display:flex;gap:8px;font-weight:700;color:var(--txt3);padding:3px 0"><span style="width:70px">Mês</span><span style="flex:1">Receita ord.</span><span style="flex:1">Despesa ord.</span></div>'+
-        ((resumo.detalhes||[]).map(function(it){var o=it.ord;return '<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border)"><span style="width:70px">'+escHtml(it.mes||'')+'</span>'+(o?'<span style="flex:1">'+fmtReaisCiclo(o.receitas)+'</span><span style="flex:1">'+fmtReaisCiclo(o.despesas)+'</span>':'<span style="flex:2;color:#b8630a">sem dados da Conta Ordinária — reenviar PDF</span>')+'</div>';}).join('')||'<div style="color:var(--txt3)">Nenhum mês encontrado.</div>')+
+        ((resumo.detalhes||[]).map(function(it){var o=it.ord;return '<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border)"><span style="width:70px">'+escHtml(it.mes||'')+(o&&o.derivado?'*':'')+'</span>'+(o?'<span style="flex:1">'+fmtReaisCiclo(o.receitas)+'</span><span style="flex:1">'+fmtReaisCiclo(o.despesas)+'</span>':'<span style="flex:2;color:#b8630a">sem dados da Conta Ordinária — reenviar PDF</span>')+'</div>';}).join('')||'<div style="color:var(--txt3)">Nenhum mês encontrado.</div>')+((resumo.detalhes||[]).some(function(m){return m.ord&&m.ord.derivado;})?'<div style="font-size:11px;color:var(--txt3);margin-top:4px">* Conta Ordinária derivada do layout consolidado do informe (descontados os débitos de outros fundos).</div>':'')+
       '</div>'+
     '</details>'+
     '<div style="font-size:12px;color:var(--txt2);margin-bottom:8px">As despesas ficam separadas em fixas e variáveis na tela <strong>🧮 Preparar despesas</strong> (botão abaixo).</div>'+
