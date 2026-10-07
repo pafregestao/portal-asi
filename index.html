@@ -139,6 +139,7 @@ textarea.fi{height:75px;resize:vertical}
   <button class="nb admin-only" id="nav-assembleias" style="display:none" onclick="nav('assembleias')">Assembleias</button>
   <button class="nb" onclick="nav('defeitos')">Defeitos</button>
   <button class="nb" onclick="nav('sugestoes')">Sugestões</button>
+  <button class="nb" onclick="nav('sam')">💬 SAM</button>
   <button class="nb" id="nav-mapa" style="display:none" onclick="nav('mapa')">🏢 Mapa</button>
   <button class="nb" onclick="window.location.href='vagas.html'">🚗 Vagas</button>
   <button class="nb" id="nav-cameras" onclick="window.location.href='cameras.html'"><div class="cam-icon-b" style="width:14px;height:12px;display:inline-block;vertical-align:-1px;margin-right:3px"></div>Câmeras</button>
@@ -208,6 +209,12 @@ textarea.fi{height:75px;resize:vertical}
 <!-- PROXIMOS CICLOS -->
 <div id="pg-ciclos" class="pg">
   <div id="ciclos-container"></div>
+</div>
+
+<!-- SAM - SISTEMA DE APOIO AO MORADOR -->
+<div id="pg-sam" class="pg">
+  <style>.sam-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}@media(max-width:700px){.sam-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}.sam-chips button{flex:0 0 auto;white-space:nowrap}}</style>
+  <div id="sam-container"></div>
 </div>
 
 <!-- ORÇAMENTOS -->
@@ -529,6 +536,7 @@ auth.onAuthStateChanged(function(user){
       renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();renderContatosPublico();carregarChamados();carregarSugestoes();
       carregarResumosFinanceiros(function(){renderCiclos();});
+      renderSam();
     });
     iniciarMonitorSuporte();
     iniciarBannerNotificacao();
@@ -1109,6 +1117,361 @@ function renderCiclos(){
   el.innerHTML=formAdd+ordenados.map(function(c){return renderCicloAdmin(c,ciclos.indexOf(c));}).join('');
 }
 
+// ===== SAM - Sistema de Apoio ao Morador =====
+var samItens=[];
+var samEditando=null;
+var samFiltro={status:'todas',cat:'todas',busca:''};
+var samBuscaMorador='';
+var samCatMorador='todas';
+var samVerComoMorador=false;
+var SQ="'";
+var SAM_CATEGORIAS=[
+  {id:'obras',nome:'Obras e reformas',icone:'🔨'},
+  {id:'mudancas',nome:'Mudanças',icone:'🚚'},
+  {id:'convivencia',nome:'Barulho e convivência',icone:'🔇'},
+  {id:'animais',nome:'Animais de estimação',icone:'🐾'},
+  {id:'garagem',nome:'Garagem e vagas',icone:'🚗'},
+  {id:'areas',nome:'Áreas comuns, lixo e elevadores',icone:'🏢'},
+  {id:'gourmet',nome:'Espaço gourmet (quiosques)',icone:'🍖'},
+  {id:'portaria',nome:'Portaria remota e encomendas',icone:'🚪'},
+  {id:'financas',nome:'Cota, taxas e contas do condomínio',icone:'💰'},
+  {id:'multas',nome:'Multas, danos e responsabilidades',icone:'⚖️'},
+  {id:'assembleias',nome:'Assembleias e votações',icone:'🗳️'},
+  {id:'gestao',nome:'Síndico, conselho e administradora',icone:'👥'},
+  {id:'regras',nome:'Sobre a Convenção e o Regimento',icone:'📘'},
+  {id:'dia-a-dia',nome:'Dia a dia no condomínio',icone:'🛠️'}
+];
+var SAM_ATALHOS=[
+  {rotulo:'Defeitos',nav:'defeitos'},{rotulo:'Sugestões',nav:'sugestoes'},{rotulo:'Vagas',url:'vagas.html'},
+  {rotulo:'Churrasqueira',nav:'churrasqueira'},{rotulo:'Financeiro',nav:'financeiro'},{rotulo:'Documentos',nav:'documentos'},
+  {rotulo:'Próximos Ciclos',nav:'ciclos'},{rotulo:'Prestadores',nav:'prestadores'}
+];
+var SAM_AVISO='Resumo informativo da Convenção e do Regimento Interno. Não substitui os textos oficiais; em caso de dúvida, valem a Convenção e o Regimento. Pode haver alterações aprovadas em assembleia depois de 2018.';
+var SAM_STOP=['posso','pode','podem','como','qual','quais','onde','quando','para','por','que','uma','um','uns','meu','minha','meus','minhas','nao','tem','ter','fazer','faco','de','da','do','das','dos','em','no','na','nos','nas','os','as','e','o','a','se','ou','eu','sobre','preciso','devo','muito','muita'];
+
+function samNorm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function samPal(s){return ' '+samNorm(s).replace(/[^a-z0-9]+/g,' ')+' ';}
+function samStem(w){return w.length>=5?w.slice(0,Math.max(4,w.length-2)):w;}
+function samCat(id){return SAM_CATEGORIAS.filter(function(c){return c.id===id;})[0]||{id:id,nome:'Outros',icone:'📌'};}
+function samPorId(id){return samItens.filter(function(i){return i.id===id;})[0];}
+function samAgora(){return new Date().toISOString();}
+function samSnapshot(it){
+  return {categoria:it.categoria||'dia-a-dia',pergunta:(it.pergunta||'').trim(),resposta:(it.resposta||'').trim(),passos:(it.passos||[]).slice(),fonte:it.fonte||'',palavras_chave:(it.palavras_chave||[]).slice(),atalho_aba:it.atalho_aba||'',relacionadas:(it.relacionadas||[]).slice()};
+}
+function samTemAlteracoes(it){return it.status==='publicada'&&!!it.pub&&JSON.stringify(samSnapshot(it))!==JSON.stringify(it.pub);}
+function samEstado(it){
+  if(it.status==='publicada') return samTemAlteracoes(it)?'alteracoes':'publicada';
+  return (it.resposta||'').trim()?'rascunho':'a_responder';
+}
+function samProntas(){
+  return samItens.filter(function(it){return it.status!=='publicada'&&(it.pergunta||'').trim()&&(it.resposta||'').trim()&&!it.validar;});
+}
+function samPublicadas(){
+  return samItens.filter(function(it){return it.status==='publicada'&&it.pub&&it.pub.pergunta&&it.pub.resposta;}).map(function(it){
+    var p=it.pub;
+    return {id:it.id,categoria:p.categoria,pergunta:p.pergunta,resposta:p.resposta,passos:p.passos||[],fonte:p.fonte||'',palavras_chave:p.palavras_chave||[],atalho_aba:p.atalho_aba||'',relacionadas:p.relacionadas||[]};
+  });
+}
+function samSalvar(cb){salvarNoFirestore('sam',samItens,cb);}
+function samIrAtalhoIdx(i){
+  var a=SAM_ATALHOS[i];
+  if(!a) return;
+  if(a.url){window.location.href=a.url;return;}
+  nav(a.nav);
+}
+
+// ---- Morador (somente leitura, só o que está publicado) ----
+function samHtmlMorador(previa){
+  var pub=samPublicadas();
+  var h='';
+  if(previa) h+='<div style="background:#fff3e0;border:1px solid #ffe0b2;color:#b8630a;border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>👁 Você está vendo como o morador vê (só o que está publicado).</span><button onclick="samVerComoMorador=false;renderSam()" style="font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid #ffe0b2;background:#fff;color:#b8630a;cursor:pointer;font-family:inherit">← Voltar à edição</button></div>';
+  h+='<div class="sec">💬 SAM — Sistema de Apoio ao Morador</div>';
+  h+='<div style="font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:10px">Tire suas dúvidas sobre as regras e o dia a dia do condomínio. Digite sua pergunta ou escolha um assunto.</div>';
+  if(!pub.length) return h+'<div class="card" style="padding:16px;font-size:13px;color:var(--txt2)">As perguntas e respostas estarão disponíveis em breve.</div>';
+  h+='<input id="sam-busca" class="fi" placeholder="🔎 Ex.: horário de obra, mudança, vaga, animais" value="'+escHtml(samBuscaMorador)+'" oninput="samBuscar(this.value)" style="margin-bottom:8px">';
+  h+='<div id="sam-chips"></div><div id="sam-resultados"></div>';
+  h+='<div style="font-size:11px;color:var(--txt3);line-height:1.5;margin-top:14px">'+escHtml(SAM_AVISO)+'</div>';
+  return h;
+}
+function samRenderMorador(){
+  var ch=document.getElementById('sam-chips');
+  if(!ch) return;
+  var pub=samPublicadas();
+  var cats=SAM_CATEGORIAS.filter(function(c){return pub.some(function(p){return p.categoria===c.id;});});
+  var chip=function(id,rot,n){
+    var on=samCatMorador===id;
+    return '<button onclick="samSelCat('+SQ+id+SQ+')" style="font-size:12px;padding:6px 11px;border-radius:99px;cursor:pointer;font-family:inherit;border:1px solid '+(on?'var(--azul)':'var(--border)')+';background:'+(on?'var(--azul)':'#fff')+';color:'+(on?'#fff':'var(--txt2)')+'">'+rot+' ('+n+')</button>';
+  };
+  ch.innerHTML='<div class="sam-chips">'+chip('todas','Todos',pub.length)+cats.map(function(c){return chip(c.id,c.icone+' '+escHtml(c.nome),pub.filter(function(p){return p.categoria===c.id;}).length);}).join('')+'</div>';
+  samRenderResultados();
+}
+function samBuscar(v){samBuscaMorador=v;samRenderResultados();}
+function samSelCat(id){samCatMorador=id;samRenderMorador();}
+function samResultados(){
+  var base=samPublicadas().filter(function(p){return samCatMorador==='todas'||p.categoria===samCatMorador;});
+  var q=samNorm(samBuscaMorador).split(/[^a-z0-9]+/).filter(function(w){return w.length>1&&SAM_STOP.indexOf(w)<0;}).map(samStem);
+  if(!q.length) return {lista:base,aprox:false,busca:false};
+  var pts=base.map(function(p){
+    var cp=samPal(p.pergunta+' '+(p.palavras_chave||[]).join(' ')),cr=samPal(p.resposta+' '+(p.passos||[]).join(' ')+' '+samCat(p.categoria).nome);
+    var t=0,todas=true;
+    q.forEach(function(w){var k=' '+w;var s=cp.indexOf(k)>=0?3:(cr.indexOf(k)>=0?1:0);if(!s)todas=false;t+=s;});
+    return {p:p,t:t,todas:todas};
+  });
+  var exatos=pts.filter(function(x){return x.todas;}).sort(function(a,b){return b.t-a.t;});
+  if(exatos.length) return {lista:exatos.map(function(x){return x.p;}),aprox:false,busca:true};
+  var parc=pts.filter(function(x){return x.t>0;}).sort(function(a,b){return b.t-a.t;});
+  return {lista:parc.map(function(x){return x.p;}),aprox:true,busca:true};
+}
+function samCardMorador(p,mapa){
+  var cat=samCat(p.categoria);
+  var passos=(p.passos&&p.passos.length)?'<div style="margin-top:10px;font-weight:700;font-size:12px;color:var(--txt2)">Passo a passo</div><ol style="margin:4px 0 0 18px;padding:0">'+p.passos.map(function(s){return '<li style="margin-bottom:3px">'+escHtml(s)+'</li>';}).join('')+'</ol>':'';
+  var ai=-1;SAM_ATALHOS.forEach(function(a,i){if(a.rotulo===p.atalho_aba)ai=i;});
+  var atalho=ai>=0?'<button class="btn primary" onclick="samIrAtalhoIdx('+ai+')" style="margin-top:10px;font-size:12px;padding:7px 14px">Ir para '+escHtml(SAM_ATALHOS[ai].rotulo)+' →</button>':'';
+  var fonte=p.fonte?'<div style="font-size:11px;color:var(--txt3);margin-top:10px">Fonte: '+escHtml(p.fonte)+'</div>':'';
+  var rel=(p.relacionadas||[]).filter(function(id){return mapa[id]&&id!==p.id;}).map(function(id){return '<button onclick="samAbrirPergunta('+SQ+id+SQ+')" style="display:block;text-align:left;background:none;border:none;color:var(--azul);font-size:12px;cursor:pointer;padding:3px 0;font-family:inherit;text-decoration:underline">'+escHtml(mapa[id].pergunta)+'</button>';}).join('');
+  var relH=rel?'<div style="margin-top:10px;font-weight:700;font-size:12px;color:var(--txt2)">Veja também</div>'+rel:'';
+  return '<details id="sam-d-'+p.id+'" class="card" style="padding:0;margin-bottom:8px">'+
+    '<summary style="padding:12px 14px;cursor:pointer;font-size:14px;font-weight:600;color:var(--azul);line-height:1.4">'+escHtml(p.pergunta)+'<div style="font-size:11px;color:var(--txt3);font-weight:400;margin-top:2px">'+cat.icone+' '+escHtml(cat.nome)+'</div></summary>'+
+    '<div style="padding:0 14px 14px;font-size:13px;line-height:1.6"><div style="white-space:pre-wrap">'+escHtml(p.resposta)+'</div>'+passos+atalho+fonte+relH+'</div></details>';
+}
+function samRenderResultados(){
+  var el=document.getElementById('sam-resultados');
+  if(!el) return;
+  var r=samResultados(),mapa={};
+  samPublicadas().forEach(function(p){mapa[p.id]=p;});
+  var h='';
+  if(r.busca&&r.aprox&&r.lista.length) h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:8px">Não achamos uma resposta exata. Veja perguntas parecidas:</div>';
+  if(r.busca&&!r.aprox) h+='<div style="font-size:12px;color:var(--txt3);margin-bottom:8px">'+r.lista.length+(r.lista.length===1?' resultado':' resultados')+'</div>';
+  if(!r.lista.length) h+='<div class="card" style="padding:14px;font-size:13px;color:var(--txt2)">'+(r.busca?'Não encontramos uma resposta para essa busca.':'Nenhuma pergunta neste assunto.')+'</div>';
+  else if(!r.busca&&samCatMorador==='todas'){
+    SAM_CATEGORIAS.forEach(function(c){
+      var ls=r.lista.filter(function(p){return p.categoria===c.id;});
+      if(!ls.length) return;
+      h+='<div class="sec" style="margin-top:12px">'+c.icone+' '+escHtml(c.nome)+'</div>'+ls.map(function(p){return samCardMorador(p,mapa);}).join('');
+    });
+  } else h+=r.lista.map(function(p){return samCardMorador(p,mapa);}).join('');
+  h+='<div class="card" style="padding:14px;margin-top:10px;text-align:center"><div style="font-size:13px;color:var(--txt2);margin-bottom:8px">'+(r.lista.length?'Não encontrou o que procurava?':'Quer perguntar ao síndico?')+'</div><button class="btn primary" onclick="samNaoAchei()" style="font-size:13px">✉️ Enviar minha dúvida ao síndico</button></div>';
+  el.innerHTML=h;
+}
+function samAbrirPergunta(id){
+  samBuscaMorador='';samCatMorador='todas';
+  var b=document.getElementById('sam-busca');if(b)b.value='';
+  samRenderMorador();
+  var d=document.getElementById('sam-d-'+id);
+  if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+function samNaoAchei(){
+  var termo=(samBuscaMorador||'').trim();
+  nav('sugestoes');
+  var t=document.getElementById('sug-tipo'),a=document.getElementById('sug-assunto'),d=document.getElementById('sug-desc');
+  if(t) t.value='Solicitação';
+  if(a&&!a.value) a.value=termo?('Dúvida: '+termo.slice(0,60)):'Dúvida';
+  if(d){if(!d.value&&termo) d.value='Minha dúvida: '+termo+'\n'; d.focus();}
+}
+
+// ---- Administrador (rascunho, publicar, alterações pendentes) ----
+function samBadge(e){
+  if(e==='publicada') return '<span class="badge ok">Publicada</span>';
+  if(e==='alteracoes') return '<span class="badge warn">Alterações não publicadas</span>';
+  if(e==='a_responder') return '<span class="badge bad">A responder</span>';
+  return '<span class="badge blue">Rascunho</span>';
+}
+function samHtmlContadores(){
+  var n={publicada:0,rascunho:0,a_responder:0,alteracoes:0};
+  samItens.forEach(function(it){n[samEstado(it)]++;});
+  var c=function(l,v,cor){return '<div class="mc"><div class="mc-lbl">'+l+'</div><div class="mc-val '+(cor||'')+'">'+v+'</div></div>';};
+  return '<div class="metrics" style="margin-bottom:12px">'+c('Publicadas',n.publicada+n.alteracoes,'ok')+c('Rascunhos',n.rascunho)+c('A responder',n.a_responder,n.a_responder?'warn':'')+c('Com alterações',n.alteracoes,n.alteracoes?'warn':'')+'</div>';
+}
+function samHtmlAdmin(){
+  var catOpts='<option value="todas">Todos os assuntos</option>'+SAM_CATEGORIAS.map(function(c){return '<option value="'+c.id+'"'+(samFiltro.cat===c.id?' selected':'')+'>'+c.icone+' '+escHtml(c.nome)+'</option>';}).join('');
+  var stOpts=[['todas','Todas'],['rascunho','Rascunhos'],['a_responder','A responder'],['alteracoes','Com alterações'],['publicada','Publicadas']].map(function(s){return '<option value="'+s[0]+'"'+(samFiltro.status===s[0]?' selected':'')+'>'+s[1]+'</option>';}).join('');
+  var btn='font-size:12px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--azul);font-weight:600;cursor:pointer;font-family:inherit';
+  return '<div class="sec">💬 SAM — Sistema de Apoio ao Morador <span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:none">(administrador)</span></div>'+
+    '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:10px">As perguntas ficam salvas só para você até clicar em <strong>Publicar</strong>. Ao publicar, passam a aparecer para os moradores. Alterações em perguntas já publicadas também só vão ao ar quando você publicar de novo.</div>'+
+    '<div id="sam-contadores">'+samHtmlContadores()+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+      '<button onclick="samNova()" style="'+btn+'">➕ Nova pergunta</button>'+
+      (samItens.length?'':'<label style="'+btn+'">📥 Importar arquivo (só na primeira vez)<input type="file" accept=".json,application/json" style="display:none" onchange="samImportar(this)"></label>')+
+      '<button onclick="samPublicarProntas()" style="'+btn+'">📢 Publicar todas as prontas ('+samProntas().length+')</button>'+
+      '<button onclick="samVerComoMorador=true;renderSam()" style="'+btn+'">👁 Ver como morador</button>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+      '<select onchange="samFiltro.status=this.value;samRenderListaAdmin()" class="fi" style="flex:1;min-width:130px;margin-bottom:0">'+stOpts+'</select>'+
+      '<select onchange="samFiltro.cat=this.value;samRenderListaAdmin()" class="fi" style="flex:1;min-width:150px;margin-bottom:0">'+catOpts+'</select>'+
+      '<input class="fi" placeholder="🔎 Buscar" value="'+escHtml(samFiltro.busca)+'" oninput="samFiltro.busca=this.value;samRenderListaAdmin()" style="flex:2;min-width:150px;margin-bottom:0">'+
+    '</div>'+
+    '<div id="sam-lista-admin"></div>'+
+    (samItens.length?'<div style="margin-top:18px;font-size:11px;color:var(--txt3)"><label style="cursor:pointer;text-decoration:underline">Importar mais perguntas de um arquivo (avançado)<input type="file" accept=".json,application/json" style="display:none" onchange="samImportar(this)"></label></div>':'');
+}
+function samFiltrados(){
+  var q=samNorm(samFiltro.busca);
+  var ids=SAM_CATEGORIAS.map(function(c){return c.id;});
+  var ord=function(id){var i=ids.indexOf(id);return i<0?99:i;};
+  return samItens.map(function(it,i){return {it:it,i:i};}).filter(function(x){
+    var it=x.it;
+    if(samFiltro.status!=='todas'&&samEstado(it)!==samFiltro.status) return false;
+    if(samFiltro.cat!=='todas'&&it.categoria!==samFiltro.cat) return false;
+    if(q){var tx=samNorm((it.pergunta||'')+' '+(it.resposta||'')+' '+(it.palavras_chave||[]).join(' '));if(tx.indexOf(q)<0) return false;}
+    return true;
+  }).sort(function(a,b){return ord(a.it.categoria)-ord(b.it.categoria)||a.i-b.i;}).map(function(x){return x.it;});
+}
+function samRenderListaAdmin(){
+  var el=document.getElementById('sam-lista-admin');
+  if(!el) return;
+  if(!samItens.length){el.innerHTML='<div class="card" style="padding:16px;font-size:13px;color:var(--txt2);line-height:1.6">Ainda não há perguntas. Para começar, clique em <strong>📥 Importar arquivo</strong> e escolha o arquivo <strong>sam-faq.json</strong> (pasta SAM): isso carrega as perguntas iniciais de uma vez, e só precisa ser feito essa primeira vez. Depois, tudo é feito aqui mesmo, com <strong>➕ Nova pergunta</strong>.</div>';return;}
+  var lista=samFiltrados();
+  if(!lista.length){el.innerHTML='<div class="card" style="padding:14px;font-size:13px;color:var(--txt2)">Nenhuma pergunta com esses filtros.</div>';return;}
+  var h='',atual=null;
+  lista.forEach(function(it){
+    if(it.categoria!==atual){atual=it.categoria;var c=samCat(atual);h+='<div class="sec" style="margin-top:14px">'+c.icone+' '+escHtml(c.nome)+'</div>';}
+    h+=samLinhaAdmin(it);
+  });
+  el.innerHTML=h;
+}
+function samLinhaAdmin(it){
+  var cat=samCat(it.categoria),aberto=samEditando===it.id;
+  return '<div class="card" id="sam-it-'+it.id+'" style="padding:0;margin-bottom:8px">'+
+    '<div onclick="samToggle('+SQ+it.id+SQ+')" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:flex-start">'+
+      '<div style="flex:1;min-width:0"><div data-sam-pergunta style="font-size:13px;font-weight:600;color:var(--azul);line-height:1.4">'+escHtml(it.pergunta||'(sem pergunta)')+'</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">'+cat.icone+' '+escHtml(cat.nome)+(it.validar?' · <span style="color:#b8630a;font-weight:600">🔔 validar</span>':'')+'</div></div>'+
+      '<span id="sam-badge-'+it.id+'">'+samBadge(samEstado(it))+'</span>'+
+    '</div>'+(aberto?samEditor(it):'')+'</div>';
+}
+function samEditor(it){
+  var id=it.id;
+  var fi='width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-bottom:8px';
+  var lb=function(t){return '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+t+'</div>';};
+  var ch=function(campo){return 'onchange="samCampo('+SQ+id+SQ+','+SQ+campo+SQ+',this.value)"';};
+  var catOpts=SAM_CATEGORIAS.map(function(c){return '<option value="'+c.id+'"'+(c.id===it.categoria?' selected':'')+'>'+c.icone+' '+escHtml(c.nome)+'</option>';}).join('');
+  var atOpts='<option value="">— nenhum —</option>'+SAM_ATALHOS.map(function(a){return '<option value="'+escHtml(a.rotulo)+'"'+(a.rotulo===it.atalho_aba?' selected':'')+'>'+escHtml(a.rotulo)+'</option>';}).join('');
+  return '<div style="padding:6px 14px 14px;border-top:1px solid var(--border)">'+
+    lb('Pergunta')+'<input value="'+escHtml(it.pergunta||'')+'" '+ch('pergunta')+' style="'+fi+'">'+
+    lb('Assunto')+'<select '+ch('categoria')+' style="'+fi+'">'+catOpts+'</select>'+
+    lb('Resposta (o que o morador vai ler)')+'<textarea '+ch('resposta')+' style="'+fi+';min-height:110px;resize:vertical">'+escHtml(it.resposta||'')+'</textarea>'+
+    lb('Passo a passo (um passo por linha, opcional)')+'<textarea '+ch('passos')+' style="'+fi+';min-height:70px;resize:vertical">'+escHtml((it.passos||[]).join('\n'))+'</textarea>'+
+    lb('Fonte (artigo ou item, opcional)')+'<input value="'+escHtml(it.fonte||'')+'" '+ch('fonte')+' style="'+fi+'">'+
+    lb('Palavras-chave para a busca (separadas por vírgula)')+'<input value="'+escHtml((it.palavras_chave||[]).join(', '))+'" '+ch('palavras_chave')+' style="'+fi+'">'+
+    lb('Atalho para uma aba do portal (opcional)')+'<select '+ch('atalho_aba')+' style="'+fi+'">'+atOpts+'</select>'+
+    '<div style="background:#fffaf0;border:1px dashed #ffe0b2;border-radius:8px;padding:8px 10px;margin-bottom:10px">'+lb('🔒 Nota interna (só o administrador vê)')+'<textarea '+ch('notaInterna')+' style="'+fi+';min-height:60px;resize:vertical;background:#fff">'+escHtml(it.notaInterna||'')+'</textarea><label style="font-size:12px;color:var(--txt2);cursor:pointer"><input type="checkbox"'+(it.validar?' checked':'')+' onchange="samCampo('+SQ+id+SQ+','+SQ+'validar'+SQ+',this.checked)"> Precisa de validação do síndico antes de publicar</label></div>'+
+    '<div id="sam-acoes-'+id+'">'+samAcoes(it)+'</div></div>';
+}
+function samAcoes(it){
+  var e=samEstado(it),id=it.id;
+  var bt=function(rot,fn,est){return '<button onclick="'+fn+'('+SQ+id+SQ+')" style="font-size:12px;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:inherit;'+est+'">'+rot+'</button>';};
+  var neutro='border:1px solid var(--border);background:#fff;color:var(--txt)',verde='border:none;background:#2d7a3a;color:#fff;font-weight:600',verm='border:1px solid #ffcdd2;background:#fdecea;color:#c0392b';
+  var info,botoes;
+  if(e==='publicada'){info='Publicada: o morador vê esta versão.';botoes=bt('↩ Voltar para rascunho','samDespublicar',neutro);}
+  else if(e==='alteracoes'){info='Você alterou algo. O morador ainda vê a versão publicada.';botoes=bt('📢 Publicar alterações','samPublicar',verde)+bt('Descartar alterações','samDescartar',neutro)+bt('↩ Voltar para rascunho','samDespublicar',neutro);}
+  else{info=(e==='a_responder'?'Ainda sem resposta. Só você vê.':'Rascunho: só você vê.');botoes=bt('📢 Publicar','samPublicar',verde);}
+  return '<div style="font-size:12px;color:var(--txt3);margin-bottom:6px">'+info+' Salvo automaticamente.</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+botoes+bt('🗑️ Excluir','samExcluir',verm)+'</div>';
+}
+function samToggle(id){
+  samEditando=(samEditando===id)?null:id;
+  samRenderListaAdmin();
+  var el=document.getElementById('sam-it-'+id);
+  if(el&&samEditando===id) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function samAtualizarItem(id){
+  var it=samPorId(id);
+  if(!it) return;
+  var b=document.getElementById('sam-badge-'+id);if(b)b.innerHTML=samBadge(samEstado(it));
+  var a=document.getElementById('sam-acoes-'+id);if(a)a.innerHTML=samAcoes(it);
+  var h=document.querySelector('#sam-it-'+id+' [data-sam-pergunta]');if(h)h.textContent=it.pergunta||'(sem pergunta)';
+  var c=document.getElementById('sam-contadores');if(c)c.innerHTML=samHtmlContadores();
+}
+function samCampo(id,campo,val){
+  var it=samPorId(id);
+  if(!it) return;
+  if(campo==='passos') it.passos=String(val||'').split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  else if(campo==='palavras_chave') it.palavras_chave=String(val||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  else if(campo==='validar') it.validar=!!val;
+  else it[campo]=val;
+  it.atualizadoEm=samAgora();
+  samAtualizarItem(id);
+  samSalvar(function(){if(campo==='categoria'||campo==='validar') samRenderListaAdmin();});
+}
+function samPublicar(id){
+  var it=samPorId(id);
+  if(!it) return;
+  var s=samSnapshot(it);
+  if(!s.pergunta||!s.resposta){alert('Preencha a pergunta e a resposta antes de publicar.');return;}
+  var msg=(it.validar?'ATENÇÃO: esta pergunta está marcada como "precisa de validação do síndico".\n\n':'')+(it.status==='publicada'?'Publicar as alterações? Os moradores passarão a ver a nova versão.':'Publicar esta pergunta? Ela ficará visível para todos os moradores.');
+  if(!confirm(msg)) return;
+  it.pub=s;it.status='publicada';it.publicadoEm=samAgora();it.validar=false;
+  samSalvar(function(){renderSam();alert('✅ Publicado!');});
+}
+function samDespublicar(id){
+  var it=samPorId(id);
+  if(!it||!confirm('Voltar esta pergunta para rascunho? Os moradores deixarão de vê-la.')) return;
+  it.status='rascunho';it.pub=null;
+  samSalvar(function(){renderSam();});
+}
+function samDescartar(id){
+  var it=samPorId(id);
+  if(!it||!it.pub||!confirm('Descartar as alterações e voltar para a versão publicada?')) return;
+  var p=it.pub;
+  it.categoria=p.categoria;it.pergunta=p.pergunta;it.resposta=p.resposta;it.passos=(p.passos||[]).slice();it.fonte=p.fonte||'';it.palavras_chave=(p.palavras_chave||[]).slice();it.atalho_aba=p.atalho_aba||'';it.relacionadas=(p.relacionadas||[]).slice();
+  samSalvar(function(){renderSam();});
+}
+function samExcluir(id){
+  var it=samPorId(id);
+  if(!it) return;
+  if(!confirm(it.status==='publicada'?'Esta pergunta está PUBLICADA. Excluir também a remove para os moradores. Excluir mesmo assim?':'Excluir esta pergunta?')) return;
+  samItens=samItens.filter(function(x){return x.id!==id;});
+  if(samEditando===id) samEditando=null;
+  samSalvar(function(){renderSam();});
+}
+function samNova(){
+  var id='sam-'+Date.now().toString(36);
+  samItens.push({id:id,categoria:'dia-a-dia',pergunta:'',resposta:'',passos:[],fonte:'',palavras_chave:[],atalho_aba:'',relacionadas:[],notaInterna:'',validar:false,origem:'admin',sugerida:false,status:'rascunho',pub:null,criadoEm:samAgora()});
+  samEditando=id;samFiltro={status:'todas',cat:'todas',busca:''};
+  samSalvar(function(){renderSam();var el=document.getElementById('sam-it-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});});
+}
+function samPublicarProntas(){
+  var prontas=samProntas();
+  var validar=samItens.filter(function(it){return it.status!=='publicada'&&(it.resposta||'').trim()&&it.validar;}).length;
+  if(!prontas.length){alert('Não há rascunhos prontos para publicar.'+(validar?'\n\n'+validar+' estão marcados como "precisa de validação" e precisam ser publicados um a um.':''));return;}
+  if(!confirm('Publicar '+prontas.length+' perguntas agora? Elas ficarão visíveis para todos os moradores.'+(validar?'\n\n'+validar+' marcadas como "precisa de validação" NÃO serão publicadas.':''))) return;
+  prontas.forEach(function(it){it.pub=samSnapshot(it);it.status='publicada';it.publicadoEm=samAgora();});
+  samSalvar(function(){renderSam();alert('✅ '+prontas.length+' perguntas publicadas!');});
+}
+function samImportar(inp){
+  var f=inp.files&&inp.files[0];
+  if(!f) return;
+  var r=new FileReader();
+  r.onload=function(e){
+    var d;
+    try{d=JSON.parse(e.target.result);}catch(err){alert('Arquivo inválido: não consegui ler o JSON.');inp.value='';return;}
+    var lista=d&&d.perguntas;
+    if(!Array.isArray(lista)){alert('Arquivo não reconhecido: não encontrei a lista de perguntas.');inp.value='';return;}
+    var existentes={};samItens.forEach(function(i){existentes[i.id]=1;});
+    var novas=0,ja=0,arq=0;
+    lista.forEach(function(p){
+      if(!p||!p.id) return;
+      if(p.status==='arquivada'){arq++;return;}
+      if(existentes[p.id]){ja++;return;}
+      var nota=[];
+      if(p.confirmar) nota.push('Confirmar: '+p.confirmar);
+      if(p.dica_para_resposta) nota.push('Dica para a resposta: '+p.dica_para_resposta);
+      samItens.push({id:p.id,categoria:p.categoria||'dia-a-dia',pergunta:p.pergunta||'',resposta:p.resposta||'',passos:p.passos||[],fonte:p.fonte||'',palavras_chave:p.palavras_chave||[],atalho_aba:p.atalho_aba||'',relacionadas:p.relacionadas||[],notaInterna:nota.join('\n'),validar:!!p.confirmar,origem:p.origem||'convencao',sugerida:!!p.sugerida,status:'rascunho',pub:null,criadoEm:samAgora()});
+      novas++;
+    });
+    if(!novas){alert('Nenhuma pergunta nova para importar.\n\nJá existiam: '+ja+(arq?'\nArquivadas (ignoradas): '+arq:''));inp.value='';return;}
+    samSalvar(function(){
+      renderSam();
+      alert('✅ '+novas+' perguntas importadas como RASCUNHO (ainda invisíveis para os moradores).'+(ja?'\n'+ja+' já existiam e foram mantidas.':'')+(arq?'\n'+arq+' arquivadas foram ignoradas.':''));
+      inp.value='';
+    });
+  };
+  r.readAsText(f,'utf-8');
+}
+function renderSam(){
+  var el=document.getElementById('sam-container');
+  if(!el) return;
+  if(adminLogado&&!samVerComoMorador){el.innerHTML=samHtmlAdmin();samRenderListaAdmin();return;}
+  el.innerHTML=samHtmlMorador(adminLogado&&samVerComoMorador);
+  samRenderMorador();
+}
+
 // ===== NOTIFICAÇÕES PUSH =====
 // Chave gerada em: Firebase Console > Configurações do projeto > Cloud Messaging >
 // Configuração da Web > Gerar par de chaves. Cole a chave entre as aspas abaixo.
@@ -1266,7 +1629,7 @@ function adicionarContatoGenerico(arrNome,formPrefix){
   nomeEl.value='';telEl.value='';nomeEl.focus();
   salvarContatosGenerico(arrNome);
 }
-var NAV_IDS=['inicio','realizacoes','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','mapa'];
+var NAV_IDS=['inicio','realizacoes','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','sam','mapa'];
 var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
 var adminLogado=false;
 
@@ -1283,6 +1646,7 @@ function nav(id){
   var i=NAV_IDS.indexOf(id); if(i>=0) document.querySelectorAll('.nb')[i].classList.add('on');
   var j=BNAV_IDS.indexOf(id); if(j>=0) document.querySelectorAll('.bni')[j].classList.add('on');
   window.scrollTo(0,0);
+  if(id==='sam'&&typeof renderSam==='function') renderSam();
 }
 
 function chamarWA(){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'));}
@@ -2342,7 +2706,8 @@ function carregarTodosOsDados(callback){
     contatoAdmin:function(d){if(d&&d.length)contatoAdmin=d;},
     contatosUteis:function(d){if(d)contatosUteis=d;},
     ciclos:function(d){ciclos=d||[];},
-    classifDespesas:function(d){classifDespesas=d||[];}
+    classifDespesas:function(d){classifDespesas=d||[];},
+    sam:function(d){samItens=d||[];}
   };
   var keys=Object.keys(secoes);
   var pendentes=keys.length;
