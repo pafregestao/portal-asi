@@ -152,8 +152,10 @@ textarea.fi{height:75px;resize:vertical}
   <div class="card" id="banner-notif-push" style="display:none;margin-bottom:12px;padding:14px 16px">
     <div id="banner-notif-conteudo"></div>
   </div>
+  <div id="sam-home"></div>
   <div class="sec">Acesso rápido</div>
   <div class="grid2" id="grid-acesso-rapido">
+    <div class="gcard" id="gcard-sam" style="display:none" onclick="nav('sam')"><div class="gico" style="background:#e3f0fb">💬</div><div><div style="font-weight:600;font-size:13px">SAM</div><div style="font-size:11px;color:var(--txt3)">Tire suas dúvidas</div></div></div>
     <div class="gcard" onclick="nav('realizacoes')"><div class="gico" style="background:#e8f5e9">✅</div><div><div style="font-weight:600;font-size:13px">Realizações</div><div style="font-size:11px;color:var(--txt3)">Histórico de ações</div></div></div>
     <div class="gcard" onclick="nav('tarefas')"><div class="gico" style="background:#fff3e0">📌</div><div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--txt3)">Ordem de prioridade</div></div></div>
     <div class="gcard" onclick="nav('projetos')"><div class="gico" style="background:#fff3e0">🔨</div><div><div style="font-weight:600;font-size:13px">Projetos</div><div style="font-size:11px;color:var(--txt3)">Em andamento</div></div></div>
@@ -1207,14 +1209,15 @@ function samRenderMorador(){
 }
 function samBuscar(v){samBuscaMorador=v;samRenderResultados();}
 function samSelCat(id){samCatMorador=id;samRenderMorador();}
-function samResultados(){
-  var base=samPublicadas().filter(function(p){return samCatMorador==='todas'||p.categoria===samCatMorador;});
-  var q=samNorm(samBuscaMorador).split(/[^a-z0-9]+/).filter(function(w){return w.length>1&&SAM_STOP.indexOf(w)<0;}).map(samStem);
+function samResultados(){return samPesquisar(samBuscaMorador,samCatMorador);}
+function samPesquisar(texto,cat){
+  var base=samPublicadas().filter(function(p){return cat==='todas'||p.categoria===cat;});
+  var q=samNorm(texto).split(/[^a-z0-9]+/).filter(function(w){return w.length>1&&SAM_STOP.indexOf(w)<0;}).map(samStem);
   if(!q.length) return {lista:base,aprox:false,busca:false};
   var pts=base.map(function(p){
     var cp=samPal(p.pergunta+' '+(p.palavras_chave||[]).join(' ')),cr=samPal(p.resposta+' '+(p.passos||[]).join(' ')+' '+samCat(p.categoria).nome);
-    var t=0,todas=true;
-    q.forEach(function(w){var k=' '+w;var s=cp.indexOf(k)>=0?3:(cr.indexOf(k)>=0?1:0);if(!s)todas=false;t+=s;});
+    var t=0,todas=true,k0=samNorm((p.palavras_chave||[])[0]||'');
+    q.forEach(function(w){var k=' '+w;var s=cp.indexOf(k)>=0?3:(cr.indexOf(k)>=0?1:0);if(!s)todas=false;t+=s;if(s&&k0.indexOf(w)===0)t+=2;});
     return {p:p,t:t,todas:todas};
   });
   var exatos=pts.filter(function(x){return x.todas;}).sort(function(a,b){return b.t-a.t;});
@@ -1464,7 +1467,65 @@ function samImportar(inp){
   };
   r.readAsText(f,'utf-8');
 }
+// ---- Tela inicial: barra "Pergunte ao SAM" e quadradinho ----
+function renderSamHome(){
+  var el=document.getElementById('sam-home'),card=document.getElementById('gcard-sam');
+  var visivel=samPublicadas().length>0||adminLogado;
+  if(card) card.style.display=visivel?'':'none';
+  if(!el) return;
+  if(!visivel){el.innerHTML='';return;}
+  if(document.getElementById('sam-home-busca')) return;
+  el.innerHTML='<div class="card" style="padding:14px;margin-bottom:12px">'+
+    '<div style="font-size:13px;font-weight:700;color:var(--azul);margin-bottom:8px">💬 Pergunte ao SAM</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<input id="sam-home-busca" class="fi" placeholder="Ex.: elevador, mudança, vaga, barulho..." autocomplete="off" oninput="samHomeSugerir(this.value)" onkeydown="if(event.key===\'Enter\'){samHomeIr();}" style="margin-bottom:0;flex:1;min-width:0">'+
+      '<button class="btn primary" onclick="samHomeIr()" aria-label="Buscar no SAM" style="padding:0 16px;font-size:16px">🔎</button>'+
+    '</div>'+
+    '<div id="sam-home-sug"></div>'+
+  '</div>';
+}
+function samHomeTexto(){var i=document.getElementById('sam-home-busca');return i?i.value.trim():'';}
+function samHomeSugerir(v){
+  var el=document.getElementById('sam-home-sug');
+  if(!el) return;
+  var t=(v||'').trim();
+  if(t.length<2){el.innerHTML='';return;}
+  var r=samPesquisar(t,'todas'),lista=r.lista.slice(0,5);
+  var link='font-size:12px;font-weight:600;color:var(--azul);background:none;border:none;cursor:pointer;padding:6px 0;font-family:inherit;text-align:left';
+  var h='<div style="margin-top:10px;border-top:1px solid var(--border)">';
+  if(!lista.length){
+    h+='<div style="padding:10px 2px 4px;font-size:12px;color:var(--txt2)">Não achamos uma resposta para isso ainda.</div>'+
+       '<button onclick="samHomeNaoAchei()" style="'+link+'">✉️ Enviar minha dúvida ao síndico →</button>';
+  }else{
+    if(r.aprox) h+='<div style="padding:8px 2px 0;font-size:11px;color:var(--txt3)">Perguntas parecidas:</div>';
+    h+=lista.map(function(p){
+      var c=samCat(p.categoria);
+      return '<div onclick="samHomeAbrir('+SQ+p.id+SQ+')" style="padding:9px 2px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--azul);font-weight:600;line-height:1.35">'+escHtml(p.pergunta)+'<div style="font-size:11px;color:var(--txt3);font-weight:400;margin-top:1px">'+c.icone+' '+escHtml(c.nome)+'</div></div>';
+    }).join('');
+    h+='<button onclick="samHomeIr()" style="'+link+'">'+(r.lista.length>lista.length?'Ver todas as '+r.lista.length+' respostas':'Abrir no SAM')+' →</button>';
+  }
+  el.innerHTML=h+'</div>';
+}
+function samIrComBusca(texto,abrirId){
+  samBuscaMorador=texto||'';samCatMorador='todas';
+  if(adminLogado) samVerComoMorador=true;
+  var b=document.getElementById('sam-home-busca'),s=document.getElementById('sam-home-sug');
+  if(b) b.value='';
+  if(s) s.innerHTML='';
+  nav('sam');
+  if(abrirId){var d=document.getElementById('sam-d-'+abrirId);if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'center'});}}
+}
+function samHomeIr(){samIrComBusca(samHomeTexto(),null);}
+function samHomeAbrir(id){samIrComBusca(samHomeTexto(),id);}
+function samHomeNaoAchei(){
+  samBuscaMorador=samHomeTexto();
+  var b=document.getElementById('sam-home-busca'),s=document.getElementById('sam-home-sug');
+  if(b) b.value='';
+  if(s) s.innerHTML='';
+  samNaoAchei();
+}
 function renderSam(){
+  renderSamHome();
   var el=document.getElementById('sam-container');
   if(!el) return;
   if(adminLogado&&!samVerComoMorador){el.innerHTML=samHtmlAdmin();samRenderListaAdmin();return;}

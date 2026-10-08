@@ -1,4 +1,4 @@
-const APP_VERSION = '1.26.0';
+const APP_VERSION = '1.26.1';
 const CACHE = 'portal-asi-v'+APP_VERSION;
 const ASSETS = ['./index.html','./manifest.json'];
 self.addEventListener('install', e => {
