@@ -18,6 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .hdr{background:var(--azul);color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:10px}
 .hdr-logo{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .hdr-title{flex:1}.hdr-title h1{font-size:15px;font-weight:700}.hdr-title p{font-size:11px;opacity:.65;margin-top:1px}
+@media(max-width:480px){#btn-modo .mt{display:none}#btn-modo{padding:0 9px!important;font-size:14px!important}}
 .hdr-ico{width:34px;height:34px;background:rgba(255,255,255,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;position:relative}
 .notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;background:#e74c3c;border-radius:50%;border:2px solid var(--azul)}
 .nav-wrap{background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:62px;z-index:99;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -117,6 +118,7 @@ textarea.fi{height:75px;resize:vertical}
 <div class="hdr">
   <div class="hdr-logo">🏢</div>
   <div class="hdr-title"><h1>Portal Altos Santa Izabel</h1><p id="hdr-usuario">Condomínio Altos Santa Izabel</p></div>
+  <div id="btn-modo" onclick="alternarModoEditor()" role="button" style="display:none;height:30px;padding:0 11px;border-radius:15px;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;user-select:none;-webkit-user-select:none"></div>
   <div class="hdr-ico" onclick="navNotif()" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4;min-width:16px;text-align:center"></span></div>
   <div class="hdr-ico" onclick="abrirAdmin()" id="btn-admin" style="display:none">⚙️</div>
   <div class="hdr-ico" id="btn-usuarios" onclick="window.location.href='usuarios.html'" style="display:none;position:relative">👥<span id="badge-usuarios" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 5px;line-height:1.4"></span></div>
@@ -506,6 +508,11 @@ auth.onAuthStateChanged(function(user){
     if(hdr) hdr.textContent=usuarioAtual.nome+' · '+usuarioAtual.unidade;
     // Mostrar botão admin se for admin
     if(usuarioAtual.perfil==='admin'){
+      var btnModo=document.getElementById('btn-modo');
+      if(btnModo){btnModo.style.display='flex';_pintarBtnModo();}
+    }
+    // Administrador entra em modo VISUALIZAÇÃO (como morador); o modo editor é ligado pelo botão do topo
+    if(usuarioAtual.perfil==='admin'&&_modoEditor()){
       var btnAdmin=document.getElementById('btn-admin');
       if(btnAdmin) btnAdmin.style.display='flex';
       var navMapa=document.getElementById('nav-mapa');
@@ -553,9 +560,23 @@ auth.onAuthStateChanged(function(user){
   });
 });
 
+function _modoEditor(){try{return sessionStorage.getItem('asi_modo_editor')==='1';}catch(e){return false;}}
+function _pintarBtnModo(){
+  var b=document.getElementById('btn-modo');if(!b) return;
+  var on=_modoEditor();
+  b.innerHTML=on?'✏️<span class="mt"> Editando</span>':'👁<span class="mt"> Visualizando</span>';
+  b.style.background=on?'#e67e22':'rgba(255,255,255,.18)';
+  b.style.color='#fff';
+  b.title=on?'Modo editor ligado. Toque para voltar a ver como morador.':'Visualização (como morador). Toque para ligar o modo editor.';
+}
+function alternarModoEditor(){
+  try{sessionStorage.setItem('asi_modo_editor',_modoEditor()?'0':'1');}catch(e){}
+  location.reload();
+}
 function fazerLogout(){
   if(!confirm('Deseja sair do portal?')) return;
   auth.signOut().then(function(){
+    try{sessionStorage.removeItem('asi_modo_editor');}catch(e){}
     localStorage.removeItem('asi_usuario');
     window.location.href='auth.html';
   });

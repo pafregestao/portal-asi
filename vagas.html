@@ -454,7 +454,8 @@ auth.onAuthStateChanged(function(user){
     }
     var d=doc.data();
     localStorage.setItem('asi_usuario',JSON.stringify(Object.assign({uid:user.uid},d)));
-    if(d.perfil==='admin'){
+    var _modoEd=false;try{_modoEd=sessionStorage.getItem('asi_modo_editor')==='1';}catch(e){}
+    if(d.perfil==='admin'&&_modoEd){
       adminLogado=true;
       document.getElementById('btn-edit-admin').style.display='block';
       document.getElementById('btn-editar-mapa').style.display='flex';

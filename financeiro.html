@@ -229,7 +229,7 @@ function getGrupo(nome){var n=normStr(nome);for(var k in GRUPOS){var nk=normStr(
 auth.onAuthStateChanged(function(user){
   if(!user){window.location.href='auth.html';return;}
   var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  isAdmin=u.perfil==='admin';
+  isAdmin=u.perfil==='admin'&&(function(){try{return sessionStorage.getItem('asi_modo_editor')==='1';}catch(e){return false;}})();
   if(isAdmin) document.getElementById('areaAdmin').style.display='block';
   carregarFirestore();
 });
