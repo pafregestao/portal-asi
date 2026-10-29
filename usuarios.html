@@ -70,6 +70,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 
 <div class="wrap">
 
+  <div id="busca-wrap" style="margin-bottom:12px">
+    <input id="busca-usuarios" type="search" placeholder="🔎 Buscar por nome, e-mail, apto ou celular..." oninput="aplicarBusca()" autocomplete="off" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff">
+    <div id="busca-info" style="font-size:11px;color:var(--txt3);margin-top:4px"></div>
+  </div>
+
   <div class="sec on" id="sec-pendentes">
     <div class="alert warn" id="alerta-pend" style="display:none"><span>🔔</span><div>Há solicitações pendentes de aprovação.</div></div>
     <div class="card" id="lista-pendentes"><div class="empty">Carregando...</div></div>
@@ -183,6 +188,8 @@ function trocarTab(id,btn){
   document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on');});
   document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});
   document.getElementById('sec-'+id).classList.add('on');
+  var bw=document.getElementById('busca-wrap');
+  if(bw) bw.style.display=(id==='criar'||id==='ajuda')?'none':'block';
   btn.classList.add('on');
 }
 
@@ -202,15 +209,37 @@ function carregarUsuarios(){
       document.getElementById('alerta-pend').style.display='none';
       document.getElementById('badge-pend').innerHTML='';
     }
-    renderLista('lista-pendentes',pend,'pendente');
-    renderLista('lista-aprovados',aprov,'aprovado');
-    renderLista('lista-rejeitados',rej,'rejeitado');
+    listasUsuarios={pendente:pend,aprovado:aprov,rejeitado:rej};
+    aplicarBusca();
   });
 }
 
-function renderLista(elId,usuarios,tipo){
+var listasUsuarios={pendente:[],aprovado:[],rejeitado:[]};
+
+function normBusca(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+function aplicarBusca(){
+  var inp=document.getElementById('busca-usuarios');
+  var q=normBusca(inp?inp.value:'').trim();
+  var info=document.getElementById('busca-info');
+  var total=0,achados=0;
+  [['lista-pendentes','pendente'],['lista-aprovados','aprovado'],['lista-rejeitados','rejeitado']].forEach(function(p){
+    var todos=listasUsuarios[p[1]]||[];
+    var lista=q?todos.filter(function(u){
+      var palha=normBusca([u.nome,u.email,u.unidade,u.celular,String(u.celular||'').replace(/\D/g,''),u.tipo,u.perfil==='admin'?'admin administrador':''].join(' '));
+      return palha.indexOf(q)>=0;
+    }):todos;
+    total+=todos.length;achados+=lista.length;
+    renderLista(p[0],lista,p[1],q?'Nenhum usuário encontrado para esta busca.':'');
+  });
+  if(info) info.textContent=q?(achados+' de '+total+' usuários encontrados'):'';
+}
+
+function renderLista(elId,usuarios,tipo,msgVazio){
   var el=document.getElementById(elId);
-  if(!usuarios.length){el.innerHTML='<div class="empty">Nenhum usuário nesta categoria.</div>';return;}
+  if(!usuarios.length){el.innerHTML='<div class="empty">'+(msgVazio||'Nenhum usuário nesta categoria.')+'</div>';return;}
   el.innerHTML=usuarios.map(function(u){
     var ini=(u.nome||'?').charAt(0).toUpperCase();
     var badgeTipo=u.tipo==='Proprietário'?'blue':(u.tipo==='Inquilino'?'gray':'purple');
@@ -253,7 +282,7 @@ function aprovar(uid,nome,email){
       var tel=celular.replace(/[^0-9]/g,'');
       if(tel.length>=10){
         tel='55'+tel;
-        var msg=encodeURIComponent('Olá, '+nome+'! Seu acesso ao Portal Altos Santa Izabel foi aprovado. Acesse: https://condaltosstaizabel.github.io/portal-asi/auth.html');
+        var msg=encodeURIComponent('Olá, '+nome+'! Seu acesso ao Portal Altos Santa Izabel foi aprovado. Acesse: https://altossantaizabel.pafregestao.com.br/auth.html');
         window.open('https://wa.me/'+tel+'?text='+msg);
       } else {
         alert('✅ Aprovado! Celular não cadastrado — avise o morador manualmente.');
