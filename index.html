@@ -275,20 +275,10 @@ textarea.fi{height:75px;resize:vertical}
   <input class="fi" id="busca-prest" placeholder="🔍  Buscar por nome, atividade ou indicação..." oninput="renderPrestadores()" style="margin-bottom:12px">
   <div class="metrics">
     <div class="mc"><div class="mc-lbl">Total</div><div class="mc-val" id="prest-total">13</div></div>
-    <div class="mc"><div class="mc-lbl">Categorias</div><div class="mc-val">8</div></div>
+    <div class="mc"><div class="mc-lbl">Categorias</div><div class="mc-val" id="prest-ncat">8</div></div>
     <div class="mc"><div class="mc-lbl">Com indicação</div><div class="mc-val ok" id="prest-com-ind">8</div></div>
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="filtros-cat">
-    <button class="tag" style="cursor:pointer;background:var(--azul);color:#fff;border-color:var(--azul)" onclick="filtrarCatPrest('todos',this)">Todos</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Eletricista',this)">Eletricista</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Jardinagem',this)">Jardinagem</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Portaria / Cameras',this)">Portaria</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Ar Condicionado',this)">Ar Condicionado</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Placa Solar',this)">Placa Solar</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('FoodTruck',this)">Food Truck</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Advogado',this)">Advogado</button>
-    <button class="tag" style="cursor:pointer" onclick="filtrarCatPrest('Smart Store',this)">Smart Store</button>
-  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="filtros-cat"></div>
   <div id="lista-prest-dyn"></div>
 </div>
 
@@ -2565,8 +2555,64 @@ function salvarPrestadores(){salvarNoFirestore('prestadores',prestadores,functio
 var filtroAtualPrest='todos';
 var catIcos={Eletricista:'⚡',Jardinagem:'🌿','Portaria / Cameras':'📷','Ar Condicionado':'❄️','Placa Solar':'☀️',FoodTruck:'🚚','Smart Store':'🛒',Advogado:'⚖️'};
 var catBg={Eletricista:'#fff3e0',Jardinagem:'#e8f5e9','Portaria / Cameras':'#e3f0fb','Ar Condicionado':'#e3f0fb','Placa Solar':'#fff3e0',FoodTruck:'#fff3e0','Smart Store':'#e8f5e9',Advogado:'#fdecea'};
+
+// ===== Categorias dinâmicas: as padrão + qualquer categoria nova usada por um prestador =====
+var catLabel={'Portaria / Cameras':'Portaria',FoodTruck:'Food Truck'};
+function catsPrest(){
+  var extras=[];
+  prestadores.forEach(function(p){
+    if(p.cat&&CATS_PREST.indexOf(p.cat)<0&&extras.indexOf(p.cat)<0) extras.push(p.cat);
+  });
+  return CATS_PREST.concat(extras.sort());
+}
+function opcoesCatPrest(sel,comNova){
+  return catsPrest().map(function(c){
+    return '<option value="'+esc(c)+'"'+(c===sel?' selected':'')+'>'+escHtml(c)+'</option>';
+  }).join('')+(comNova?'<option value="__nova__">➕ Nova categoria...</option>':'');
+}
+function renderFiltrosPrest(){
+  var box=document.getElementById('filtros-cat');
+  if(!box) return;
+  var usadas=catsPrest().filter(function(c){return prestadores.some(function(p){return p.cat===c;});});
+  if(filtroAtualPrest!=='todos'&&usadas.indexOf(filtroAtualPrest)<0) filtroAtualPrest='todos';
+  box.innerHTML=['todos'].concat(usadas).map(function(c){
+    var estilo=(c===filtroAtualPrest)?'cursor:pointer;background:var(--azul);color:#fff;border-color:var(--azul)':'cursor:pointer';
+    return '<button class="tag" style="'+estilo+'" data-cat="'+esc(c)+'" onclick="filtrarCatPrest(this.dataset.cat,this)">'+(c==='todos'?'Todos':escHtml(catLabel[c]||c))+'</button>';
+  }).join('');
+  var n=document.getElementById('prest-ncat'); if(n) n.textContent=usadas.length;
+}
+// Pede o nome de uma categoria nova; devolve o nome (reaproveitando uma existente com mesmo texto) ou null
+function novaCatPrest(){
+  var n=(prompt('Nome da nova categoria:')||'').trim();
+  if(!n) return null;
+  var ex=catsPrest().filter(function(c){return c.toLowerCase()===n.toLowerCase();})[0];
+  return ex||n;
+}
+function selecionarNovaCatForm(sel){
+  if(sel.value!=='__nova__') return;
+  var n=novaCatPrest();
+  if(!n){sel.selectedIndex=0;return;}
+  var existe=Array.prototype.some.call(sel.options,function(o){return o.value===n;});
+  if(!existe){
+    var o=document.createElement('option');
+    o.value=n;o.textContent=n;
+    sel.insertBefore(o,sel.options[sel.options.length-1]);
+  }
+  sel.value=n;
+}
+function mudarCatPrest(idx,sel){
+  var v=sel.value;
+  if(v==='__nova__'){
+    v=novaCatPrest();
+    if(!v){sel.value=prestadores[idx].cat;return;}
+  }
+  prestadores[idx].cat=v;
+  salvarPrestadores();
+  renderPrestadores();
+}
 function renderPrestadores(){
   var el=document.getElementById('lista-prest-dyn');if(!el)return;
+  renderFiltrosPrest();
   var q=(document.getElementById('busca-prest')||{}).value||''; q=q.toLowerCase();
   var filtrados=prestadores.filter(function(p){return (filtroAtualPrest==='todos'||p.cat===filtroAtualPrest)&&(p.nome+p.cat+p.ind).toLowerCase().includes(q);});
   var grupos={};
@@ -2577,14 +2623,14 @@ function renderPrestadores(){
       '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
         '<input id="nova-pre-nome" placeholder="Nome..." style="flex:1;min-width:100px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
         '<input id="nova-pre-tel" placeholder="Telefone..." style="width:130px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+
-        '<select id="nova-pre-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit">'+CATS_PREST.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'+
+        '<select id="nova-pre-cat" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onchange="selecionarNovaCatForm(this)">'+opcoesCatPrest('',true)+'</select>'+
         '<button onclick="addPrestadorRapido()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
       '</div>'+
     '</div>'
   );
   Object.keys(grupos).forEach(function(cat){
     html+='<div class="card" style="padding:0 15px;margin-bottom:8px">';
-    html+='<div style="padding:10px 0 6px;font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em">'+cat+'</div>';
+    html+='<div style="padding:10px 0 6px;font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em">'+escHtml(cat)+'</div>';
     grupos[cat].forEach(function(p){
       var idx=prestadores.indexOf(p);
       var tel=p.tel.replace(/[^0-9]/g,''); if(tel.length>=10) tel='55'+tel;
@@ -2603,7 +2649,7 @@ function renderPrestadores(){
         '<div class="file-ico" style="background:'+(catBg[cat]||'#f0f0f0')+'">'+(catIcos[cat]||'👤')+'</div>'+
         '<input value="'+esc(p.nome)+'" onchange="prestadores['+idx+'].nome=this.value;salvarPrestadores();renderPrestadores()" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit">'+
         '<input value="'+esc(p.tel)+'" onchange="prestadores['+idx+'].tel=this.value;salvarPrestadores();renderPrestadores()" placeholder="Telefone" style="width:110px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
-        '<select onchange="prestadores['+idx+'].cat=this.value;salvarPrestadores();renderPrestadores()" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+CATS_PREST.map(function(c){return '<option value="'+c+'"'+(p.cat===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>'+
+        '<select onchange="mudarCatPrest('+idx+',this)" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+opcoesCatPrest(p.cat,true)+'</select>'+
         '<input value="'+esc(p.ind)+'" onchange="prestadores['+idx+'].ind=this.value;salvarPrestadores();renderPrestadores()" placeholder="Indicação" style="width:100px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">'+
         '<button onclick="removerPrestador('+idx+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
       '</div>';
@@ -2627,6 +2673,7 @@ function addPrestadorRapido(){
   if(!nome){alert('Informe o nome.');return;}
   var tel=document.getElementById('nova-pre-tel').value.trim();
   var cat=document.getElementById('nova-pre-cat').value;
+  if(cat==='__nova__'){alert('Escolha uma categoria ou crie uma nova.');return;}
   prestadores.unshift({nome:nome,cat:cat,tel:tel,ind:''});
   document.getElementById('nova-pre-nome').value='';
   document.getElementById('nova-pre-tel').value='';
@@ -2646,7 +2693,7 @@ function renderPrestadoresAdmin(){
   el.innerHTML=prestadores.map(function(p,i){
     return '<div class="item-edit" style="flex-wrap:wrap;gap:6px">'+
       '<input class="ie-txt" style="min-width:100px" value="'+esc(p.nome)+'" onchange="prestadores['+i+'].nome=this.value">'+
-      '<select class="ie-sel" style="width:130px" onchange="prestadores['+i+'].cat=this.value">'+CATS_PREST.map(function(c){return '<option value="'+c+'"'+(p.cat===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>'+
+      '<select class="ie-sel" style="width:130px" onchange="prestadores['+i+'].cat=this.value">'+opcoesCatPrest(p.cat,false)+'</select>'+
       '<input style="width:120px" value="'+esc(p.tel)+'" onchange="prestadores['+i+'].tel=this.value" placeholder="Telefone">'+
       '<input class="ie-sub" value="'+esc(p.ind)+'" onchange="prestadores['+i+'].ind=this.value" placeholder="Indicação">'+
       '<button class="del-btn" onclick="prestadores.splice('+i+',1);salvarPrestadores();renderPrestadoresAdmin();renderPrestadores()">✕</button>'+

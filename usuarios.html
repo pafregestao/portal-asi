@@ -98,7 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <div class="form-group"><label>Unidade (Apto)</label><input id="c-unidade" name="campo-unidade" autocomplete="off" placeholder="Ex: 1042" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
         <div class="form-group"><label>Celular</label><input id="c-cel" name="campo-celular" autocomplete="off" placeholder="(19) 99999-9999"></div>
         <div class="form-group"><label>Tipo</label>
-          <select id="c-tipo"><option>Proprietário</option><option>Inquilino</option><option>Familiar</option></select>
+          <select id="c-tipo"><option>Proprietário</option><option>Locatário</option><option>Familiar</option></select>
         </div>
         <div class="form-group"><label>Perfil</label>
           <select id="c-perfil"><option value="morador">Morador</option><option value="admin">Administrador</option></select>
@@ -118,12 +118,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge ok" style="flex-shrink:0;margin-top:2px">Aprovado</span><div style="font-size:13px;color:var(--txt2)">Acesso liberado. O morador consegue fazer login normalmente.</div></div>
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge bad" style="flex-shrink:0;margin-top:2px">Rejeitado</span><div style="font-size:13px;color:var(--txt2)">Acesso negado ou revogado. Morador recebe mensagem de acesso não autorizado ao tentar logar.</div></div>
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge blue" style="flex-shrink:0;margin-top:2px">Proprietário</span><div style="font-size:13px;color:var(--txt2)">Tipo do usuário — dono do apartamento.</div></div>
-        <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge gray" style="flex-shrink:0;margin-top:2px">Inquilino</span><div style="font-size:13px;color:var(--txt2)">Tipo do usuário — locatário.</div></div>
+        <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge purple" style="flex-shrink:0;margin-top:2px">Locatário</span><div style="font-size:13px;color:var(--txt2)">Tipo do usuário — locatário.</div></div>
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge purple" style="flex-shrink:0;margin-top:2px">Admin</span><div style="font-size:13px;color:var(--txt2)">Perfil especial — acesso à área administrativa, pode editar conteúdo e aprovar usuários.</div></div>
       </div>
     </div>
   </div>
 
+</div>
+
+<div class="modal-overlay" id="modal-rejeicao">
+  <div class="modal">
+    <h2 id="rej-titulo">❌ Rejeitar acesso</h2>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:12px">Usuário: <strong id="rej-nome"></strong></div>
+    <div class="form-group"><label>Motivo (opcional — fica registrado)</label>
+      <textarea id="rej-motivo" rows="3" placeholder="Ex: Apartamento não confere com o cadastro do condomínio" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="rej-enviar"> 📲 Enviar o retorno ao solicitante por WhatsApp</label>
+    <div id="rej-aviso" style="font-size:11px;color:var(--txt3);margin-top:4px"></div>
+    <div class="modal-btns">
+      <button class="btn-sec" onclick="fecharRejeicao()">Cancelar</button>
+      <button class="btn-prim" style="background:#c0392b" onclick="confirmarRejeicao()">Confirmar</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal-edicao">
@@ -139,7 +155,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="form-group"><label>Celular</label><input id="edit-cel" name="campo-edit-celular" autocomplete="off"></div>
     <div class="form-group"><label>Tipo</label>
-      <select id="edit-tipo"><option>Proprietário</option><option>Inquilino</option><option>Familiar</option></select>
+      <select id="edit-tipo"><option>Proprietário</option><option>Locatário</option><option>Familiar</option></select>
     </div>
     <div class="form-group"><label>Perfil</label>
       <select id="edit-perfil"><option value="morador">Morador</option><option value="admin">Administrador</option></select>
@@ -228,7 +244,7 @@ function aplicarBusca(){
   [['lista-pendentes','pendente'],['lista-aprovados','aprovado'],['lista-rejeitados','rejeitado']].forEach(function(p){
     var todos=listasUsuarios[p[1]]||[];
     var lista=q?todos.filter(function(u){
-      var palha=normBusca([u.nome,u.email,u.unidade,u.celular,String(u.celular||'').replace(/\D/g,''),u.tipo,u.perfil==='admin'?'admin administrador':''].join(' '));
+      var palha=normBusca([u.nome,u.email,u.unidade,u.celular,String(u.celular||'').replace(/\D/g,''),tipoRot(u.tipo),u.motivoRejeicao,u.perfil==='admin'?'admin administrador':''].join(' '));
       return palha.indexOf(q)>=0;
     }):todos;
     total+=todos.length;achados+=lista.length;
@@ -242,7 +258,7 @@ function renderLista(elId,usuarios,tipo,msgVazio){
   if(!usuarios.length){el.innerHTML='<div class="empty">'+(msgVazio||'Nenhum usuário nesta categoria.')+'</div>';return;}
   el.innerHTML=usuarios.map(function(u){
     var ini=(u.nome||'?').charAt(0).toUpperCase();
-    var badgeTipo=u.tipo==='Proprietário'?'blue':(u.tipo==='Inquilino'?'gray':'purple');
+    var badgeTipo=u.tipo==='Proprietário'?'blue':'purple';
     var data=u.criadoEm&&u.criadoEm.toDate?u.criadoEm.toDate().toLocaleDateString('pt-BR'):'—';
     var perfilBadge=u.perfil==='admin'?'<span class="badge purple" style="margin-left:4px">Admin</span>':'';
     var acoes='';
@@ -260,8 +276,9 @@ function renderLista(elId,usuarios,tipo,msgVazio){
       '<div class="user-info">'+
         '<div class="user-nome">'+(u.nome||'—')+perfilBadge+'</div>'+
         '<div class="user-meta">'+u.email+' · Apto '+(u.unidade||'—')+' · '+data+'</div>'+
+        (tipo==='rejeitado'&&u.motivoRejeicao?'<div class="user-meta" style="color:var(--bad);margin-top:2px">Motivo: '+escM(u.motivoRejeicao)+'</div>':'')+
       '</div>'+
-      '<span class="badge '+badgeTipo+'">'+(u.tipo||'—')+'</span>'+
+      '<span class="badge '+badgeTipo+'">'+(tipoRot(u.tipo)||'—')+'</span>'+
       acoes+
     '</div>';
   }).join('');
@@ -277,7 +294,7 @@ function aprovar(uid,nome,email){
   if(!confirm('Aprovar acesso de '+nome+'?')) return;
   db.collection('usuarios').doc(uid).get().then(function(doc){
     var celular=doc.exists?doc.data().celular||'':'';
-    return db.collection('usuarios').doc(uid).update({status:'aprovado'}).then(function(){
+    return db.collection('usuarios').doc(uid).update({status:'aprovado',motivoRejeicao:firebase.firestore.FieldValue.delete()}).then(function(){
       carregarUsuarios();
       var tel=celular.replace(/[^0-9]/g,'');
       if(tel.length>=10){
@@ -311,9 +328,60 @@ function exportarUsuarios(){
   });
 }
 
+var rejeitandoUid=null;
+
+// Cadastros antigos podem ter tipo 'Inquilino'; o padrão do portal é 'Locatário'
+function tipoRot(t){return t==='Inquilino'?'Locatário':t;}
+
+function escM(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function rejeitar(uid,nome){
-  if(!confirm('Rejeitar/revogar acesso de '+nome+'?')) return;
-  db.collection('usuarios').doc(uid).update({status:'rejeitado'}).then(carregarUsuarios);
+  var u=null;
+  ['pendente','aprovado','rejeitado'].forEach(function(k){
+    (listasUsuarios[k]||[]).forEach(function(x){if(x.uid===uid) u=x;});
+  });
+  var tel=String((u&&u.celular)||'').replace(/\D/g,'');
+  var chk=document.getElementById('rej-enviar');
+  rejeitandoUid=uid;
+  document.getElementById('rej-titulo').textContent=(u&&u.status==='aprovado')?'❌ Revogar acesso':'❌ Rejeitar acesso';
+  document.getElementById('rej-nome').textContent=nome;
+  document.getElementById('rej-motivo').value='';
+  chk.checked=false;
+  chk.disabled=tel.length<10;
+  chk.dataset.tel=tel;
+  chk.dataset.nome=nome;
+  chk.dataset.revogar=(u&&u.status==='aprovado')?'1':'';
+  document.getElementById('rej-aviso').textContent=tel.length<10?'Celular não cadastrado: não é possível enviar por WhatsApp.':'';
+  document.getElementById('modal-rejeicao').classList.add('on');
+}
+
+function fecharRejeicao(){
+  document.getElementById('modal-rejeicao').classList.remove('on');
+  rejeitandoUid=null;
+}
+
+function confirmarRejeicao(){
+  if(!rejeitandoUid) return;
+  var uid=rejeitandoUid;
+  var motivo=document.getElementById('rej-motivo').value.trim();
+  var chk=document.getElementById('rej-enviar');
+  var enviar=chk.checked&&!chk.disabled;
+  var tel=chk.dataset.tel,nome=chk.dataset.nome,revogar=chk.dataset.revogar==='1';
+  var dados={
+    status:'rejeitado',
+    rejeitadoEm:firebase.firestore.FieldValue.serverTimestamp(),
+    motivoRejeicao:motivo?motivo:firebase.firestore.FieldValue.delete()
+  };
+  db.collection('usuarios').doc(uid).update(dados).then(function(){
+    fecharRejeicao();
+    carregarUsuarios();
+    if(enviar){
+      var msg='Olá, '+nome+'! '+(revogar?'Seu acesso ao Portal Altos Santa Izabel foi suspenso.':'Não foi possível aprovar seu acesso ao Portal Altos Santa Izabel.')+(motivo?' Motivo: '+motivo:'')+' Em caso de dúvida, procure a administração do condomínio.';
+      window.open('https://wa.me/55'+tel+'?text='+encodeURIComponent(msg));
+    }
+  }).catch(function(e){alert('Erro ao rejeitar: '+e.message);});
 }
 
 function abrirEdicao(uid,nome,unidade,cel,tipo,perfil,status){
@@ -321,7 +389,7 @@ function abrirEdicao(uid,nome,unidade,cel,tipo,perfil,status){
   document.getElementById('edit-nome').value=nome||'';
   document.getElementById('edit-unidade').value=unidade||'';
   document.getElementById('edit-cel').value=cel||'';
-  document.getElementById('edit-tipo').value=tipo||'Proprietário';
+  document.getElementById('edit-tipo').value=tipoRot(tipo)||'Proprietário';
   document.getElementById('edit-perfil').value=perfil||'morador';
   document.getElementById('edit-status').value=status||'pendente';
   document.getElementById('modal-edicao').classList.add('on');
