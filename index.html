@@ -357,7 +357,7 @@ textarea.fi{height:75px;resize:vertical}
   <div class="sec" style="display:flex;justify-content:space-between;align-items:center">Chamados<button id="btn-export-chamados" style="display:none;font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:#f0f5fb;color:var(--azul);cursor:pointer" onclick="exportarChamados()">⬇️ Exportar CSV</button></div>
   <div class="sec">Registrar defeito</div>
   <div class="card">
-    <label class="fl">Apartamento / local</label><input class="fi" id="f-apto" placeholder="Ex: Ap. 1121 ou Garagem B">
+    <label class="fl" id="f-apto-lbl">Apartamento / local</label><input class="fi" id="f-apto" placeholder="Ex: Ap. 1121 ou Garagem B">
     <label class="fl">Categoria</label>
     <select class="fi" id="f-cat"><option>Hidráulica</option><option>Elétrica</option><option>Estrutural</option><option>Portões / acessos</option><option>Iluminação</option><option>Área de lazer</option><option>Outro</option></select>
     <label class="fl">Descrição detalhada</label>
@@ -580,7 +580,11 @@ auth.onAuthStateChanged(function(user){
     iniciarRecebimentoForeground();
     // Preencher unidade do morador no campo de defeito
     var aptoField=document.getElementById('f-apto');
-    if(aptoField&&usuarioAtual&&usuarioAtual.unidade) aptoField.value=usuarioAtual.unidade;
+    if(usuarioAtual&&(usuarioAtual.tipo==='Zeladoria'||usuarioAtual.tipo==='Síndico')){
+      // Funcionários e síndico não têm apartamento: o campo vira "Local do defeito", sem pré-preenchimento
+      var lbl=document.getElementById('f-apto-lbl'); if(lbl) lbl.textContent='Local do defeito';
+      if(aptoField) aptoField.placeholder='Ex: Garagem B, Salão de festas, Hall do 3º andar';
+    } else if(aptoField&&usuarioAtual&&usuarioAtual.unidade) aptoField.value=usuarioAtual.unidade;
   }).catch(function(e){
     console.error('Erro ao verificar usuario:',e);
     // Nao redirecionar em erro de rede — manter na pagina
@@ -1781,6 +1785,22 @@ function reservaWA(){
 }
 
 // ===== DEFEITOS =====
+function ehFuncaoPortal(t){return t==='Zeladoria'||t==='Síndico';}
+// ===== E-mail ao condomínio quando um defeito ou sugestão é registrado =====
+// Usa o FormSubmit (formsubmit.co): não exige conta. No PRIMEIRO envio o FormSubmit manda um e-mail
+// de ativação para o endereço abaixo; é só clicar no link. Para desligar: EMAIL_AVISO_ATIVO=false.
+var EMAIL_AVISO_ATIVO=true;
+var EMAIL_CONDOMINIO='altosdesantaizabelcondominio@gmail.com';
+function notificarCondominioPorEmail(tipo,campos,resumo){
+  if(!EMAIL_AVISO_ATIVO||!EMAIL_CONDOMINIO) return;
+  try{
+    var corpo={_subject:'[Portal ASI] Novo(a) '+tipo+' — '+resumo,_template:'table',_captcha:'false','Portal':'https://altossantaizabel.pafregestao.com.br'};
+    Object.keys(campos).forEach(function(k){corpo[k]=String(campos[k]);});
+    fetch('https://formsubmit.co/ajax/'+EMAIL_CONDOMINIO,{
+      method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(corpo)
+    }).catch(function(e){console.warn('Aviso por e-mail não enviado:',e);});
+  }catch(e){console.warn('Aviso por e-mail não enviado:',e);}
+}
 // Zeladoria e Síndico não têm apartamento: só números ganham o prefixo "Apto"/"Ap."
 function aptoRotulo(v,curto){v=String(v||'');return /^\d/.test(v)?(curto?'Ap. ':'Apto ')+v:(v||'—');}
 function escHtml(s){
@@ -1858,6 +1878,10 @@ function enviarSugestao(){
     document.getElementById('sug-assunto').value='';
     document.getElementById('sug-desc').value='';
     alert('✅ Enviado com sucesso! Acompanhe o andamento aqui.');
+    notificarCondominioPorEmail(tipo,{
+      'Tipo':tipo,'Assunto':assunto,'Descrição':desc,
+      'Enviado por':(u.nome||'—')+' ('+aptoRotulo(u.unidade||'')+')','Data':new Date().toLocaleDateString('pt-BR')
+    },assunto);
 
     carregarSugestoes();
   }).catch(function(e){alert('Erro: '+e.message);});
@@ -2350,7 +2374,7 @@ function removerMidiaDefeito(){
 }
 function registrar(){
   var apto=document.getElementById('f-apto').value.trim();
-  if(!apto){alert('Informe o apartamento ou local');return;}
+  if(!apto){alert(ehFuncaoPortal(JSON.parse(localStorage.getItem('asi_usuario')||'{}').tipo)?'Informe o local do defeito':'Informe o apartamento ou local');return;}
   var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
   var cat=document.getElementById('f-cat').value;
   var desc=document.getElementById('f-desc').value.trim()||'Sem descrição';
@@ -2382,7 +2406,11 @@ function registrar(){
     removerMidiaDefeito();
     renderChamados();
     alert('✅ Chamado registrado! O síndico receberá uma notificação.');
-    // Enviar email
+    notificarCondominioPorEmail('Defeito',{
+      'Categoria':cat,'Severidade':sev,'Visibilidade':vis==='publico'?'Público (todos os moradores)':'Privado (morador e administração)',
+      'Local':apto,'Descrição':desc,'Foto/vídeo':chamado.midiaUrl||'—',
+      'Aberto por':(u.nome||'—')+' ('+aptoRotulo(u.unidade||'')+')','Data':data
+    },'['+sev+'] '+cat+' — '+apto);
 
   }).catch(function(e){alert('Erro ao registrar: '+e.message);});
 }
