@@ -533,7 +533,7 @@ auth.onAuthStateChanged(function(user){
     localStorage.setItem('asi_usuario',JSON.stringify(usuarioAtual));
     // Atualizar header
     var hdr=document.getElementById('hdr-usuario');
-    if(hdr) hdr.textContent=usuarioAtual.nome+' · '+usuarioAtual.unidade;
+    if(hdr) hdr.textContent=usuarioAtual.nome+' · '+usuarioAtual.unidade; // Zeladoria/Síndico: mostra o cargo
     // Mostrar botão admin se for admin
     if(usuarioAtual.perfil==='admin'){
       var btnModo=document.getElementById('btn-modo');
@@ -1781,6 +1781,8 @@ function reservaWA(){
 }
 
 // ===== DEFEITOS =====
+// Zeladoria e Síndico não têm apartamento: só números ganham o prefixo "Apto"/"Ap."
+function aptoRotulo(v,curto){v=String(v||'');return /^\d/.test(v)?(curto?'Ap. ':'Apto ')+v:(v||'—');}
 function escHtml(s){
   return (s||'').toString()
     .replace(/&/g,'&amp;')
@@ -1916,7 +1918,7 @@ function renderSugestoes(){
           '</select><button data-sid="'+s.id+'" onclick="excluirSugestao(this.dataset.sid)" title="Excluir" style="width:26px;height:26px;border-radius:6px;border:none;background:#fdecea;color:#c0392b;cursor:pointer;font-size:13px;flex-shrink:0">🗑️</button></div>':'')+
         '</div>'+
         '<div style="font-weight:600;font-size:14px">'+escHtml(s.assunto)+'</div>'+
-        '<div style="font-size:12px;color:var(--txt3);margin-top:2px">'+(adminLogado?escHtml(s.nome)+' · Apto '+s.unidade+' · ':'')+
+        '<div style="font-size:12px;color:var(--txt3);margin-top:2px">'+(adminLogado?escHtml(s.nome)+' · '+escHtml(aptoRotulo(s.unidade))+' · ':'')+
           (s.criadoEm&&s.criadoEm.toDate?s.criadoEm.toDate().toLocaleDateString('pt-BR'):'—')+'</div>'+
         '<div style="font-size:13px;color:var(--txt2);margin-top:6px;margin-bottom:8px">'+escHtml(s.desc)+'</div>'+
         (adminLogado?'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:8px;cursor:pointer"><input type="checkbox" id="notif-off-sug-'+s.id+'" style="cursor:pointer">🔕 Não notificar o morador desta vez</label>':'')+
@@ -2074,7 +2076,7 @@ function renderChamadosPublicos(){
       '</div>'+
       '<div style="font-size:13px;color:var(--txt2);margin:4px 0;white-space:pre-wrap">'+escHtml(x.desc)+'</div>'+
       (x.midiaUrl?(x.midiaTipo==='video'?'<video src="'+x.midiaUrl+'" controls style="max-width:220px;max-height:220px;border-radius:8px;margin-bottom:6px;display:block"></video>':'<a href="'+x.midiaUrl+'" target="_blank"><img src="'+x.midiaUrl+'" style="max-width:220px;max-height:220px;border-radius:8px;margin-bottom:6px;object-fit:cover;display:block"></a>'):'')+
-      '<div style="font-size:11px;color:var(--txt3)">'+escHtml(x.data||'')+(x.usuario?' · '+escHtml(x.usuario):'')+(x.unidade?' · Ap. '+escHtml(x.unidade):'')+'</div>'+
+      '<div style="font-size:11px;color:var(--txt3)">'+escHtml(x.data||'')+(x.usuario?' · '+escHtml(x.usuario):'')+(x.unidade?' · '+escHtml(aptoRotulo(x.unidade,1)):'')+'</div>'+
     '</div>';
   }).join('');
 }
@@ -2406,7 +2408,7 @@ function enviarMensagemChamado(id){
     var chk=document.getElementById('notif-off-cham-'+id);
     if(!(chk&&chk.checked)){
       update.precisaNotificar=true;
-      update.notifTexto='Olá! Você recebeu uma resposta no seu defeito "'+x.cat+' — Ap. '+x.apto+'". Acompanhe pelo Portal Altos Santa Izabel.';
+      update.notifTexto='Olá! Você recebeu uma resposta no seu defeito "'+x.cat+' — '+aptoRotulo(x.apto,1)+'". Acompanhe pelo Portal Altos Santa Izabel.';
     }
   }
   db.collection('chamados').doc(id).update(update).then(function(){
@@ -2431,7 +2433,7 @@ function atualizarStatus(id,novoStatus){
   var update={status:novoStatus};
   if(notificar){
     update.precisaNotificar=true;
-    update.notifTexto='Olá! Seu defeito "'+(x?x.cat+' — Ap. '+x.apto:'')+'" mudou de status para: '+novoStatus+'. Acompanhe pelo Portal Altos Santa Izabel.';
+    update.notifTexto='Olá! Seu defeito "'+(x?x.cat+' — '+aptoRotulo(x.apto,1):'')+'" mudou de status para: '+novoStatus+'. Acompanhe pelo Portal Altos Santa Izabel.';
   }
   db.collection('chamados').doc(id).update(update).then(function(){
     if(x){
@@ -3993,7 +3995,7 @@ function renderNotificacoesPendentes(){
     var temTel=!!n.celular;
     return '<div class="card" style="padding:12px;margin-bottom:6px">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
-        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+n.tipo+' — Ap. '+escHtml(n.apto||'')+' ('+escHtml(n.nome||'')+')</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+n.tipo+' — '+escHtml(aptoRotulo(n.apto||'',1))+' ('+escHtml(n.nome||'')+')</div>'+
         '<div style="font-size:12px;color:var(--txt2);margin-top:3px">'+escHtml(n.texto||'')+'</div></div>'+
         (temTel?'<a href="'+linkWhats(n.celular,n.texto)+'" target="_blank" onclick="marcarNotificado(\''+n.col+'\',\''+n.id+'\')" class="badge ok" style="text-decoration:none;flex-shrink:0;white-space:nowrap">📲 Enviar</a>':'<span class="badge bad" style="flex-shrink:0;white-space:nowrap">Sem celular</span>')+
       '</div>'+

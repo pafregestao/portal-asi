@@ -95,10 +95,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <div class="form-grid">
         <div class="form-group"><label>Nome completo</label><input id="c-nome" name="campo-nome" autocomplete="off" placeholder="Ex: João Silva"></div>
         <div class="form-group"><label>E-mail</label><input id="c-email" name="campo-email-novo" autocomplete="off" type="email" placeholder="morador@email.com"></div>
-        <div class="form-group"><label>Unidade (Apto)</label><input id="c-unidade" name="campo-unidade" autocomplete="off" placeholder="Ex: 1042" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+        <div class="form-group" id="c-unidade-wrap"><label>Unidade (Apto)</label><input id="c-unidade" name="campo-unidade" autocomplete="off" placeholder="Ex: 1042" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
         <div class="form-group"><label>Celular</label><input id="c-cel" name="campo-celular" autocomplete="off" placeholder="(19) 99999-9999"></div>
         <div class="form-group"><label>Tipo</label>
-          <select id="c-tipo"><option>Proprietário</option><option>Locatário</option><option>Familiar</option></select>
+          <select id="c-tipo" onchange="aoMudarTipo('c')"><option>Proprietário</option><option>Locatário</option><option>Familiar</option><option value="Zeladoria">Zeladoria (funcionário)</option><option>Síndico</option></select>
         </div>
         <div class="form-group"><label>Perfil</label>
           <select id="c-perfil"><option value="morador">Morador</option><option value="admin">Administrador</option></select>
@@ -119,6 +119,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge bad" style="flex-shrink:0;margin-top:2px">Rejeitado</span><div style="font-size:13px;color:var(--txt2)">Acesso negado ou revogado. Morador recebe mensagem de acesso não autorizado ao tentar logar.</div></div>
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge blue" style="flex-shrink:0;margin-top:2px">Proprietário</span><div style="font-size:13px;color:var(--txt2)">Tipo do usuário — dono do apartamento.</div></div>
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge purple" style="flex-shrink:0;margin-top:2px">Locatário</span><div style="font-size:13px;color:var(--txt2)">Tipo do usuário — locatário.</div></div>
+        <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge gray" style="flex-shrink:0;margin-top:2px">Zeladoria</span><div style="font-size:13px;color:var(--txt2)">Funcionário do condomínio, sem apartamento. Acessa o portal como um morador.</div></div>
+        <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge purple" style="flex-shrink:0;margin-top:2px">Síndico</span><div style="font-size:13px;color:var(--txt2)">Sem apartamento. Ao ser aprovado, recebe o perfil de administrador.</div></div>
         <div style="display:flex;align-items:flex-start;gap:12px"><span class="badge purple" style="flex-shrink:0;margin-top:2px">Admin</span><div style="font-size:13px;color:var(--txt2)">Perfil especial — acesso à área administrativa, pode editar conteúdo e aprovar usuários.</div></div>
       </div>
     </div>
@@ -147,7 +149,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     <h2>✏️ Editar usuário</h2>
     <input type="hidden" id="edit-uid">
     <div class="form-group"><label>Nome</label><input id="edit-nome" name="campo-edit-nome" autocomplete="off"></div>
-    <div class="form-group"><label>Unidade (Apto)</label><input id="edit-unidade" name="campo-edit-unidade" autocomplete="off" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+    <div class="form-group" id="edit-unidade-wrap"><label>Unidade (Apto)</label><input id="edit-unidade" name="campo-edit-unidade" autocomplete="off" type="number" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
     <div class="form-group"><label>Senha</label>
       <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">Não é possível definir uma senha específica diretamente (limitação do Firebase). Envie um link de redefinição — o morador escolhe a própria senha nova.</div>
       <button onclick="enviarResetLink()" style="width:100%;padding:9px;background:#e3f0fb;color:#1565c0;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📧 Enviar link de redefinição de senha</button>
@@ -155,7 +157,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="form-group"><label>Celular</label><input id="edit-cel" name="campo-edit-celular" autocomplete="off"></div>
     <div class="form-group"><label>Tipo</label>
-      <select id="edit-tipo"><option>Proprietário</option><option>Locatário</option><option>Familiar</option></select>
+      <select id="edit-tipo" onchange="aoMudarTipo('edit')"><option>Proprietário</option><option>Locatário</option><option>Familiar</option><option value="Zeladoria">Zeladoria (funcionário)</option><option>Síndico</option></select>
     </div>
     <div class="form-group"><label>Perfil</label>
       <select id="edit-perfil"><option value="morador">Morador</option><option value="admin">Administrador</option></select>
@@ -258,7 +260,7 @@ function renderLista(elId,usuarios,tipo,msgVazio){
   if(!usuarios.length){el.innerHTML='<div class="empty">'+(msgVazio||'Nenhum usuário nesta categoria.')+'</div>';return;}
   el.innerHTML=usuarios.map(function(u){
     var ini=(u.nome||'?').charAt(0).toUpperCase();
-    var badgeTipo=u.tipo==='Proprietário'?'blue':'purple';
+    var badgeTipo=u.tipo==='Proprietário'?'blue':(u.tipo==='Zeladoria'?'gray':'purple');
     var data=u.criadoEm&&u.criadoEm.toDate?u.criadoEm.toDate().toLocaleDateString('pt-BR'):'—';
     var perfilBadge=u.perfil==='admin'?'<span class="badge purple" style="margin-left:4px">Admin</span>':'';
     var acoes='';
@@ -275,7 +277,7 @@ function renderLista(elId,usuarios,tipo,msgVazio){
       '<div class="avatar" style="background:'+getColor(ini)+'">'+ini+'</div>'+
       '<div class="user-info">'+
         '<div class="user-nome">'+(u.nome||'—')+perfilBadge+'</div>'+
-        '<div class="user-meta">'+u.email+' · Apto '+(u.unidade||'—')+' · '+data+'</div>'+
+        '<div class="user-meta">'+u.email+' · '+(ehFuncao(u.tipo)?(u.tipo==='Zeladoria'?'Zeladoria (funcionário)':'Síndico'):'Apto '+(u.unidade||'—'))+' · '+data+'</div>'+
         (tipo==='rejeitado'&&u.motivoRejeicao?'<div class="user-meta" style="color:var(--bad);margin-top:2px">Motivo: '+escM(u.motivoRejeicao)+'</div>':'')+
       '</div>'+
       '<span class="badge '+badgeTipo+'">'+(tipoRot(u.tipo)||'—')+'</span>'+
@@ -291,10 +293,14 @@ function getColor(c){
 }
 
 function aprovar(uid,nome,email){
-  if(!confirm('Aprovar acesso de '+nome+'?')) return;
+  var ehSind=false;
+  ['pendente','aprovado','rejeitado'].forEach(function(k){(listasUsuarios[k]||[]).forEach(function(x){if(x.uid===uid&&x.tipo==='Síndico') ehSind=true;});});
+  if(!confirm(ehSind?('Aprovar '+nome+' como SÍNDICO? Ela(e) passará a ser administrador(a) do portal.'):('Aprovar acesso de '+nome+'?'))) return;
   db.collection('usuarios').doc(uid).get().then(function(doc){
     var celular=doc.exists?doc.data().celular||'':'';
-    return db.collection('usuarios').doc(uid).update({status:'aprovado',motivoRejeicao:firebase.firestore.FieldValue.delete()}).then(function(){
+    var upd={status:'aprovado',motivoRejeicao:firebase.firestore.FieldValue.delete()};
+    if(ehSind) upd.perfil='admin';
+    return db.collection('usuarios').doc(uid).update(upd).then(function(){
       carregarUsuarios();
       var tel=celular.replace(/[^0-9]/g,'');
       if(tel.length>=10){
@@ -332,6 +338,16 @@ var rejeitandoUid=null;
 
 // Cadastros antigos podem ter tipo 'Inquilino'; o padrão do portal é 'Locatário'
 function tipoRot(t){return t==='Inquilino'?'Locatário':t;}
+// Zeladoria e Síndico não têm apartamento: o campo "unidade" guarda o cargo
+function ehFuncao(t){return t==='Zeladoria'||t==='Síndico';}
+// Ao escolher o tipo: esconde o apartamento para funcionários e define o perfil do síndico como administrador
+function aoMudarTipo(p){
+  var t=document.getElementById(p+'-tipo').value;
+  document.getElementById(p+'-unidade-wrap').style.display=ehFuncao(t)?'none':'';
+  if(ehFuncao(t)) document.getElementById(p+'-unidade').value='';
+  if(t==='Síndico') document.getElementById(p+'-perfil').value='admin';
+  else if(t==='Zeladoria') document.getElementById(p+'-perfil').value='morador';
+}
 
 function escM(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -392,6 +408,7 @@ function abrirEdicao(uid,nome,unidade,cel,tipo,perfil,status){
   document.getElementById('edit-tipo').value=tipoRot(tipo)||'Proprietário';
   document.getElementById('edit-perfil').value=perfil||'morador';
   document.getElementById('edit-status').value=status||'pendente';
+  document.getElementById('edit-unidade-wrap').style.display=ehFuncao(tipo)?'none':'';
   document.getElementById('modal-edicao').classList.add('on');
 }
 function enviarResetLink(){
@@ -417,11 +434,12 @@ function excluirUsuario(){
 }
 function salvarEdicao(){
   var uid=document.getElementById('edit-uid').value;
+  var tipoEd=document.getElementById('edit-tipo').value;
   var dados={
     nome:document.getElementById('edit-nome').value,
-    unidade:document.getElementById('edit-unidade').value,
+    unidade:ehFuncao(tipoEd)?tipoEd:document.getElementById('edit-unidade').value,
     celular:document.getElementById('edit-cel').value,
-    tipo:document.getElementById('edit-tipo').value,
+    tipo:tipoEd,
     perfil:document.getElementById('edit-perfil').value,
     status:document.getElementById('edit-status').value
   };
@@ -438,12 +456,13 @@ function criarUsuario(){
   var tipo=document.getElementById('c-tipo').value;
   var perfil=document.getElementById('c-perfil').value;
   var statusEl=document.getElementById('status-criar');
+  if(ehFuncao(tipo)) unidade=tipo;
   if(!nome||!email||!unidade){
-    statusEl.innerHTML='<div class="alert bad" style="margin-top:8px"><span>⚠️</span><div>Nome, e-mail e unidade são obrigatórios.</div></div>';
+    statusEl.innerHTML='<div class="alert bad" style="margin-top:8px"><span>⚠️</span><div>Nome, e-mail e unidade são obrigatórios (Zeladoria e Síndico não precisam de unidade).</div></div>';
     return;
   }
   statusEl.innerHTML='<div class="alert warn" style="margin-top:8px"><span>⏳</span><div>Criando usuário...</div></div>';
-  var senhaTemp='ASI@'+unidade+'2026';
+  var senhaTemp='ASI@'+unidade+'2026'; // Zeladoria/Síndico: ASI@Zeladoria2026
   authCriador.createUserWithEmailAndPassword(email,senhaTemp).then(function(cred){
     authCriador.signOut();
     return db.collection('usuarios').doc(cred.user.uid).set({
@@ -456,6 +475,7 @@ function criarUsuario(){
     document.getElementById('c-email').value='';
     document.getElementById('c-unidade').value='';
     document.getElementById('c-cel').value='';
+    document.getElementById('c-tipo').value='Proprietário';aoMudarTipo('c');
     carregarUsuarios();
   }).catch(function(e){
     var msg=e.code==='auth/email-already-in-use'?'Este e-mail já está cadastrado.':e.message;

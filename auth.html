@@ -84,16 +84,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <input class="fi" type="password" id="cad-senha" placeholder="Crie uma senha">
       <button class="olho-btn" type="button" id="olho-cad" tabindex="-1">👁️</button>
     </div>
-    <label class="fl">Unidade</label>
-    <input class="fi" type="number" id="cad-unidade" placeholder="Ex: 1121" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-    <label class="fl">Celular <span style="color:var(--bad)">*</span></label>
-    <input class="fi" type="tel" id="cad-cel" placeholder="Ex: (19) 99999-9999">
     <label class="fl">Tipo</label>
-    <select class="fi" id="cad-tipo">
+    <select class="fi" id="cad-tipo" onchange="ajustarCampoUnidade()">
       <option value="">Selecione...</option>
       <option value="Proprietário">Proprietário</option>
       <option value="Locatário">Locatário</option>
+      <option value="Zeladoria">Zeladoria (funcionário do condomínio)</option>
+      <option value="Síndico">Síndico</option>
     </select>
+    <div id="cad-unidade-wrap">
+      <label class="fl">Unidade</label>
+      <input class="fi" type="number" id="cad-unidade" placeholder="Ex: 1121" min="1001" max="2164" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </div>
+    <div id="cad-aviso-funcao" style="display:none;font-size:12px;color:var(--txt2);margin:6px 0 2px"></div>
+    <label class="fl">Celular <span style="color:var(--bad)">*</span></label>
+    <input class="fi" type="tel" id="cad-cel" placeholder="Ex: (19) 99999-9999">
     <button class="btn primary" id="btn-cadastro" onclick="solicitarCadastro()">Solicitar acesso</button>
     <div id="msg-cadastro"></div>
   </div>
@@ -237,6 +242,17 @@ function verificarAcesso(user){
 }
 
 // CADASTRO
+// Zeladoria e Síndico não têm apartamento: a "unidade" guarda o próprio cargo
+function ehFuncao(t){return t==='Zeladoria'||t==='Síndico';}
+function ajustarCampoUnidade(){
+  var t=document.getElementById('cad-tipo').value;
+  var f=ehFuncao(t);
+  document.getElementById('cad-unidade-wrap').style.display=f?'none':'';
+  var av=document.getElementById('cad-aviso-funcao');
+  av.style.display=f?'block':'none';
+  av.textContent=t==='Síndico'?'O cadastro de síndico não precisa de apartamento. Ao ser aprovado, você terá acesso de administrador.':(t==='Zeladoria'?'Funcionários da zeladoria não precisam informar apartamento. Você acessa o portal como um morador.':'');
+  if(f) document.getElementById('cad-unidade').value='';
+}
 function solicitarCadastro(){
   var nome=document.getElementById('cad-nome').value.trim();
   var email=document.getElementById('cad-email').value.trim();
@@ -244,6 +260,7 @@ function solicitarCadastro(){
   var unidade=document.getElementById('cad-unidade').value.trim();
   var tipo=document.getElementById('cad-tipo').value;
   var cel=document.getElementById('cad-cel').value.trim();
+  if(ehFuncao(tipo)) unidade=tipo;
   if(!nome||!email||!senha||!unidade||!tipo||!cel){setMsg('msg-cadastro','Preencha todos os campos obrigatórios, incluindo o celular.','bad');return;}
   if(senha.length<6){setMsg('msg-cadastro','A senha deve ter pelo menos 6 caracteres.','bad');return;}
   setLoading('btn-cadastro',true); setMsg('msg-cadastro','','');
@@ -268,7 +285,7 @@ function solicitarCadastro(){
         setLoading('btn-cadastro',false);
         setMsg('msg-cadastro','✅ Solicitação enviada! Aguarde a aprovação do síndico. Você será avisado via WhatsApp quando aprovado.','ok');
         // Notificar admin via WhatsApp
-        var msg=encodeURIComponent('🏢 Nova solicitação de acesso ao Portal ASI!\n\nNome: '+nome+'\nE-mail: '+email+'\nUnidade: '+unidade+'\nTipo: '+tipo+'\n\nAcesse o portal com sua conta admin para aprovar.');
+        var msg=encodeURIComponent('🏢 Nova solicitação de acesso ao Portal ASI!\n\nNome: '+nome+'\nE-mail: '+email+(ehFuncao(tipo)?'':'\nUnidade: '+unidade)+'\nTipo: '+tipo+'\n\nAcesse o portal com sua conta admin para aprovar.');
         setTimeout(function(){window.open('https://wa.me/5519989360523?text='+msg);},500);
       });
     })

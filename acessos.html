@@ -201,6 +201,8 @@ function renderGraficoTempo(){
   renderBarras('grafico-tempo',medias,'min');
 }
 
+// Zeladoria e Síndico não têm apartamento
+function aptoRot(v){v=v||'';return /^\d/.test(v)?'Apto '+escHtml(v):(escHtml(v)||'—');}
 function renderBarras(elId,dados,unidade){
   var el=document.getElementById(elId);
   var keys=Object.keys(dados).sort(function(a,b){return dados[b]-dados[a];});
@@ -237,7 +239,7 @@ function renderListaUsuarios(){
       '<div class="avatar" style="background:'+cor+'">'+ini+'</div>'+
       '<div style="flex:1">'+
         '<div style="font-weight:600">'+escHtml(u.nome||'')+'</div>'+
-        '<div style="font-size:11px;color:var(--txt3)">Apto '+escHtml(u.unidade||'—')+' · '+ultStr+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3)">'+aptoRot(u.unidade)+' · '+ultStr+'</div>'+
       '</div>'+
       (regs.length?'<div class="acesso-badge">'+regs.length+'</div>':'<span style="font-size:11px;color:var(--txt3)">—</span>')+
       '<span style="color:var(--txt3);margin-left:8px;font-size:16px">›</span>'+
@@ -250,7 +252,7 @@ function abrirDetalhe(uid){
   var da=todosAcessos.find(function(a){return a.uid===uid;})||{registros:[]};
   var regs=(da.registros||[]).slice().reverse();
   document.getElementById('modal-nome').textContent=u.nome||'—';
-  document.getElementById('modal-sub').textContent='Apto '+(u.unidade||'—')+' · '+regs.length+' acessos registrados';
+  document.getElementById('modal-sub').textContent=aptoRot(u.unidade)+' · '+regs.length+' acessos registrados';
 
   var html='';
   if(!regs.length){
