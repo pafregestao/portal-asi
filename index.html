@@ -152,6 +152,7 @@ textarea.fi{height:75px;resize:vertical}
 <div id="pg-inicio" class="pg on">
   <div class="alert bad"><span>🚨</span><div><strong>AVCB vencido</strong> — Renovar com urgência (venceu Mar/2026).</div></div>
   <div class="alert bad" id="alerta-alto-home" style="display:none;cursor:pointer" onclick="nav('defeitos')"></div>
+  <div id="alerta-adm-home" style="display:none;margin-bottom:12px"></div>
   <div class="card" id="banner-notif-push" style="display:none;margin-bottom:12px;padding:14px 16px">
     <div id="banner-notif-conteudo"></div>
   </div>
@@ -575,6 +576,7 @@ auth.onAuthStateChanged(function(user){
       carregarResumosFinanceiros(function(){renderCiclos();});
       renderSam();
     });
+    if(usuarioAtual.perfil==='admin'){carregarPendenciasAdmin();var _dest=null;try{_dest=sessionStorage.getItem('asi_destino');sessionStorage.removeItem('asi_destino');}catch(e){} if(_dest&&adminLogado) setTimeout(function(){nav(_dest);},600);}
     iniciarMonitorSuporte();
     iniciarBannerNotificacao();
     iniciarRecebimentoForeground();
@@ -1857,7 +1859,7 @@ function carregarSugestoes(){
   query.get().then(function(snap){
     sugestoes=[];
     snap.forEach(function(doc){sugestoes.push(Object.assign({id:doc.id},doc.data()));});
-    renderSugestoes();atualizarBadgeNotif();renderNotificacoesPendentes();
+    renderSugestoes();atualizarBadgeNotif();renderNotificacoesPendentes();renderPendenciasAdmin();
   }).catch(function(e){console.log('Erro sugestoes:',e);});
 }
 
@@ -2047,7 +2049,7 @@ function carregarChamados(){
       var tb=b.criadoEm&&b.criadoEm.toDate?b.criadoEm.toDate():new Date(0);
       return tb-ta;
     });
-    renderChamados();atualizarBadgeNotif();renderNotificacoesPendentes();
+    renderChamados();atualizarBadgeNotif();renderNotificacoesPendentes();renderPendenciasAdmin();
     carregarChamadosPublicos();
   }).catch(function(e){console.log('Erro chamados:',e);});
 }
@@ -2297,6 +2299,67 @@ function sevDe(x){return SEV_RANK.hasOwnProperty(x.severidade)?x.severidade:'Mé
 function estiloSev(x){
   if(sevDe(x)==='Alto'&&x.status!=='Resolvido') return 'padding:10px 10px 10px 12px;margin-bottom:6px;border-left:4px solid #c0392b;background:#fdf2f1;border-radius:8px';
   return 'padding:10px 0';
+}
+// ===== Pendências da administração (visíveis também no modo Visualizando) =====
+var admCham=[],admSug=[],admUsuariosPend=0;
+function admFonte(){return {cham:adminLogado?chamados:admCham,sug:adminLogado?sugestoes:admSug};}
+function pendenciasAdm(){
+  var f=admFonte();
+  var alta=f.cham.filter(function(x){return sevDe(x)==='Alto'&&x.status!=='Resolvido';}).length;
+  var semResp=f.cham.filter(function(x){
+    var msgs=x.mensagens||[];
+    return x.status!=='Resolvido'&&!msgs.some(function(m){return m.role==='admin';})&&!(x.resposta&&x.resposta.trim());
+  }).length;
+  var sugNovas=f.sug.filter(function(s){var msgs=s.mensagens||[];return s.status==='Recebido'&&!msgs.some(function(m){return m.role==='admin';});}).length;
+  return {alta:alta,semResp:semResp,sugNovas:sugNovas,usuarios:admUsuariosPend,total:semResp+sugNovas+admUsuariosPend};
+}
+function carregarPendenciasAdmin(){
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  if(u.perfil!=='admin') return;
+  // Em modo Editando os defeitos e sugestões já vêm completos; no modo Visualizando buscamos à parte
+  if(!adminLogado){
+    db.collection('chamados').orderBy('criadoEm','desc').limit(50).get().then(function(snap){
+      admCham=[];snap.forEach(function(doc){admCham.push(Object.assign({id:doc.id},doc.data()));});
+      renderPendenciasAdmin();atualizarBadgeNotif();
+    }).catch(function(e){console.log('Erro pendências (defeitos):',e);});
+    db.collection('sugestoes').orderBy('criadoEm','desc').limit(100).get().then(function(snap){
+      admSug=[];snap.forEach(function(doc){admSug.push(Object.assign({id:doc.id},doc.data()));});
+      renderPendenciasAdmin();atualizarBadgeNotif();
+    }).catch(function(e){console.log('Erro pendências (sugestões):',e);});
+  }
+  db.collection('usuarios').where('status','==','pendente').get().then(function(snap){
+    admUsuariosPend=snap.size;renderPendenciasAdmin();atualizarBadgeNotif();
+  }).catch(function(){});
+}
+function irAdm(dest){
+  if(dest==='usuarios'){window.location.href='usuarios.html';return;}
+  if(adminLogado){nav(dest);return;}
+  // Para agir (responder, mudar status) é preciso o modo Editando
+  try{sessionStorage.setItem('asi_destino',dest);sessionStorage.setItem('asi_modo_editor','1');}catch(e){}
+  location.reload();
+}
+function renderPendenciasAdmin(){
+  var el=document.getElementById('alerta-adm-home');
+  if(!el) return;
+  var u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  if(u.perfil!=='admin'){el.style.display='none';return;}
+  var p=pendenciasAdm();
+  var linhas=[];
+  // Em modo Editando o alerta de severidade Alta já aparece em faixa própria
+  if(!adminLogado&&p.alta) linhas.push(['🚨',p.alta+(p.alta===1?' defeito de severidade ALTA em aberto':' defeitos de severidade ALTA em aberto'),'defeitos',true]);
+  if(p.semResp) linhas.push(['🔧',p.semResp+(p.semResp===1?' defeito sem resposta':' defeitos sem resposta'),'defeitos',false]);
+  if(p.sugNovas) linhas.push(['💡',p.sugNovas+(p.sugNovas===1?' sugestão/reclamação nova':' sugestões/reclamações novas'),'sugestoes',false]);
+  if(p.usuarios) linhas.push(['👥',p.usuarios+(p.usuarios===1?' usuário aguardando aprovação':' usuários aguardando aprovação'),'usuarios',false]);
+  if(!linhas.length){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='block';
+  el.innerHTML='<div class="card" style="padding:10px 12px;border-left:4px solid #e67e22">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Pendências da administração</div>'+
+    linhas.map(function(l){
+      return '<div onclick="irAdm(\''+l[2]+'\')" style="display:flex;gap:8px;align-items:center;padding:6px 0;cursor:pointer;font-size:13px;'+(l[3]?'color:#c0392b;font-weight:600':'')+'">'+
+        '<span>'+l[0]+'</span><span style="flex:1">'+l[1]+'</span><span style="color:var(--txt3)">›</span></div>';
+    }).join('')+
+    (adminLogado?'':'<div style="font-size:11px;color:var(--txt3);margin-top:4px">Toque para abrir no modo Editando.</div>')+
+  '</div>';
 }
 function atualizarAlertaSeveridade(){
   var n=adminLogado?chamados.filter(function(x){return sevDe(x)==='Alto'&&x.status!=='Resolvido';}).length:0;
@@ -2630,6 +2693,8 @@ function marcarLidoSugestao(id){
 
 function navNotif(){
   if(adminLogado){nav('defeitos');return;}
+  var _u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
+  if(_u.perfil==='admin'&&pendenciasAdm().total>0){nav('inicio');var bx=document.getElementById('alerta-adm-home');if(bx&&bx.scrollIntoView) bx.scrollIntoView({behavior:'smooth',block:'center'});return;}
   var temSug=sugestoes.some(function(s){var msgs=s.mensagens||[];return msgs.some(function(m){return m.role==='admin';})&&!s.lido;});
   if(temSug) nav('sugestoes');
   else nav('defeitos');
@@ -2659,6 +2724,8 @@ function atualizarBadgeNotif(){
     var naoLidos=0;
     chamados.forEach(function(x){var msgs=x.mensagens||[];if(msgs.some(function(m){return m.role==='admin';})&&!x.lido) naoLidos++;});
     sugestoes.forEach(function(s){var msgs=s.mensagens||[];if(msgs.some(function(m){return m.role==='admin';})&&!s.lido) naoLidos++;});
+    // Administrador em modo Visualizando: soma as pendências da administração
+    if(u.perfil==='admin') naoLidos+=pendenciasAdm().total;
     badge.textContent=naoLidos;
     badge.style.display=naoLidos>0?'inline-block':'none';
   }
