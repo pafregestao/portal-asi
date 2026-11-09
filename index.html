@@ -517,6 +517,8 @@ function _trackSalvar(){
 }
 // ===== FIM TRACKING =====
 
+// Link vindo do e-mail (?ir=defeitos&id=...): guarda o destino para abrir depois do login
+try{var _qs=new URLSearchParams(location.search);if(_qs.get('ir')){sessionStorage.setItem('asi_destino_link',_qs.get('ir'));if(_qs.get('id'))sessionStorage.setItem('asi_destino_id',_qs.get('id'));}}catch(e){}
 auth.onAuthStateChanged(function(user){
   if(!user){
     window.location.href='auth.html';
@@ -576,7 +578,26 @@ auth.onAuthStateChanged(function(user){
       carregarResumosFinanceiros(function(){renderCiclos();});
       renderSam();
     });
-    if(usuarioAtual.perfil==='admin'){carregarPendenciasAdmin();var _dest=null;try{_dest=sessionStorage.getItem('asi_destino');sessionStorage.removeItem('asi_destino');}catch(e){} if(_dest&&adminLogado) setTimeout(function(){nav(_dest);},600);}
+    if(usuarioAtual.perfil==='admin'){
+      carregarPendenciasAdmin();
+      var _dest=null,_link=null,_idDest=null;
+      try{_dest=sessionStorage.getItem('asi_destino');sessionStorage.removeItem('asi_destino');
+          _link=sessionStorage.getItem('asi_destino_link');sessionStorage.removeItem('asi_destino_link');
+          _idDest=sessionStorage.getItem('asi_destino_id');sessionStorage.removeItem('asi_destino_id');}catch(e){}
+      // Link do e-mail: no modo Visualizando liga o modo Editando e volta já no destino
+      if(_link&&!adminLogado&&(_link==='defeitos'||_link==='sugestoes')){
+        try{sessionStorage.setItem('asi_destino',_link);if(_idDest)sessionStorage.setItem('asi_destino_id',_idDest);sessionStorage.setItem('asi_modo_editor','1');}catch(e){}
+        location.reload();return;
+      }
+      _dest=_dest||_link;
+      if(_dest&&adminLogado) setTimeout(function(){
+        nav(_dest);
+        if(_idDest&&_dest==='defeitos'){var tent=0,t=setInterval(function(){
+          var el=document.getElementById('corpo-cham-'+_idDest);tent++;
+          if(el){clearInterval(t);if(el.style.display!=='block') toggleChamadoItem(_idDest);el.scrollIntoView({behavior:'smooth',block:'center'});}
+          else if(tent>20) clearInterval(t);},300);}
+      },600);
+    }
     iniciarMonitorSuporte();
     iniciarBannerNotificacao();
     iniciarRecebimentoForeground();
@@ -1792,11 +1813,14 @@ function ehFuncaoPortal(t){return t==='Zeladoria'||t==='Síndico';}
 // Usa o FormSubmit (formsubmit.co): não exige conta. No PRIMEIRO envio o FormSubmit manda um e-mail
 // de ativação para o endereço abaixo; é só clicar no link. Para desligar: EMAIL_AVISO_ATIVO=false.
 var EMAIL_AVISO_ATIVO=true;
-var EMAIL_CONDOMINIO='altosdesantaizabelcondominio@gmail.com';
-function notificarCondominioPorEmail(tipo,campos,resumo){
+// Código do FormSubmit no lugar do endereço (o e-mail do condomínio não fica exposto no código)
+var EMAIL_CONDOMINIO='bcbbac706349a4f6452cdb06c10debc2';
+var PORTAL_URL='https://altossantaizabel.pafregestao.com.br/';
+// campos: objeto na ORDEM em que devem aparecer no e-mail; o último item deve ser o link para abrir no portal
+function notificarCondominioPorEmail(assunto,campos){
   if(!EMAIL_AVISO_ATIVO||!EMAIL_CONDOMINIO) return;
   try{
-    var corpo={_subject:'[Portal ASI] Novo(a) '+tipo+' — '+resumo,_template:'table',_captcha:'false','Portal':'https://altossantaizabel.pafregestao.com.br'};
+    var corpo={_subject:assunto,_template:'box',_captcha:'false'};
     Object.keys(campos).forEach(function(k){corpo[k]=String(campos[k]);});
     fetch('https://formsubmit.co/ajax/'+EMAIL_CONDOMINIO,{
       method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(corpo)
@@ -1880,10 +1904,15 @@ function enviarSugestao(){
     document.getElementById('sug-assunto').value='';
     document.getElementById('sug-desc').value='';
     alert('✅ Enviado com sucesso! Acompanhe o andamento aqui.');
-    notificarCondominioPorEmail(tipo,{
-      'Tipo':tipo,'Assunto':assunto,'Descrição':desc,
-      'Enviado por':(u.nome||'—')+' ('+aptoRotulo(u.unidade||'')+')','Data':new Date().toLocaleDateString('pt-BR')
-    },assunto);
+    var _ag=new Date();
+    notificarCondominioPorEmail((tipo==='Sugestão'?'💡 ':'📋 ')+'Nova '+tipo.toLowerCase()+' no portal — '+assunto+' ('+(u.nome||'morador')+')',{
+      '📌 O que é':'Nova '+tipo+' registrada no portal',
+      '📝 Assunto':assunto,
+      '💬 Mensagem':desc,
+      '👤 Enviado por':(u.nome||'—')+' — '+(ehFuncaoPortal(u.tipo)?u.tipo:aptoRotulo(u.unidade||'')),
+      '🕒 Data e hora':_ag.toLocaleDateString('pt-BR')+' às '+_ag.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+      '🔗 Abrir no portal':PORTAL_URL+'?ir=sugestoes'
+    });
 
     carregarSugestoes();
   }).catch(function(e){alert('Erro: '+e.message);});
@@ -2469,11 +2498,20 @@ function registrar(){
     removerMidiaDefeito();
     renderChamados();
     alert('✅ Chamado registrado! O síndico receberá uma notificação.');
-    notificarCondominioPorEmail('Defeito',{
-      'Categoria':cat,'Severidade':sev,'Visibilidade':vis==='publico'?'Público (todos os moradores)':'Privado (morador e administração)',
-      'Local':apto,'Descrição':desc,'Foto/vídeo':chamado.midiaUrl||'—',
-      'Aberto por':(u.nome||'—')+' ('+aptoRotulo(u.unidade||'')+')','Data':data
-    },'['+sev+'] '+cat+' — '+apto);
+    var _agC=new Date();
+    var _sevIco={'Alto':'🔴 ALTA','Médio':'🟡 Média','Baixo':'🟢 Baixa'}[sev]||sev;
+    notificarCondominioPorEmail((sev==='Alto'?'🚨 URGENTE — ':'🔧 ')+'Novo defeito: '+cat+' — '+apto+' (severidade '+sev.toLowerCase()+')',{
+      '📌 O que é':'Novo defeito registrado no portal',
+      '⚠️ Severidade':_sevIco,
+      '🏷️ Categoria':cat,
+      '📍 Local':apto,
+      '📝 Descrição':desc,
+      '👤 Aberto por':(u.nome||'—')+' — '+(ehFuncaoPortal(u.tipo)?u.tipo:aptoRotulo(u.unidade||'')),
+      '👁️ Visibilidade':vis==='publico'?'Público (todos os moradores veem)':'Privado (só o morador e a administração)',
+      '📷 Foto/vídeo':chamado.midiaUrl||'Sem anexo',
+      '🕒 Data e hora':_agC.toLocaleDateString('pt-BR')+' às '+_agC.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+      '🔗 Abrir no portal':PORTAL_URL+'?ir=defeitos&id='+chamado.id
+    });
 
   }).catch(function(e){alert('Erro ao registrar: '+e.message);});
 }
