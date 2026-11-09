@@ -2730,12 +2730,45 @@ function marcarLidoSugestao(id){
 
 
 function navNotif(){
-  if(adminLogado){nav('defeitos');return;}
   var _u=JSON.parse(localStorage.getItem('asi_usuario')||'{}');
-  if(_u.perfil==='admin'&&pendenciasAdm().total>0){nav('inicio');var bx=document.getElementById('alerta-adm-home');if(bx&&bx.scrollIntoView) bx.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(_u.perfil==='admin'){ abrirMenuAlertasAdm(); return; }
   var temSug=sugestoes.some(function(s){var msgs=s.mensagens||[];return msgs.some(function(m){return m.role==='admin';})&&!s.lido;});
   if(temSug) nav('sugestoes');
   else nav('defeitos');
+}
+// Sino do administrador: leva ao que o alerta significa (defeitos, sugestões, usuários).
+// Se houver mais de um tipo, mostra uma lista para escolher; no modo Visualizando, o clique liga o modo Editando.
+function abrirMenuAlertasAdm(){
+  var antigo=document.getElementById('menu-alertas-adm');
+  if(antigo){antigo.remove();return;}
+  var p=pendenciasAdm();
+  var it=[];
+  if(p.semResp||p.alta) it.push({ico:p.alta?'🚨':'🔧',txt:(p.semResp?p.semResp+(p.semResp===1?' defeito sem resposta':' defeitos sem resposta'):'Defeitos em aberto')+(p.alta?' — '+p.alta+' de severidade ALTA':''),dest:'defeitos',urg:!!p.alta});
+  if(p.sugNovas) it.push({ico:'💡',txt:p.sugNovas+(p.sugNovas===1?' sugestão/reclamação nova':' sugestões/reclamações novas'),dest:'sugestoes'});
+  if(p.usuarios) it.push({ico:'👥',txt:p.usuarios+(p.usuarios===1?' usuário aguardando aprovação':' usuários aguardando aprovação'),dest:'usuarios'});
+  if(!adminLogado){
+    // respostas da administração aos registros do próprio usuário (como morador)
+    var rc=chamados.filter(function(x){var m=x.mensagens||[];return m.some(function(a){return a.role==='admin';})&&!x.lido;}).length;
+    var rs=sugestoes.filter(function(x){var m=x.mensagens||[];return m.some(function(a){return a.role==='admin';})&&!x.lido;}).length;
+    if(rc) it.push({ico:'💬',txt:rc+(rc===1?' resposta nos seus defeitos':' respostas nos seus defeitos'),dest:'defeitos',proprio:true});
+    if(rs) it.push({ico:'💬',txt:rs+(rs===1?' resposta nas suas sugestões':' respostas nas suas sugestões'),dest:'sugestoes',proprio:true});
+  }
+  if(!it.length){alert('Nenhum alerta pendente.');return;}
+  if(it.length===1){irAlertaAdm(it[0].dest,it[0].proprio);return;}
+  var m=document.createElement('div');
+  m.id='menu-alertas-adm';
+  m.style.cssText='position:fixed;top:64px;right:10px;left:10px;max-width:340px;margin-left:auto;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:9999;padding:6px 0;font-family:inherit';
+  m.innerHTML='<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px;padding:8px 14px 4px">Alertas</div>'+
+    it.map(function(x,k){return '<div data-k="'+k+'" style="display:flex;gap:10px;align-items:center;padding:11px 14px;cursor:pointer;font-size:14px;border-top:1px solid #f0f0f0;'+(x.urg?'color:#c0392b;font-weight:600':'')+'"><span>'+x.ico+'</span><span style="flex:1">'+x.txt+'</span><span style="color:var(--txt3)">›</span></div>';}).join('')+
+    (adminLogado?'':'<div style="font-size:11px;color:var(--txt3);padding:6px 14px 8px;border-top:1px solid #f0f0f0">Para agir, o portal liga o modo Editando.</div>');
+  document.body.appendChild(m);
+  m.querySelectorAll('[data-k]').forEach(function(el){el.onclick=function(){var x=it[+el.dataset.k];m.remove();irAlertaAdm(x.dest,x.proprio);};});
+  setTimeout(function(){document.addEventListener('click',function fechar(e){var mm=document.getElementById('menu-alertas-adm');if(mm&&!mm.contains(e.target)){mm.remove();}document.removeEventListener('click',fechar);});},0);
+}
+function irAlertaAdm(dest,proprio){
+  if(dest==='usuarios'){window.location.href='usuarios.html';return;}
+  if(proprio){nav(dest);return;}  // respostas ao próprio usuário: continua como morador
+  irAdm(dest);
 }
 function atualizarBadgeNotif(){
   var badge=document.getElementById('badge-notif');
