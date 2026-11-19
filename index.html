@@ -1800,7 +1800,7 @@ function nav(id){
   window.scrollTo(0,0);
   if(id==='sam'&&typeof renderSam==='function') renderSam();
   if(id==='fotos'&&typeof renderFotos==='function') renderFotos();
-  if(id==='obras'&&typeof renderObras==='function'){obraAbertaId=null;renderObras();}
+  if(id==='obras'&&typeof renderObras==='function'){if(!window._obraDireta)obraAbertaId=null;window._obraDireta=false;renderObras();}
 }
 
 function chamarWA(){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'));}
@@ -3328,7 +3328,7 @@ function obParseData(v){
   if((m=s.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))) return obIso(+m[3],+m[2],+m[1]);
   return '';
 }
-function obSalvar(cb){salvarNoFirestore('obras',obras,cb||function(){renderObras();});}
+function obSalvar(cb){salvarNoFirestore('obras',obras,cb||function(){renderObras();renderFotos();});}
 function obAcha(id){return obras.filter(function(o){return o.id===id;})[0];}
 function obPctFase(f){return Math.max(0,Math.min(100,parseFloat(f.avanco)||0));}
 function obPct(o){var tp=0,s=0;(o.fases||[]).forEach(function(f){var p=parseFloat(f.peso)||0;tp+=p;s+=p*obPctFase(f)/100;});return tp>0?s/tp*100:0;}
@@ -3838,6 +3838,21 @@ function renderFotos(){
     if(!t.fotoAntes) return;
     itens.push({txt:t.txt,antes:t.fotoAntes,depois:'',chave:_chaveMes(t.fotoAntesEm,''),ts:t.fotoAntesEm||'',andamento:true});
   });
+  (obras||[]).forEach(function(o){
+    if(o.status==='rascunho'&&!adminLogado) return;
+    var ups=(o.atualizacoes||[]).slice().sort(function(a,b){return String(a.data).localeCompare(String(b.data));});
+    var prev={},porMes={};
+    ups.forEach(function(u){
+      var av=u.avancos||{},mudou=(o.fases||[]).filter(function(f){return av[f.id]!=null&&(parseFloat(av[f.id])||0)!==(parseFloat(prev[f.id])||0);}).map(function(f){return f.nome+' ('+obFmtPct(parseFloat(av[f.id])||0)+')';});
+      prev=av;
+      if(!(u.fotos&&u.fotos.length)) return;
+      var k=_chaveMes(u.data,'');(porMes[k]=porMes[k]||[]).push({u:u,fases:mudou});
+    });
+    Object.keys(porMes).forEach(function(k){
+      var l=porMes[k];
+      itens.push({tipo:'obra',obra:o,ups:l.reverse(),chave:+k,ts:l[0].u.data,andamento:false});
+    });
+  });
   if(!itens.length){
     el.innerHTML='<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;padding:24px">Nenhuma foto registrada ainda. As fotos de antes e depois das tarefas aparecem aqui.</div>';
     return;
@@ -3849,6 +3864,12 @@ function renderFotos(){
     var lista=grupos[k].sort(function(a,b){return (b.ts||'').localeCompare(a.ts||'');});
     var titulo=k?MESES_NOME[k%100]+' de '+Math.floor(k/100):'Sem data';
     return '<div class="sec" style="margin-top:14px">'+titulo+'</div>'+lista.map(function(it){
+      if(it.tipo==='obra') return '<div class="card" style="margin-bottom:10px;border-left:4px solid var(--azul)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">🏗️ Obra: '+obEsc(it.obra.nome)+'</div><span class="badge '+(it.obra.status==='concluida'?'ok':'blue')+'">'+OB_ST[it.obra.status]+'</span></div>'+
+        it.ups.map(function(x){var u=x.u;return '<div style="border-top:1px solid var(--border);padding:8px 0"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txt3)"><span>'+obFmtDataHora(u.data)+'</span><b>'+obFmtPct(u.pct||0)+' da obra</b></div>'+
+          (x.fases.length?'<div style="font-size:12px;font-weight:600;margin-top:3px">'+obEsc(x.fases.join(' · '))+'</div>':'')+
+          (u.txt?'<div style="font-size:12px;color:var(--txt2);margin-top:2px">'+obEsc(u.txt)+'</div>':'')+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+u.fotos.map(function(f,k){return '<img src="'+fotoThumb(f)+'" loading="lazy" onclick="obAbrirFoto(\''+it.obra.id+'\',\''+u.id+'\','+k+')" style="width:84px;height:84px;object-fit:cover;border-radius:8px;cursor:pointer">';}).join('')+'</div></div>';}).join('')+
+        '<a href="javascript:void(0)" onclick="window._obraDireta=true;obraAbertaId=\''+it.obra.id+'\';nav(\'obras\')" style="font-size:12px;color:var(--azul)">Ver obra completa →</a></div>';
       var idx=window._fotosItens.push(it)-1;
       function thumb(url,rot,pos){
         if(!url) return '<div style="flex:0 1 150px;min-width:100px"><div style="font-size:10px;font-weight:700;color:var(--txt3);margin-bottom:3px;text-transform:uppercase">'+rot+'</div><div style="aspect-ratio:1;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--txt3)">'+(it.andamento&&rot==='Depois'?'Em andamento':'Sem foto')+'</div></div>';
