@@ -844,9 +844,18 @@ function calcComparativo(d,N,modo){
     });
     linhas.sort(function(x,y){return Math.max(y.atual,y.ant)-Math.max(x.atual,x.ant);});
   }
+  var det={};
+  if(modo==='cat'){
+    var nm={};Object.keys(sa.itens).forEach(function(k){nm[k]=1;});Object.keys(sn.itens).forEach(function(k){nm[k]=1;});
+    Object.keys(nm).forEach(function(k){
+      var a=sa.itens[k],b=sn.itens[k],ct=(a||b).cat;
+      var o={nome:k,atual:a?a.total:0,ant:b?b.total:0};o.dif=o.atual-o.ant;o.pct=o.ant>0?o.dif/o.ant*100:null;
+      (det[ct]=det[ct]||[]).push(o);
+    });
+  }
   linhas.forEach(function(l){l.dif=l.atual-l.ant;l.pct=l.ant>0?l.dif/l.ant*100:null;});
   linhas.sort(function(x,y){return y.atual-x.atual||y.ant-x.ant;});
-  return{N:N,mAt:mAt,mAn:mAn,totAt:sa.total,totAn:sn.total,linhas:linhas};
+  return{N:N,mAt:mAt,mAn:mAn,totAt:sa.total,totAn:sn.total,linhas:linhas,det:det};
 }
 function fraseComp(r,c){
   var j='nos últimos '+txtMeses(c.mAt.length),a='nos '+txtMeses(c.mAn.length)+' anteriores';
@@ -854,6 +863,38 @@ function fraseComp(r,c){
   if(r.atual===0)return nome+': sem gastos '+j+', contra '+fmt(r.ant)+' '+a+'. Economia de '+fmt(r.ant)+'.';
   if(r.ant===0)return nome+': '+fmt(r.atual)+' '+j+', sem gastos '+a+'. Gasto novo de '+fmt(r.atual)+'.';
   return nome+': '+fmt(r.atual)+' '+j+', contra '+fmt(r.ant)+' '+a+'. '+(r.dif>=0?'Aumento':'Economia')+' de '+fmt(Math.abs(r.dif))+' ('+fmtPct(r.pct)+').';
+}
+function compDetalhe(c,l,id){
+  var temAnt=c.mAn.length>0;
+  var arr=(c.det[l.cat]||[]).filter(function(it){return compFiltro==='mais'?it.dif>0:(compFiltro==='menos'?it.dif<0:true);});
+  arr.sort(function(x,y){
+    if(compFiltro==='mais')return y.dif-x.dif||y.atual-x.atual;
+    if(compFiltro==='menos')return x.dif-y.dif||y.ant-x.ant;
+    return y.atual-x.atual||y.ant-x.ant;
+  });
+  var tit=compFiltro==='mais'?'Itens que mais aumentaram':(compFiltro==='menos'?'Itens com maior economia':'Itens que mais pesaram no período');
+  var h='<div id="'+id+'" style="display:none;background:#f8f8f4;border-radius:10px;padding:8px 12px 6px;margin:8px 0 2px"><div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">'+tit+' ('+arr.length+')</div>';
+  if(!arr.length)h+='<div style="font-size:12px;color:var(--txt3);padding:8px 0">Nenhum item neste filtro.</div>';
+  arr.forEach(function(it,i){
+    var extra=i>=10;
+    var cl=it.dif===0?'var(--txt3)':(it.dif>0?'var(--bad)':'var(--ok)');
+    var dtxt=it.dif===0?'sem variação':fmtDif(it.dif)+(it.pct===null?' · gasto novo':' · '+fmtPct(it.pct));
+    h+='<div'+(extra?' class="comp-extra" style="display:none;':' style="')+'padding:8px 0;border-top:1px dashed var(--border)"><div style="display:flex;justify-content:space-between;gap:10px"><div style="font-size:12px;font-weight:600;min-width:0">'+(i+1)+'. '+escC(it.nome)+'</div><div style="text-align:right;flex-shrink:0;font-size:12px;font-weight:700">'+fmt(it.atual)+'</div></div><div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;margin-top:2px"><span style="color:var(--txt3)">'+(temAnt?'antes: '+fmt(it.ant)+' · ':'')+(l.atual>0?Math.round(it.atual/l.atual*100)+'% da categoria':'')+'</span>'+(temAnt?'<span style="font-weight:700;color:'+cl+';flex-shrink:0">'+dtxt+'</span>':'')+'</div></div>';
+  });
+  if(arr.length>10)h+='<button onclick="compExtra(this)" style="margin:6px 0 4px;font-size:11px;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:#fff;color:var(--azul);cursor:pointer">Mostrar todos ('+arr.length+')</button>';
+  return h+'</div>';
+}
+function compToggle(id){
+  var el=document.getElementById(id);if(!el)return;
+  var abre=el.style.display==='none';
+  el.style.display=abre?'block':'none';
+  var ch=el.previousElementSibling&&el.previousElementSibling.querySelector('.comp-chev');
+  if(ch)ch.textContent=abre?'▾':'▸';
+}
+function compExtra(btn){
+  var rs=btn.parentNode.querySelectorAll('.comp-extra');
+  for(var i=0;i<rs.length;i++)rs[i].style.display='block';
+  btn.style.display='none';
 }
 function periodoTxt(l){return l.length?(l.length>1?l[0]+' a '+l[l.length-1]:l[0]):'—';}
 function renderComparativo(){
@@ -896,6 +937,7 @@ function renderComparativo(){
   if(temAnt){
     od.innerHTML='Ordenado do maior para o menor '+(compFiltro==='mais'?'aumento':(compFiltro==='menos'?'economia':'gasto no período atual'))+'.<br>Gastaram mais: <b style="color:var(--bad)">+'+fmt(sMais)+'</b> em '+nMais+(compModo==='cat'?' categorias':' itens')+' · Economia: <b style="color:var(--ok)">'+fmt(sMenos)+'</b> em '+nMenos+(compModo==='cat'?' categorias':' itens');
   }else od.innerHTML='Ordenado do maior para o menor gasto no período atual.';
+  if(compModo==='cat')od.innerHTML+='<br>👆 Toque em uma categoria para ver os itens que mais pesaram.';
   var aviso='';
   if(!c.mAn.length){
     aviso='Ainda não há meses anteriores carregados para comparar com os últimos '+compN+' meses. Mostrando apenas onde o condomínio gastou mais no período atual.';
@@ -949,7 +991,8 @@ function renderComparativo(){
       var sub=l.dif>0;var cl=l.dif===0?'var(--txt3)':(sub?'var(--bad)':'var(--ok)');
       dif='<div style="font-size:12px;font-weight:700;color:'+cl+';margin-top:5px">'+(l.dif===0?'Sem variação':fmtDif(l.dif)+(l.pct===null?' · gasto novo':' · '+fmtPct(l.pct)))+'</div>';
     }
-    return '<div style="padding:10px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="font-weight:600;font-size:13px;min-width:0">'+escC(l.nome)+(l.sub?'<div style="font-size:10px;color:var(--txt3);font-weight:400">'+escC(l.sub)+'</div>':'')+'</div><div style="text-align:right;flex-shrink:0"><div style="font-weight:700;font-size:13px">'+fmt(l.atual)+' <span style="font-size:10px;color:var(--txt3);font-weight:400">('+share+'% do total)</span></div>'+(c.mAn.length?'<div style="font-size:11px;color:var(--txt3)">antes: '+fmt(l.ant)+'</div>':'')+'</div></div><div style="display:flex;gap:4px;margin-top:6px"><div class="bar-bg"><div class="bar-fill" style="width:'+Math.round(l.atual/mx*100)+'%;background:'+cor+'"></div></div></div>'+dif+'</div>';
+    var abre=(compModo==='cat'),idd='cdet_'+l.cat;
+    return '<div'+(abre?' onclick="compToggle(\''+idd+'\')" style="cursor:pointer;padding:10px 0 4px;border-top:1px solid var(--border)"':' style="padding:10px 0;border-top:1px solid var(--border)"')+'><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="font-weight:600;font-size:13px;min-width:0">'+(abre?'<span class="comp-chev" style="color:var(--txt3);font-size:11px">▸</span> ':'')+escC(l.nome)+(l.sub?'<div style="font-size:10px;color:var(--txt3);font-weight:400">'+escC(l.sub)+'</div>':'')+'</div><div style="text-align:right;flex-shrink:0"><div style="font-weight:700;font-size:13px">'+fmt(l.atual)+' <span style="font-size:10px;color:var(--txt3);font-weight:400">('+share+'% do total)</span></div>'+(c.mAn.length?'<div style="font-size:11px;color:var(--txt3)">antes: '+fmt(l.ant)+'</div>':'')+'</div></div><div style="display:flex;gap:4px;margin-top:6px"><div class="bar-bg"><div class="bar-fill" style="width:'+Math.round(l.atual/mx*100)+'%;background:'+cor+'"></div></div></div>'+dif+'</div>'+(abre?compDetalhe(c,l,idd):'');
   }).join('');
   compTexto=txt.join('\n');
   if(btn)btn.style.display=compTexto?'inline-block':'none';
