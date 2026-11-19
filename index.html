@@ -132,6 +132,7 @@ textarea.fi{height:75px;resize:vertical}
   <button class="nb" onclick="nav('fotos')">Fotos</button>
   <button class="nb" onclick="nav('tarefas')">Tarefas</button>
   <button class="nb" onclick="nav('projetos')">Projetos</button>
+  <button class="nb" onclick="nav('obras')">Obras</button>
   <button class="nb admin-only" id="nav-orcamentos" style="display:none" onclick="nav('orcamentos')">Orçamentos</button>
   <button class="nb" onclick="nav('contratos')">Contratos</button>
   <button class="nb" onclick="nav('churrasqueira')">Churrasqueira</button>
@@ -164,6 +165,7 @@ textarea.fi{height:75px;resize:vertical}
     <div class="gcard" onclick="nav('realizacoes')"><div class="gico" style="background:#e8f5e9">✅</div><div><div style="font-weight:600;font-size:13px">Realizações</div><div style="font-size:11px;color:var(--txt3)">Histórico de ações</div></div></div>
     <div class="gcard" onclick="nav('fotos')"><div class="gico" style="background:#f0eeff">📷</div><div><div style="font-weight:600;font-size:13px">Fotos</div><div style="font-size:11px;color:var(--txt3)">Antes e depois</div></div></div>
     <div class="gcard" onclick="nav('tarefas')"><div class="gico" style="background:#fff3e0">📌</div><div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--txt3)">Ordem de prioridade</div></div></div>
+    <div class="gcard" onclick="nav('obras')"><div class="gico" style="background:#fff3e0">🏗️</div><div><div style="font-weight:600;font-size:13px">Obras</div><div style="font-size:11px;color:var(--txt3)">Andamento e fases</div></div></div>
     <div class="gcard" onclick="nav('projetos')"><div class="gico" style="background:#fff3e0">🔨</div><div><div style="font-weight:600;font-size:13px">Projetos</div><div style="font-size:11px;color:var(--txt3)">Em andamento</div></div></div>
     <div class="gcard admin-only" style="display:none" onclick="nav('orcamentos')"><div class="gico" style="background:#e8f5e9">💰</div><div><div style="font-weight:600;font-size:13px">Orçamentos</div><div style="font-size:11px;color:var(--txt3)">Propostas e cotações</div></div></div>
     <div class="gcard" onclick="nav('contratos')"><div class="gico" style="background:#e3f0fb">📋</div><div><div style="font-weight:600;font-size:13px">Contratos</div><div style="font-size:11px;color:var(--txt3)">Vigentes e vencimentos</div></div></div>
@@ -197,6 +199,11 @@ textarea.fi{height:75px;resize:vertical}
 <div id="pg-fotos" class="pg">
   <div class="sec">Registro fotográfico — antes e depois</div>
   <div id="lista-fotos"></div>
+</div>
+
+<!-- OBRAS -->
+<div id="pg-obras" class="pg">
+  <div id="obras-conteudo"></div>
 </div>
 
 <!-- PROJETOS -->
@@ -581,7 +588,7 @@ auth.onAuthStateChanged(function(user){
     if(usuarioAtual.perfil!=='admin') _trackInit(user.uid);
     carregarTodosOsDados(function(){
       migrarTarefasConcluidas();
-      renderAlertas();renderRealizacoes();if(typeof renderFotos==='function')renderFotos();renderProjetosAdmin();renderContratosAdmin();
+      renderAlertas();renderRealizacoes();if(typeof renderFotos==='function')renderFotos();if(typeof renderObras==='function')renderObras();renderProjetosAdmin();renderContratosAdmin();
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();renderContatosPublico();carregarChamados();carregarSugestoes();
       carregarResumosFinanceiros(function(){renderCiclos();});
       renderSam();
@@ -1774,7 +1781,7 @@ function adicionarContatoGenerico(arrNome,formPrefix){
   nomeEl.value='';telEl.value='';nomeEl.focus();
   salvarContatosGenerico(arrNome);
 }
-var NAV_IDS=['inicio','realizacoes','fotos','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','sam','mapa'];
+var NAV_IDS=['inicio','realizacoes','fotos','tarefas','projetos','obras','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','sam','mapa'];
 var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
 var adminLogado=false;
 
@@ -1793,6 +1800,7 @@ function nav(id){
   window.scrollTo(0,0);
   if(id==='sam'&&typeof renderSam==='function') renderSam();
   if(id==='fotos'&&typeof renderFotos==='function') renderFotos();
+  if(id==='obras'&&typeof renderObras==='function'){obraAbertaId=null;renderObras();}
 }
 
 function chamarWA(){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'));}
@@ -3302,6 +3310,421 @@ function concluirTarefa(i,fotoDepois){
   renderTarefas();
 }
 
+// ===== OBRAS (cronograma, fases, pesos e atualizações) =====
+var obras=[], obraAbertaId=null, obImp=null, obUpd=null;
+var OB_ST={rascunho:'Rascunho',publicada:'Em andamento',concluida:'Concluída'};
+function obEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function obNovoId(p){return p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);}
+function obFmtData(iso){var p=String(iso||'').slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:'—';}
+function obFmtDataHora(iso){var d=new Date(iso);if(isNaN(d))return '';return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+function obDia(iso){var p=String(iso||'').slice(0,10).split('-');if(p.length!==3)return null;return new Date(+p[0],+p[1]-1,+p[2]).getTime();}
+function obIso(y,m,d){if(y<100)y+=2000;var dt=new Date(y,m-1,d);if(isNaN(dt)||dt.getMonth()!==m-1)return '';return dt.getFullYear()+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+('0'+dt.getDate()).slice(-2);}
+function obParseData(v){
+  if(v==null||v==='') return '';
+  if(v instanceof Date){if(isNaN(v))return '';var d=new Date(v.getTime()+12*3600*1000);return obIso(d.getFullYear(),d.getMonth()+1,d.getDate());}
+  if(typeof v==='number'){if(v>20000&&v<80000){var dd=new Date(Math.round((v-25569)*86400000)+12*3600*1000);return obIso(dd.getUTCFullYear(),dd.getUTCMonth()+1,dd.getUTCDate());}return '';}
+  var s=String(v).trim(),m;
+  if((m=s.match(/(\d{4})-(\d{2})-(\d{2})/))) return obIso(+m[1],+m[2],+m[3]);
+  if((m=s.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))) return obIso(+m[3],+m[2],+m[1]);
+  return '';
+}
+function obSalvar(cb){salvarNoFirestore('obras',obras,cb||function(){renderObras();});}
+function obAcha(id){return obras.filter(function(o){return o.id===id;})[0];}
+function obPctFase(f){return Math.max(0,Math.min(100,parseFloat(f.avanco)||0));}
+function obPct(o){var tp=0,s=0;(o.fases||[]).forEach(function(f){var p=parseFloat(f.peso)||0;tp+=p;s+=p*obPctFase(f)/100;});return tp>0?s/tp*100:0;}
+function obPrevisto(o){
+  var tp=0,s=0,temData=false,hoje=Date.now();
+  (o.fases||[]).forEach(function(f){
+    var p=parseFloat(f.peso)||0;tp+=p;
+    var i=obDia(f.inicio),e=obDia(f.fim);if(i==null||e==null)return;
+    temData=true;
+    var fr=e<=i?(hoje>=e?1:0):Math.max(0,Math.min(1,(hoje-i)/(e-i)));
+    s+=p*fr;
+  });
+  return (temData&&tp>0)?s/tp*100:null;
+}
+function obFmtPct(n){return (Math.round(n*10)/10).toString().replace('.',',')+'%';}
+function obBarra(pct,cor,h){return '<div style="background:#e8e8e2;border-radius:99px;height:'+(h||8)+'px;overflow:hidden"><div style="width:'+Math.max(0,Math.min(100,pct))+'%;height:100%;background:'+(cor||'var(--azul)')+';border-radius:99px"></div></div>';}
+function obDistribuirPesos(fases){
+  var dur=fases.map(function(f){var i=obDia(f.inicio),e=obDia(f.fim);return (i!=null&&e!=null)?Math.max(1,Math.round((e-i)/86400000)+1):1;});
+  var tot=dur.reduce(function(a,b){return a+b;},0),acc=0;
+  fases.forEach(function(f,k){
+    if(k===fases.length-1){f.peso=Math.round((100-acc)*10)/10;}
+    else{f.peso=Math.round(dur[k]/tot*1000)/10;acc+=f.peso;}
+  });
+}
+function obNormalizar(fases){
+  var tot=fases.reduce(function(a,f){return a+(parseFloat(f.peso)||0);},0);
+  if(!tot){obDistribuirPesos(fases);return;}
+  var acc=0;
+  fases.forEach(function(f,k){
+    if(k===fases.length-1){f.peso=Math.round((100-acc)*10)/10;}
+    else{f.peso=Math.round((parseFloat(f.peso)||0)/tot*1000)/10;acc+=f.peso;}
+  });
+}
+function obModal(html){
+  obFecharModal();
+  var m=document.createElement('div');m.id='ob-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto';
+  m.innerHTML='<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:18px;margin:auto">'+html+'</div>';
+  document.body.appendChild(m);
+}
+function obFecharModal(){var m=document.getElementById('ob-modal');if(m)m.remove();}
+var OB_FI='width:100%;font-size:13px;padding:7px 9px;border:1px solid #ddd;border-radius:7px;font-family:inherit;box-sizing:border-box';
+var OB_BTN='padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer;font-family:inherit';
+var OB_BTNP='padding:8px 14px;border-radius:8px;border:none;background:var(--azul);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+function renderObras(){
+  var el=document.getElementById('obras-conteudo');if(!el)return;
+  var o=obraAbertaId?obAcha(obraAbertaId):null;
+  if(o&&(adminLogado||o.status!=='rascunho')){el.innerHTML=obDetalheHtml(o);return;}
+  obraAbertaId=null;
+  var lista=obras.filter(function(x){return adminLogado||x.status!=='rascunho';});
+  var ordem={publicada:0,rascunho:1,concluida:2};
+  lista.sort(function(a,b){return (ordem[a.status]||0)-(ordem[b.status]||0);});
+  var h='';
+  if(adminLogado) h+='<div style="margin-bottom:12px"><button onclick="obAbrirForm(\'\')" style="'+OB_BTNP+'">➕ Nova obra</button></div>';
+  if(!lista.length){
+    h+='<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;padding:24px">Nenhuma obra publicada no momento.</div>';
+  } else h+=lista.map(function(x){
+    var pct=obPct(x),prev=obPrevisto(x);
+    var cls=x.status==='concluida'?'ok':(x.status==='rascunho'?'gray':'blue');
+    return '<div class="card" style="cursor:pointer;margin-bottom:10px" onclick="obAbrir(\''+x.id+'\')">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="font-weight:600;font-size:14px">🏗️ '+obEsc(x.nome)+'</div><span class="badge '+cls+'">'+OB_ST[x.status]+'</span></div>'+
+      (x.empresa?'<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+obEsc(x.empresa)+'</div>':'')+
+      '<div style="display:flex;align-items:center;gap:10px;margin-top:10px">'+'<div style="flex:1">'+obBarra(x.status==='concluida'?100:pct)+'</div><div style="font-weight:700;font-size:13px">'+obFmtPct(x.status==='concluida'?100:pct)+'</div></div>'+
+      '<div style="font-size:11px;color:var(--txt3);margin-top:6px">'+obFmtData(x.inicio)+' → '+obFmtData(x.fim)+(prev!=null&&x.status!=='concluida'?' · previsto hoje: '+obFmtPct(prev):'')+'</div></div>';
+  }).join('');
+  el.innerHTML=h;
+}
+function obAbrir(id){obraAbertaId=id;renderObras();window.scrollTo(0,0);}
+function obVoltar(){obraAbertaId=null;renderObras();}
+function obDetalheHtml(o){
+  var pct=o.status==='concluida'?100:obPct(o),prev=obPrevisto(o);
+  var cls=o.status==='concluida'?'ok':(o.status==='rascunho'?'gray':'blue');
+  var h='<button onclick="obVoltar()" style="'+OB_BTN+';margin-bottom:10px">← Obras</button>'+
+    '<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="font-weight:700;font-size:16px">🏗️ '+obEsc(o.nome)+'</div><span class="badge '+cls+'">'+OB_ST[o.status]+'</span></div>'+
+    (o.empresa?'<div style="font-size:12px;color:var(--txt2);margin-top:4px">Responsável: '+obEsc(o.empresa)+'</div>':'')+
+    '<div style="font-size:12px;color:var(--txt3);margin-top:2px">Previsão: '+obFmtData(o.inicio)+' → '+obFmtData(o.fim)+'</div>'+
+    (o.desc?'<div style="font-size:13px;margin-top:10px;white-space:pre-wrap;line-height:1.5">'+obEsc(o.desc)+'</div>':'')+
+    (o.linkCronograma?'<div style="margin-top:10px"><a href="'+obEsc(o.linkCronograma)+'" target="_blank" rel="noopener" style="font-size:12px;color:var(--azul)">📄 Ver cronograma original</a></div>':'')+
+    '</div>';
+  if(adminLogado){
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">'+
+      '<button onclick="obAbrirForm(\''+o.id+'\')" style="'+OB_BTN+'">✏️ Editar dados</button>'+
+      (o.status!=='concluida'?'<button onclick="obTogglePublicar(\''+o.id+'\')" style="'+OB_BTN+'">'+(o.status==='rascunho'?'👁️ Publicar para os moradores':'🙈 Voltar para rascunho')+'</button>':'')+
+      (o.status==='publicada'?'<button onclick="obConcluir(\''+o.id+'\')" style="'+OB_BTN+'">✅ Concluir obra</button>':'')+
+      '<button onclick="obExcluir(\''+o.id+'\')" style="'+OB_BTN+';color:#c0392b">🗑️ Excluir</button></div>';
+    if(o.status==='rascunho') h+='<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px">Rascunho: os moradores ainda não veem esta obra.</div>';
+  }
+  h+='<div class="card" style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:12px;color:var(--txt3);font-weight:600">ANDAMENTO DA OBRA</div><div style="font-size:22px;font-weight:700">'+obFmtPct(pct)+'</div></div>'+obBarra(pct,o.status==='concluida'?'#2e7d32':'var(--azul)',12);
+  if(prev!=null&&o.status!=='concluida'){
+    var d=pct-prev,txt=d>=2?'adiantada':(d<=-2?'atrasada':'no prazo'),cor=d>=2?'#2e7d32':(d<=-2?'#c0392b':'var(--txt2)');
+    h+='<div style="font-size:12px;margin-top:8px;color:var(--txt2)">Previsto pelo cronograma até hoje: <b>'+obFmtPct(prev)+'</b> · <b style="color:'+cor+'">'+txt+'</b></div>';
+  }
+  h+='</div>';
+  var fs=o.fases||[];
+  h+='<div class="sec" style="margin-top:14px">Fases da obra</div>';
+  if(adminLogado){
+    var soma=fs.reduce(function(a,f){return a+(parseFloat(f.peso)||0);},0),ok=Math.abs(soma-100)<0.15;
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<button onclick="obAddFase(\''+o.id+'\')" style="'+OB_BTN+'">➕ Fase</button>'+
+      '<button onclick="obEscolherArquivo(\''+o.id+'\')" style="'+OB_BTN+'">📥 Importar cronograma</button>'+
+      '<button onclick="obPesosAuto(\''+o.id+'\',1)" style="'+OB_BTN+'">⚖️ Pesos pela duração</button>'+
+      '<button onclick="obPesosAuto(\''+o.id+'\',0)" style="'+OB_BTN+'">Ajustar para 100%</button></div>'+
+      '<input type="file" id="ob-inp-crono" accept=".xlsx,.xls,.csv,.pdf,.xml,.mpp" style="display:none" onchange="obImportarArquivo(this)">'+
+      '<div style="font-size:11px;margin-bottom:8px;color:'+(ok?'#2e7d32':'#c0392b')+'">Soma dos pesos: '+obFmtPct(soma)+(ok?' ✓':' (deveria ser 100%)')+'</div>';
+  }
+  if(!fs.length) h+='<div class="card" style="color:var(--txt3);font-size:13px;text-align:center">'+(adminLogado?'Nenhuma fase ainda. Importe o cronograma ou adicione manualmente.':'As fases serão divulgadas em breve.')+'</div>';
+  else h+='<div class="card" style="padding:4px 14px">'+fs.map(function(f){
+    var av=obPctFase(f);
+    if(adminLogado) return '<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+      '<input value="'+obEsc(f.nome)+'" onchange="obSetFase(\''+o.id+'\',\''+f.id+'\',\'nome\',this.value)" style="'+OB_FI+';flex:1;min-width:140px;width:auto" placeholder="Nome da fase">'+
+      '<input type="number" step="0.1" min="0" value="'+(parseFloat(f.peso)||0)+'" onchange="obSetFase(\''+o.id+'\',\''+f.id+'\',\'peso\',this.value)" style="'+OB_FI+';width:68px" title="Peso (%)"><span style="font-size:11px">%</span>'+
+      '<button onclick="obDelFase(\''+o.id+'\',\''+f.id+'\')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer">✕</button></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center"><input type="date" value="'+obEsc(f.inicio||'')+'" onchange="obSetFase(\''+o.id+'\',\''+f.id+'\',\'inicio\',this.value)" style="'+OB_FI+';width:140px"><span style="font-size:11px">até</span><input type="date" value="'+obEsc(f.fim||'')+'" onchange="obSetFase(\''+o.id+'\',\''+f.id+'\',\'fim\',this.value)" style="'+OB_FI+';width:140px"><span style="font-size:12px;margin-left:auto">avanço <b>'+obFmtPct(av)+'</b></span></div></div>';
+    var st=av>=100?'<span class="badge ok">Concluída</span>':(av>0?'<span class="badge blue">Em andamento</span>':'<span class="badge gray">Não iniciada</span>');
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-weight:500;font-size:13px">'+obEsc(f.nome)+'</div>'+st+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><div style="flex:1">'+obBarra(av,av>=100?'#2e7d32':'var(--azul)',6)+'</div><div style="font-size:12px;font-weight:600;width:44px;text-align:right">'+obFmtPct(av)+'</div></div>'+
+      '<div style="font-size:11px;color:var(--txt3);margin-top:3px">'+(f.inicio?obFmtData(f.inicio)+' → '+obFmtData(f.fim):'Sem datas')+' · peso '+obFmtPct(parseFloat(f.peso)||0)+'</div></div>';
+  }).join('')+'</div>';
+  h+='<div class="sec" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><span>Atualizações</span>'+
+    (adminLogado&&fs.length&&o.status!=='concluida'?'<button onclick="obAbrirUpd(\''+o.id+'\')" style="'+OB_BTNP+';padding:6px 12px;font-size:12px">📣 Registrar atualização</button>':'')+'</div>';
+  var ups=(o.atualizacoes||[]).slice().sort(function(a,b){return String(b.data).localeCompare(String(a.data));});
+  if(!ups.length) h+='<div class="card" style="color:var(--txt3);font-size:13px;text-align:center">Ainda sem atualizações.</div>';
+  else h+=ups.map(function(u){
+    return '<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;color:var(--txt3)">'+obFmtDataHora(u.data)+'</div><div style="display:flex;gap:8px;align-items:center"><span class="badge blue">'+obFmtPct(u.pct||0)+'</span>'+(adminLogado?'<button onclick="obDelUpd(\''+o.id+'\',\''+u.id+'\')" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:13px" title="Excluir atualização">✕</button>':'')+'</div></div>'+
+      (u.txt?'<div style="font-size:13px;margin-top:6px;white-space:pre-wrap;line-height:1.5">'+obEsc(u.txt)+'</div>':'')+
+      ((u.fotos&&u.fotos.length)?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+u.fotos.map(function(f,k){return '<img src="'+fotoThumb(f)+'" loading="lazy" onclick="obAbrirFoto(\''+o.id+'\',\''+u.id+'\','+k+')" style="width:84px;height:84px;object-fit:cover;border-radius:8px;cursor:pointer">';}).join('')+'</div>':'')+'</div>';
+  }).join('');
+  return h;
+}
+function obAbrirFoto(oid,uid,k){
+  var o=obAcha(oid);if(!o)return;
+  var u=(o.atualizacoes||[]).filter(function(x){return x.id===uid;})[0];if(!u)return;
+  abrirLightbox(u.fotos.map(function(f,j){return {url:f,rot:'Foto '+(j+1)};}),k,o.nome+' — '+obFmtDataHora(u.data)+(u.txt?': '+u.txt:''));
+}
+// ---- cadastro/edição ----
+function obAbrirForm(id){
+  var o=id?obAcha(id):{};
+  obModal('<div style="font-weight:700;font-size:15px;margin-bottom:12px">'+(id?'Editar obra':'Nova obra')+'</div>'+
+    '<label style="font-size:11px;color:var(--txt3)">Nome da obra *</label><input id="ob-f-nome" value="'+obEsc(o.nome)+'" style="'+OB_FI+';margin-bottom:8px">'+
+    '<label style="font-size:11px;color:var(--txt3)">Empresa / responsável</label><input id="ob-f-emp" value="'+obEsc(o.empresa)+'" style="'+OB_FI+';margin-bottom:8px">'+
+    '<label style="font-size:11px;color:var(--txt3)">Descrição (escopo, valores, observações)</label><textarea id="ob-f-desc" rows="4" style="'+OB_FI+';margin-bottom:8px">'+obEsc(o.desc)+'</textarea>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px"><div style="flex:1"><label style="font-size:11px;color:var(--txt3)">Início previsto</label><input type="date" id="ob-f-ini" value="'+obEsc(o.inicio)+'" style="'+OB_FI+'"></div><div style="flex:1"><label style="font-size:11px;color:var(--txt3)">Término previsto</label><input type="date" id="ob-f-fim" value="'+obEsc(o.fim)+'" style="'+OB_FI+'"></div></div>'+
+    '<label style="font-size:11px;color:var(--txt3)">Link do cronograma original (opcional)</label><input id="ob-f-link" value="'+obEsc(o.linkCronograma)+'" placeholder="https://..." style="'+OB_FI+'">'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button onclick="obFecharModal()" style="'+OB_BTN+'">Cancelar</button><button onclick="obSalvarForm(\''+(id||'')+'\')" style="'+OB_BTNP+'">Salvar</button></div>');
+}
+function obSalvarForm(id){
+  var nome=document.getElementById('ob-f-nome').value.trim();
+  if(!nome){alert('Informe o nome da obra.');return;}
+  var o=id?obAcha(id):null;
+  if(!o){o={id:obNovoId('ob'),status:'rascunho',fases:[],atualizacoes:[],criadaEm:new Date().toISOString()};obras.push(o);obraAbertaId=o.id;}
+  o.nome=nome;o.empresa=document.getElementById('ob-f-emp').value.trim();o.desc=document.getElementById('ob-f-desc').value.trim();
+  o.inicio=document.getElementById('ob-f-ini').value;o.fim=document.getElementById('ob-f-fim').value;o.linkCronograma=document.getElementById('ob-f-link').value.trim();
+  obFecharModal();obSalvar();
+}
+function obTogglePublicar(id){
+  var o=obAcha(id);if(!o)return;
+  if(o.status==='rascunho'){
+    if(!confirm('Publicar "'+o.nome+'"? Todos os moradores poderão ver a obra, as fases e as atualizações.'))return;
+    o.status='publicada';
+  } else o.status='rascunho';
+  obSalvar();
+}
+function obExcluir(id){
+  var o=obAcha(id);if(!o)return;
+  if(!confirm('Excluir a obra "'+o.nome+'" com todas as fases e atualizações?\n\nNão dá para desfazer.'))return;
+  obras=obras.filter(function(x){return x.id!==id;});obraAbertaId=null;obSalvar();
+}
+function obConcluir(id){
+  var o=obAcha(id);if(!o)return;
+  if(!confirm('Concluir a obra "'+o.nome+'"?\n\nEla fica como Concluída e entra em Realizações.'))return;
+  var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],hoje=new Date();
+  o.status='concluida';o.concluidaEm=hoje.toISOString();
+  var ups=(o.atualizacoes||[]).slice().sort(function(a,b){return String(a.data).localeCompare(String(b.data));});
+  var fotos=[];ups.forEach(function(u){(u.fotos||[]).forEach(function(f){fotos.push(f);});});
+  var real={data:meses[hoje.getMonth()]+'/'+hoje.getFullYear(),txt:'Obra concluída: '+o.nome,foto:'',concluidaEm:o.concluidaEm};
+  if(fotos.length>1){real.fotoAntes=fotos[0];real.fotoDepois=fotos[fotos.length-1];}
+  dadosAdmin.realizacoes.unshift(real);
+  salvarNoFirestore('realizacoes',dadosAdmin.realizacoes,function(){renderRealizacoes();renderFotos();});
+  obSalvar();
+}
+// ---- fases ----
+function obAddFase(id){
+  var o=obAcha(id);if(!o)return;
+  o.fases=o.fases||[];o.fases.push({id:obNovoId('f'),nome:'Nova fase',peso:0,inicio:'',fim:'',avanco:0});obSalvar();
+}
+function obSetFase(oid,fid,campo,val){
+  var o=obAcha(oid);if(!o)return;
+  var f=(o.fases||[]).filter(function(x){return x.id===fid;})[0];if(!f)return;
+  f[campo]=campo==='peso'?(parseFloat(val)||0):val;obSalvar();
+}
+function obDelFase(oid,fid){
+  var o=obAcha(oid);if(!o)return;
+  if(!confirm('Remover esta fase?'))return;
+  o.fases=o.fases.filter(function(x){return x.id!==fid;});obSalvar();
+}
+function obPesosAuto(oid,porDuracao){
+  var o=obAcha(oid);if(!o||!(o.fases||[]).length)return;
+  if(porDuracao)obDistribuirPesos(o.fases);else obNormalizar(o.fases);
+  obSalvar();
+}
+// ---- atualizações ----
+function obAbrirUpd(oid){
+  var o=obAcha(oid);if(!o)return;
+  obUpd={oid:oid,av:{},fotos:[],subindo:0};
+  o.fases.forEach(function(f){obUpd.av[f.id]=obPctFase(f);});
+  obModal('<div style="font-weight:700;font-size:15px;margin-bottom:4px">Registrar atualização</div><div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Informe o avanço atual de cada fase (0 a 100%).</div>'+
+    o.fases.map(function(f){return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><div style="flex:1;font-size:13px">'+obEsc(f.nome)+' <span style="font-size:10px;color:var(--txt3)">(peso '+obFmtPct(parseFloat(f.peso)||0)+')</span></div><input type="number" min="0" max="100" step="1" value="'+obPctFase(f)+'" oninput="obUpdAv(\''+f.id+'\',this.value)" style="'+OB_FI+';width:72px"><span style="font-size:11px">%</span></div>';}).join('')+
+    '<div id="ob-upd-pct" style="font-size:13px;font-weight:700;margin:10px 0"></div>'+
+    '<label style="font-size:11px;color:var(--txt3)">O que foi feito (texto para os moradores)</label><textarea id="ob-upd-txt" rows="3" style="'+OB_FI+'" placeholder="Ex.: Pintura da fachada da Torre A concluída."></textarea>'+
+    '<div style="margin-top:10px"><input type="file" id="ob-upd-fotos" accept="image/*" multiple style="display:none" onchange="obUpdFotos(this)"><button onclick="document.getElementById(\'ob-upd-fotos\').click()" style="'+OB_BTN+'">📷 Adicionar fotos (opcional)</button></div>'+
+    '<div id="ob-upd-prev" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button onclick="obFecharModal()" style="'+OB_BTN+'">Cancelar</button><button id="ob-upd-ok" onclick="obSalvarUpd()" style="'+OB_BTNP+'">Publicar atualização</button></div>');
+  obUpdPct();
+}
+function obUpdAv(fid,v){var n=parseFloat(v);obUpd.av[fid]=isNaN(n)?0:Math.max(0,Math.min(100,n));obUpdPct();}
+function obUpdPct(){
+  var o=obAcha(obUpd.oid),tp=0,s=0;
+  o.fases.forEach(function(f){var p=parseFloat(f.peso)||0;tp+=p;s+=p*(obUpd.av[f.id]||0)/100;});
+  var e=document.getElementById('ob-upd-pct');if(e)e.textContent='Andamento geral: '+obFmtPct(tp>0?s/tp*100:0);
+}
+function obUpdFotos(inp){
+  var files=[].slice.call(inp.files||[]);inp.value='';
+  files.forEach(function(file){
+    obUpd.subindo++;obUpdPrev();
+    uploadFotoTarefa(file,function(url){obUpd.subindo--;obUpd.fotos.push(url);obUpdPrev();},function(msg){obUpd.subindo--;obUpdPrev();alert(msg);});
+  });
+}
+function obUpdPrev(){
+  var e=document.getElementById('ob-upd-prev'),b=document.getElementById('ob-upd-ok');if(!e)return;
+  e.innerHTML=obUpd.fotos.map(function(u,k){return '<div style="position:relative"><img src="'+fotoThumb(u)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px"><button onclick="obUpd.fotos.splice('+k+',1);obUpdPrev()" style="position:absolute;top:-6px;right:-6px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer">✕</button></div>';}).join('')+(obUpd.subindo?'<span style="font-size:12px;color:var(--txt3)">⏳ Enviando '+obUpd.subindo+'...</span>':'');
+  if(b){b.disabled=obUpd.subindo>0;b.style.opacity=obUpd.subindo>0?'.6':'1';}
+}
+function obSalvarUpd(){
+  if(obUpd.subindo)return;
+  var o=obAcha(obUpd.oid);if(!o)return;
+  o.fases.forEach(function(f){f.avanco=obUpd.av[f.id]||0;});
+  var u={id:obNovoId('u'),data:new Date().toISOString(),pct:Math.round(obPct(o)*10)/10,txt:document.getElementById('ob-upd-txt').value.trim(),fotos:obUpd.fotos.slice(),avancos:JSON.parse(JSON.stringify(obUpd.av))};
+  o.atualizacoes=o.atualizacoes||[];o.atualizacoes.push(u);
+  obUpd=null;obFecharModal();obSalvar();
+}
+function obDelUpd(oid,uid){
+  var o=obAcha(oid);if(!o)return;
+  if(!confirm('Excluir esta atualização? O andamento das fases não é alterado.'))return;
+  o.atualizacoes=o.atualizacoes.filter(function(x){return x.id!==uid;});obSalvar();
+}
+// ---- importação do cronograma ----
+function obCarregarScript(src,cb,err){
+  var s=document.createElement('script');s.src=src;s.onload=cb;s.onerror=function(){err('Não foi possível carregar o leitor ('+src.split('/').slice(-1)[0]+'). Verifique a internet ou cadastre as fases manualmente.');};
+  document.head.appendChild(s);
+}
+function obEscolherArquivo(oid){
+  obImp={oid:oid,file:null,rows:[]};
+  var i=document.getElementById('ob-inp-crono');if(i){i.value='';i.click();}
+}
+function obImportarArquivo(inp){
+  var file=inp.files&&inp.files[0];if(!file)return;
+  var nome=file.name.toLowerCase(),ext=nome.split('.').pop();
+  obImp.file=file;
+  if(ext==='mpp'){obModal('<div style="font-weight:700;margin-bottom:8px">Arquivo do MS Project (.mpp)</div><div style="font-size:13px;line-height:1.5">O formato .mpp é binário e não pode ser lido direto no navegador. No Project, use <b>Arquivo → Salvar como</b> e escolha <b>XML</b> ou <b>Pasta de Trabalho do Excel</b>, e importe esse arquivo. Se preferir, cadastre as fases manualmente.</div><div style="text-align:right;margin-top:14px"><button onclick="obFecharModal()" style="'+OB_BTNP+'">Entendi</button></div>');return;}
+  obModal('<div style="font-size:13px">⏳ Lendo o cronograma...</div>');
+  function fim(rows){obImp.rows=rows;obRevisao();}
+  function erro(m){obModal('<div style="font-weight:700;margin-bottom:8px">Não foi possível ler</div><div style="font-size:13px;line-height:1.5">'+obEsc(m)+'</div><div style="text-align:right;margin-top:14px"><button onclick="obFecharModal()" style="'+OB_BTNP+'">Fechar</button></div>');}
+  try{
+    if(ext==='xml'){
+      var fr=new FileReader();fr.onload=function(){try{fim(obLerProjectXml(fr.result));}catch(e){erro('XML inválido: '+e.message);}};fr.readAsText(file);
+    } else if(ext==='pdf'){
+      obCarregarScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',function(){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        obLerPdf(file,fim,erro);
+      },erro);
+    } else {
+      obCarregarScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',function(){
+        var fr=new FileReader(),csv=(ext==='csv');fr.onload=function(){try{fim(obLerPlanilha(fr.result,csv));}catch(e){erro('Planilha inválida: '+e.message);}};if(csv)fr.readAsText(file);else fr.readAsArrayBuffer(file);
+      },erro);
+    }
+  }catch(e){erro(e.message);}
+}
+function obLerPlanilha(buf,texto){
+  var wb=texto?XLSX.read(buf,{type:'string',raw:true}):XLSX.read(buf,{type:'array',cellDates:true});
+  var ws=wb.Sheets[wb.SheetNames[0]];
+  var arr=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  var hi=-1,cn=-1,ci=-1,cf=-1,cp=-1,r,c;
+  for(r=0;r<Math.min(arr.length,20)&&hi<0;r++){
+    var row=arr[r],n=-1,i=-1,f=-1,p=-1;
+    for(c=0;c<row.length;c++){
+      var t=String(row[c]).toLowerCase();
+      if(n<0&&/(nome|tarefa|atividade|etapa|fase|descri)/.test(t))n=c;
+      else if(i<0&&/(in[ií]cio|inicio|start)/.test(t))i=c;
+      else if(f<0&&/(t[eé]rmino|termino|fim|end|finish|conclus)/.test(t))f=c;
+      else if(p<0&&/(peso|%)/.test(t))p=c;
+    }
+    if(n>=0&&(i>=0||f>=0)){hi=r;cn=n;ci=i;cf=f;cp=p;}
+  }
+  var rows=[];
+  for(r=(hi>=0?hi+1:0);r<arr.length;r++){
+    var ln=arr[r],nome='',ini='',fim='',peso=null;
+    if(hi>=0){
+      nome=String(ln[cn]||'').trim();ini=ci>=0?obParseData(ln[ci]):'';fim=cf>=0?obParseData(ln[cf]):'';
+      if(cp>=0){var pv=parseFloat(String(ln[cp]).replace(',','.').replace('%',''));if(!isNaN(pv))peso=pv;}
+    } else {
+      var datas=[];
+      for(c=0;c<ln.length;c++){var d=obParseData(ln[c]);var isTxt=typeof ln[c]==='string'&&!d&&String(ln[c]).trim().length>2&&isNaN(parseFloat(ln[c]));
+        if(isTxt&&!nome)nome=String(ln[c]).trim();else if(d)datas.push(d);}
+      ini=datas[0]||'';fim=datas[1]||datas[0]||'';
+    }
+    if(!nome||/^\d+([.,]\d+)?$/.test(nome))continue;
+    if(!ini&&!fim)continue;
+    rows.push({nome:nome,inicio:ini||fim,fim:fim||ini,peso:peso});
+  }
+  return rows;
+}
+function obLerProjectXml(txt){
+  var doc=new DOMParser().parseFromString(txt,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length)throw new Error('arquivo não é um XML válido');
+  var tasks=[].slice.call(doc.getElementsByTagName('Task')).map(function(t){
+    var o={};[].slice.call(t.children).forEach(function(ch){o[ch.localName]=(ch.textContent||'').trim();});
+    return {uid:o.UID,nome:o.Name,ini:(o.Start||'').slice(0,10),fim:(o.Finish||'').slice(0,10),lvl:parseInt(o.OutlineLevel,10)||0,sum:o.Summary==='1'};
+  }).filter(function(t){return t.uid!=='0'&&t.nome&&t.ini;});
+  var nivel1=tasks.filter(function(t){return t.lvl===1&&t.sum;});
+  var sel=nivel1.length?nivel1:tasks.filter(function(t){return !t.sum;});
+  return sel.map(function(t){return {nome:t.nome,inicio:t.ini,fim:t.fim||t.ini,peso:null};});
+}
+function obLerPdf(file,ok,erro){
+  var fr=new FileReader();
+  fr.onload=function(){
+    window.pdfjsLib.getDocument({data:new Uint8Array(fr.result)}).promise.then(function(pdf){
+      var pags=[],k;
+      function pag(n){
+        if(n>pdf.numPages) return fimPdf(pags);
+        pdf.getPage(n).then(function(p){return p.getTextContent();}).then(function(tc){
+          var linhas={};
+          tc.items.forEach(function(it){var y=Math.round(it.transform[5]/3);(linhas[y]=linhas[y]||[]).push({x:it.transform[4],s:it.str});});
+          Object.keys(linhas).map(Number).sort(function(a,b){return b-a;}).forEach(function(y){
+            pags.push(linhas[y].sort(function(a,b){return a.x-b.x;}).map(function(i){return i.s;}).join(' ').replace(/\s+/g,' ').trim());
+          });
+          pag(n+1);
+        }).catch(function(e){erro('Falha ao ler o PDF: '+e.message);});
+      }
+      function fimPdf(linhas){
+        var rows=[],re=/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/g;
+        linhas.forEach(function(l){
+          var ds=[],m;re.lastIndex=0;
+          while((m=re.exec(l)))ds.push({i:obIso(+m[3],+m[2],+m[1]),pos:m.index});
+          ds=ds.filter(function(d){return d.i;});
+          if(!ds.length)return;
+          var nome=l.slice(0,ds[0].pos).replace(/^\s*\d+(\.\d+)*[\s.)-]+/,'').replace(/\s+\d+([.,]\d+)?\s*(dias?|d|days?|%)?\s*$/i,'').replace(/\s+(seg|ter|qua|qui|sex|s[aá]b|dom)\.?\s*$/i,'').trim();
+          if(nome.length<3||/^(in[ií]cio|t[eé]rmino|data|nome)/i.test(nome))return;
+          rows.push({nome:nome,inicio:ds[0].i,fim:(ds[1]||ds[0]).i,peso:null});
+        });
+        ok(rows);
+      }
+      pag(1);
+    }).catch(function(e){erro('Falha ao abrir o PDF: '+e.message);});
+  };
+  fr.readAsArrayBuffer(file);
+}
+function obRevisao(){
+  var o=obAcha(obImp.oid),rows=obImp.rows;
+  if(!rows.length){
+    obModal('<div style="font-weight:700;margin-bottom:8px">Nenhuma fase encontrada</div><div style="font-size:13px;line-height:1.5">Não consegui identificar tarefas com datas neste arquivo. Para planilhas, use colunas como <b>Nome/Tarefa</b>, <b>Início</b> e <b>Término</b>. Você também pode cadastrar as fases manualmente.</div><div style="text-align:right;margin-top:14px"><button onclick="obFecharModal()" style="'+OB_BTNP+'">Fechar</button></div>');
+    return;
+  }
+  obModal('<div style="font-weight:700;font-size:15px;margin-bottom:4px">Revisar fases encontradas</div><div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Desmarque o que não for fase, ajuste nomes e datas. Os pesos serão calculados pela duração (dá para ajustar depois).</div>'+
+    '<div style="max-height:46vh;overflow:auto">'+rows.map(function(r,k){return '<div style="border-bottom:1px solid var(--border);padding:6px 0"><div style="display:flex;gap:6px;align-items:center"><input type="checkbox" checked id="ob-r-ck'+k+'"><input id="ob-r-n'+k+'" value="'+obEsc(r.nome)+'" style="'+OB_FI+'"></div><div style="display:flex;gap:6px;margin-top:4px;padding-left:22px"><input type="date" id="ob-r-i'+k+'" value="'+obEsc(r.inicio)+'" style="'+OB_FI+'"><input type="date" id="ob-r-f'+k+'" value="'+obEsc(r.fim)+'" style="'+OB_FI+'"></div></div>';}).join('')+'</div>'+
+    ((o.fases||[]).length?'<label style="display:block;font-size:12px;margin-top:10px"><input type="checkbox" id="ob-r-subst" checked> Substituir as fases atuais (desmarque para acrescentar)</label>':'')+
+    '<label style="display:block;font-size:12px;margin-top:6px"><input type="checkbox" id="ob-r-anexo" checked> Guardar o arquivo original como link do cronograma</label>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="obFecharModal()" style="'+OB_BTN+'">Cancelar</button><button id="ob-r-ok" onclick="obConfirmarImport()" style="'+OB_BTNP+'">Criar fases</button></div>');
+}
+function obConfirmarImport(){
+  var o=obAcha(obImp.oid),novas=[],pesos=false;
+  obImp.rows.forEach(function(r,k){
+    if(!document.getElementById('ob-r-ck'+k).checked)return;
+    var nome=document.getElementById('ob-r-n'+k).value.trim();if(!nome)return;
+    var i=document.getElementById('ob-r-i'+k).value,f=document.getElementById('ob-r-f'+k).value||i;
+    if(r.peso!=null)pesos=true;
+    novas.push({id:obNovoId('f'),nome:nome,peso:r.peso!=null?r.peso:0,inicio:i,fim:f,avanco:0});
+  });
+  if(!novas.length){alert('Nenhuma fase selecionada.');return;}
+  if(pesos)obNormalizar(novas);else obDistribuirPesos(novas);
+  var subst=document.getElementById('ob-r-subst');
+  if(subst&&subst.checked)o.fases=novas;else o.fases=(o.fases||[]).concat(novas);
+  if(!subst||subst.checked)obNormalizar(o.fases);
+  var datas=novas.map(function(f){return f.inicio;}).concat(novas.map(function(f){return f.fim;})).filter(Boolean).sort();
+  if(!o.inicio&&datas.length)o.inicio=datas[0];
+  if(!o.fim&&datas.length)o.fim=datas[datas.length-1];
+  var anexar=document.getElementById('ob-r-anexo').checked&&obImp.file;
+  var btn=document.getElementById('ob-r-ok');
+  function concluir(){obImp=null;obFecharModal();obSalvar();}
+  if(anexar&&!o.linkCronograma){
+    btn.disabled=true;btn.textContent='Enviando arquivo...';
+    var form=new FormData();form.append('file',obImp.file);form.append('upload_preset','pafrestaizabel');
+    fetch('https://api.cloudinary.com/v1_1/odiwvd9n/auto/upload',{method:'POST',body:form}).then(function(r){return r.json();}).then(function(d){if(d.secure_url)o.linkCronograma=d.secure_url;concluir();}).catch(function(){concluir();});
+  } else concluir();
+}
+
 // ===== FOTOS (antes/depois) =====
 var fotoAntesNova='', fotoTarefaAlvo=-1, fotoDepoisPendente='', fotoEnviando=false;
 function fotoThumb(u){return (u||'').indexOf('/upload/')>0?u.replace('/upload/','/upload/w_300,h_300,c_fill,q_auto,f_auto/'):u;}
@@ -3557,7 +3980,8 @@ function carregarTodosOsDados(callback){
     contatosUteis:function(d){if(d)contatosUteis=d;},
     ciclos:function(d){ciclos=d||[];},
     classifDespesas:function(d){classifDespesas=d||[];},
-    sam:function(d){samItens=d||[];}
+    sam:function(d){samItens=d||[];},
+    obras:function(d){obras=d||[];}
   };
   var keys=Object.keys(secoes);
   var pendentes=keys.length;
