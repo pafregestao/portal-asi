@@ -118,11 +118,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="sec">Top 10 maiores despesas</div>
     <div class="card" id="top10" style="padding:0 16px"></div>
-    <div class="sec"><span>Comparativo de gastos</span><span style="font-size:11px;color:var(--txt3);font-weight:400;text-transform:none;letter-spacing:0">período atual x anterior</span></div>
-    <div class="card" id="comparativo">
+    <button id="btn-comp" onclick="abrirComparativo()" style="display:none;align-items:center;justify-content:center;gap:8px;width:100%;margin:6px 0 4px;padding:14px 16px;border-radius:12px;border:1px solid var(--azul);background:var(--azul);color:#fff;font-size:14px;font-weight:600;cursor:pointer">📈 Comparar gastos por período</button>
+    <div id="comp-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:1000;overflow:auto;padding:14px" onclick="if(event.target===this)fecharComparativo()">
+    <div class="card" id="comparativo" style="max-width:760px;margin:16px auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:16px;font-weight:700;color:var(--azul)">Comparativo de gastos</div><button onclick="fecharComparativo()" aria-label="Fechar" style="border:none;background:#f0efe8;border-radius:99px;width:32px;height:32px;font-size:16px;cursor:pointer;color:var(--txt2)">✕</button></div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:12px">Escolha o período e veja onde mais gastamos, comparado ao período imediatamente anterior.</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div id="comp-janelas" style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="fbtn on" data-n="3" onclick="setComp(3)">Últimos 3 meses</button>
+          <button class="fbtn" data-n="3" onclick="setComp(3)">Últimos 3 meses</button>
           <button class="fbtn" data-n="6" onclick="setComp(6)">Últimos 6 meses</button>
           <button class="fbtn" data-n="12" onclick="setComp(12)">Últimos 12 meses</button>
         </div>
@@ -136,6 +139,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       <div class="chart-wrap" id="comp-chart-wrap" style="height:240px;margin-bottom:8px"><canvas id="chartComp"></canvas></div>
       <div id="comp-lista"></div>
       <button id="comp-copiar" onclick="copiarComparativo()" style="margin-top:12px;font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--azul);cursor:pointer">Copiar resumo</button>
+    </div>
     </div>
     <div class="sec"><span>Analise detalhada por item</span><span style="font-size:11px;color:var(--txt3);font-weight:400;text-transform:none;letter-spacing:0">clique para ver por mes</span></div>
     <div class="filter-bar">
@@ -789,7 +793,7 @@ function renderTudo(){
 }
 
 /* ===== COMPARATIVO DE GASTOS (v1.40.0) ===== */
-var compN=3,compModo='cat',chartComp=null,compTexto='';
+var compN=0,compModo='cat',chartComp=null,compTexto='';
 var MES_NUM={Jan:1,Fev:2,Mar:3,Abr:4,Mai:5,Jun:6,Jul:7,Ago:8,Set:9,Out:10,Nov:11,Dez:12};
 var CAT_CURTO={terceiros:'Terceiros',tarifas:'Tarifas públicas',preventiva:'Manut. preventiva',conservacao:'Manutenção e conservação',admin:'Administrativas',bancarias:'Bancárias'};
 function mesSeq(m){var p=(m||'').split('/');var a=parseInt(p[1],10);if(p[1]&&p[1].length===2)a=2000+a;return a*12+((MES_NUM[p[0]]||1)-1);}
@@ -848,10 +852,19 @@ function fraseComp(r,c){
 function periodoTxt(l){return l.length?(l.length>1?l[0]+' a '+l[l.length-1]:l[0]):'—';}
 function renderComparativo(){
   var box=document.getElementById('comparativo');if(!box)return;
-  var d=merge();if(!d||!d.meses.length){box.style.display='none';return;}
-  box.style.display='block';
+  var d=merge();var bt=document.getElementById('btn-comp');if(bt)bt.style.display=(d&&d.meses.length)?'flex':'none';
+  var md=document.getElementById('comp-modal');if(!d||!d.meses.length||!md||md.style.display==='none')return;
   document.querySelectorAll('#comp-janelas .fbtn').forEach(function(b){b.classList.toggle('on',parseInt(b.getAttribute('data-n'),10)===compN);});
   document.querySelectorAll('#comp-modos .fbtn').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-m')===compModo);});
+  if(!compN){
+    document.getElementById('comp-aviso').innerHTML='';
+    document.getElementById('comp-resumo').innerHTML='<div style="font-size:13px;color:var(--txt2);padding:14px 0 6px">Escolha acima o período (3, 6 ou 12 meses) para ver onde o condomínio gastou mais e como isso mudou em relação ao período anterior.</div>';
+    if(chartComp){chartComp.destroy();chartComp=null;}
+    document.getElementById('comp-chart-wrap').style.display='none';
+    document.getElementById('comp-lista').innerHTML='';
+    var cb0=document.getElementById('comp-copiar');if(cb0)cb0.style.display='none';
+    compTexto='';return;
+  }
   var c=calcComparativo(d,compN,compModo);
   var av=document.getElementById('comp-aviso'),rs=document.getElementById('comp-resumo'),ls=document.getElementById('comp-lista');
   var cw=document.getElementById('comp-chart-wrap'),btn=document.getElementById('comp-copiar');
@@ -913,6 +926,18 @@ function renderComparativo(){
   compTexto=txt.join('\n');
   if(btn)btn.style.display=compTexto?'inline-block':'none';
 }
+function abrirComparativo(){
+  compN=0;compModo='cat';
+  var m=document.getElementById('comp-modal');if(!m)return;
+  m.style.display='block';m.scrollTop=0;document.body.style.overflow='hidden';
+  renderComparativo();
+}
+function fecharComparativo(){
+  var m=document.getElementById('comp-modal');if(m)m.style.display='none';
+  document.body.style.overflow='';
+  if(chartComp){chartComp.destroy();chartComp=null;}
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')fecharComparativo();});
 function setComp(n){compN=n;renderComparativo();}
 function setCompModo(m){compModo=m;renderComparativo();}
 function copiarComparativo(){
