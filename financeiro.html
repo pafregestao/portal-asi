@@ -108,7 +108,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       </div>
       <div id="meses-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
-    <button id="btn-comp" onclick="abrirComparativo()" style="display:none;align-items:center;gap:8px;margin:12px 0 14px;padding:10px 18px;border-radius:99px;border:1px solid var(--azul);background:var(--azul);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📈 Comparar gastos por período</button>
+    <button id="btn-comp" onclick="abrirComparativo()" style="display:none;align-items:center;gap:8px;margin:12px 8px 14px 0;padding:10px 18px;border-radius:99px;border:1px solid var(--azul);background:var(--azul);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📈 Comparar gastos por período</button>
+    <button id="btn-ent" onclick="abrirEntenda()" style="display:none;align-items:center;gap:8px;margin:12px 0 14px;padding:10px 18px;border-radius:99px;border:1px solid var(--azul);background:#fff;color:var(--azul);font-size:13px;font-weight:600;cursor:pointer">🧭 Entenda os gastos</button>
     <div class="card">
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;font-size:12px">
         <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2d7a3a;display:inline-block"></span>Receitas</span>
@@ -119,6 +120,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="sec">Top 10 maiores despesas</div>
     <div class="card" id="top10" style="padding:0 16px"></div>
+    <div id="ent-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:1001;overflow:auto;padding:14px" onclick="if(event.target===this)fecharEntenda()">
+    <div style="max-width:640px;margin:16px auto;background:var(--bg);border-radius:16px;padding:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:20px;font-weight:800;color:var(--azul)">🧭 Entenda os gastos</div><button onclick="fecharEntenda()" aria-label="Fechar" style="border:none;background:#e4e4dc;border-radius:99px;width:34px;height:34px;font-size:16px;cursor:pointer;color:var(--txt2)">✕</button></div>
+      <div style="font-size:14px;color:var(--txt2);margin-bottom:12px;line-height:1.4">Uma explicação simples de para onde foi o dinheiro do condomínio e onde podemos economizar.</div>
+      <div id="ent-janelas" style="display:flex;gap:6px;flex-wrap:wrap"><button class="fbtn on" data-n="3" onclick="setEntN(3)">Últimos 3 meses</button><button class="fbtn" data-n="6" onclick="setEntN(6)">Últimos 6 meses</button><button class="fbtn" data-n="12" onclick="setEntN(12)">Últimos 12 meses</button></div>
+      <div id="ent-corpo"></div>
+    </div>
+    </div>
     <div id="comp-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:1000;overflow:auto;padding:14px" onclick="if(event.target===this)fecharComparativo()">
     <div class="card" id="comparativo" style="max-width:760px;margin:16px auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:16px;font-weight:700;color:var(--azul)">Comparativo de gastos</div><button onclick="fecharComparativo()" aria-label="Fechar" style="border:none;background:#f0efe8;border-radius:99px;width:32px;height:32px;font-size:16px;cursor:pointer;color:var(--txt2)">✕</button></div>
@@ -900,6 +909,7 @@ function periodoTxt(l){return l.length?(l.length>1?l[0]+' a '+l[l.length-1]:l[0]
 function renderComparativo(){
   var box=document.getElementById('comparativo');if(!box)return;
   var d=merge();var bt=document.getElementById('btn-comp');if(bt)bt.style.display=(d&&d.meses.length)?'inline-flex':'none';
+  var be=document.getElementById('btn-ent');if(be)be.style.display=(d&&d.meses.length)?'inline-flex':'none';
   var md=document.getElementById('comp-modal');if(!d||!d.meses.length||!md||md.style.display==='none')return;
   document.querySelectorAll('#comp-janelas .fbtn').forEach(function(b){b.classList.toggle('on',parseInt(b.getAttribute('data-n'),10)===compN);});
   document.querySelectorAll('#comp-modos .fbtn').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-m')===compModo);});
@@ -1008,7 +1018,7 @@ function fecharComparativo(){
   document.body.style.overflow='';
   if(chartComp){chartComp.destroy();chartComp=null;}
 }
-document.addEventListener('keydown',function(e){if(e.key==='Escape')fecharComparativo();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){fecharComparativo();fecharEntenda();}});
 function setCompFiltro(f){compFiltro=f;renderComparativo();}
 function setComp(n){compN=n;renderComparativo();}
 function setCompModo(m){compModo=m;renderComparativo();}
@@ -1018,6 +1028,147 @@ function copiarComparativo(){
   try{navigator.clipboard.writeText(compTexto).then(ok,function(){});}catch(e){}
 }
 /* ===== FIM COMPARATIVO ===== */
+
+/* ===== ENTENDA OS GASTOS (v1.41.0) ===== */
+var entN=3,entOff={},entCands=[],entTexto='';
+var MES_NOME=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function mesLabel(seq){return MES_NOME[seq%12]+'/'+String(Math.floor(seq/12)).slice(2);}
+function fmtR(v){return 'R$ '+Math.round(v).toLocaleString('pt-BR');}
+function mediana(a){if(!a.length)return 0;var b=a.slice().sort(function(x,y){return x-y;}),m=Math.floor(b.length/2);return b.length%2?b[m]:(b[m-1]+b[m])/2;}
+function valMes(it,m){var i=it.meses.indexOf(m);return i>=0?it.vals[i]:0;}
+function somaArr(arr,d,lista){var t=0;lista.forEach(function(m){var i=d.meses.indexOf(m);if(i>=0)t+=arr[i]||0;});return t;}
+function entPeriodos(d,N){
+  var seqs=d.meses.map(mesSeq),L=Math.max.apply(null,seqs),at=[],an=[],fora=[];
+  d.meses.forEach(function(m,i){var s=seqs[i];if(s>L-N&&s<=L)at.push(m);else{fora.push(m);if(s>L-2*N&&s<=L-N)an.push(m);}});
+  var ord=function(a,b){return mesSeq(a)-mesSeq(b);};at.sort(ord);an.sort(ord);
+  return{at:at,an:an,fora:fora,L:L};
+}
+function entCandidatos(d,E){
+  var nH=d.meses.length,nM=E.at.length,out=[];
+  d.itens.forEach(function(it){
+    var sum=0;E.at.forEach(function(m){sum+=valMes(it,m);});
+    if(sum<=0)return;
+    var pres=0;d.meses.forEach(function(m){if(valMes(it,m)>0)pres++;});
+    var base=E.fora.map(function(m){return valMes(it,m);});
+    if(nH>=4&&pres/nH<0.5){
+      out.push({nome:it.nome,cat:it.cat,valor:sum,motivo:'Apareceu em apenas '+pres+' dos '+nH+' meses. Parece um gasto pontual.'});
+    }else if(base.length>=2){
+      var typ=mediana(base),exc=sum-typ*nM;
+      if(typ>0&&exc>=Math.max(500,0.3*typ*nM))out.push({nome:it.nome,cat:it.cat,valor:exc,motivo:'Normalmente custa cerca de '+fmtR(typ)+' por mês. No período foi '+fmtR(sum/nM)+' por mês. A parte acima do normal pode não se repetir.'});
+    }
+  });
+  out.sort(function(a,b){return b.valor-a.valor;});
+  return out.slice(0,12);
+}
+function entBarra(v,max,cor){return '<div style="height:12px;background:#eceae2;border-radius:99px;overflow:hidden"><div style="height:100%;width:'+Math.max(2,Math.round(v/(max||1)*100))+'%;background:'+cor+';border-radius:99px"></div></div>';}
+function entCard(inner,extra){return '<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;'+(extra||'')+'">'+inner+'</div>';}
+function entTitulo(emoji,t,sub){return '<div style="margin:20px 0 10px"><div style="font-size:18px;font-weight:800;color:var(--azul)">'+emoji+' '+t+'</div>'+(sub?'<div style="font-size:13px;color:var(--txt2);margin-top:3px;line-height:1.4">'+sub+'</div>':'')+'</div>';}
+function entLinhaItem(it,max,cor,verbo){
+  return '<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-size:15px;font-weight:700;margin-bottom:8px">'+escC(it.nome)+'</div>'+
+  '<div style="display:flex;align-items:center;gap:10px;margin-bottom:5px"><div style="width:48px;font-size:12px;color:var(--txt3)">Antes</div><div style="flex:1">'+entBarra(it.ant,max,'#b5b3a8')+'</div><div style="width:84px;text-align:right;font-size:13px;color:var(--txt2)">'+fmtR(it.ant)+'</div></div>'+
+  '<div style="display:flex;align-items:center;gap:10px"><div style="width:48px;font-size:12px;font-weight:700">Agora</div><div style="flex:1">'+entBarra(it.atual,max,cor)+'</div><div style="width:84px;text-align:right;font-size:13px;font-weight:700">'+fmtR(it.atual)+'</div></div>'+
+  '<div style="font-size:14px;font-weight:800;color:'+cor+';margin-top:7px">'+verbo+' '+fmtR(Math.abs(it.dif))+(it.pct!==null?' ('+Math.round(Math.abs(it.pct))+'%)':' (gasto novo)')+'</div></div>';
+}
+function abrirEntenda(){
+  entN=3;entOff={};
+  var m=document.getElementById('ent-modal');if(!m)return;
+  m.style.display='block';m.scrollTop=0;document.body.style.overflow='hidden';
+  renderEntenda();
+}
+function fecharEntenda(){var m=document.getElementById('ent-modal');if(m)m.style.display='none';document.body.style.overflow='';}
+function setEntN(n){entN=n;entOff={};renderEntenda();}
+function entToggle(i){var c=entCands[i];if(!c)return;entOff[c.nome]=!entOff[c.nome];renderEntenda(true);}
+function renderEntenda(keep){
+  var el=document.getElementById('ent-corpo');if(!el)return;
+  var d=merge();if(!d||!d.meses.length)return;
+  document.querySelectorAll('#ent-janelas .fbtn').forEach(function(b){b.classList.toggle('on',parseInt(b.getAttribute('data-n'),10)===entN);});
+  var scroll=keep?document.getElementById('ent-modal').scrollTop:0;
+  var E=entPeriodos(d,entN),nM=E.at.length,temAnt=E.an.length>0;
+  var txt=[],h='';
+  var desp=somaArr(d.despesas,d,E.at),rec=somaArr(d.receitas,d,E.at),despAn=somaArr(d.despesas,d,E.an);
+  if(!desp){var s0=0;d.itens.forEach(function(it){E.at.forEach(function(m){s0+=valMes(it,m);});});desp=s0;}
+  var per=E.at.length>1?E.at[0]+' a '+E.at[E.at.length-1]:E.at[0];
+  txt.push('📊 *Gastos do condomínio* — '+per+' ('+txtMeses(nM)+')');
+  // 1. O que aconteceu
+  var topo='<div style="font-size:12px;color:var(--txt3);margin-bottom:6px">'+escC(per)+' · '+txtMeses(nM)+'</div><div style="font-size:17px;line-height:1.4">O condomínio gastou</div><div style="font-size:34px;font-weight:800;color:var(--azul);line-height:1.15">'+fmtR(desp)+'</div>';
+  txt.push('O condomínio gastou '+fmtR(desp)+'.');
+  if(temAnt&&despAn>0){
+    var dd=desp-despAn,mais=dd>0;
+    topo+='<div style="font-size:14px;color:var(--txt2);margin-top:6px">Nos '+txtMeses(E.an.length)+' antes (de '+escC(E.an[0]+(E.an.length>1?' a '+E.an[E.an.length-1]:''))+'), gastou '+fmtR(despAn)+'.</div>'+
+    '<div style="margin-top:12px;padding:12px 14px;border-radius:12px;font-size:17px;font-weight:800;line-height:1.3;'+(dd===0?'background:#f0efe8;color:var(--txt2)':(mais?'background:#fdecea;color:var(--bad)':'background:#e8f5ea;color:var(--ok)'))+'">'+(dd===0?'Gastamos o mesmo valor':(mais?'⚠️ Gastamos '+fmtR(dd)+' A MAIS':'✅ Gastamos '+fmtR(-dd)+' A MENOS'))+'</div>';
+    txt.push((dd===0?'Foi o mesmo valor do período anterior.':(mais?'⚠️ Gastamos '+fmtR(dd)+' a mais':'✅ Gastamos '+fmtR(-dd)+' a menos')+' que nos '+txtMeses(E.an.length)+' anteriores ('+fmtR(despAn)+').'));
+  }
+  h+=entCard(topo);
+  if(rec>0){
+    var mx0=Math.max(rec,desp),sob=rec-desp;
+    h+=entCard('<div style="font-size:15px;font-weight:700;margin-bottom:10px">Entrou x Saiu</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:52px;font-size:13px">Entrou</div><div style="flex:1">'+entBarra(rec,mx0,'#2d7a3a')+'</div><div style="width:92px;text-align:right;font-weight:700;font-size:13px">'+fmtR(rec)+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px"><div style="width:52px;font-size:13px">Saiu</div><div style="flex:1">'+entBarra(desp,mx0,'#c0392b')+'</div><div style="width:92px;text-align:right;font-weight:700;font-size:13px">'+fmtR(desp)+'</div></div>'+
+      '<div style="margin-top:12px;font-size:16px;font-weight:800;color:'+(sob>=0?'var(--ok)':'var(--bad)')+'">'+(sob>=0?'🟢 Sobrou '+fmtR(sob):'🔴 Faltou '+fmtR(-sob))+' no período</div>');
+    txt.push('Entrou '+fmtR(rec)+' e saiu '+fmtR(desp)+': '+(sob>=0?'sobrou '+fmtR(sob):'faltou '+fmtR(-sob))+'.');
+  }
+  // 2 e 3. Onde subiu / desceu
+  if(temAnt){
+    var cmp=calcComparativo(d,entN,'item'),todos=cmp.linhas;
+    var sobe=todos.filter(function(l){return l.dif>0;}).sort(function(a,b){return b.dif-a.dif;}).slice(0,5);
+    var desce=todos.filter(function(l){return l.dif<0;}).sort(function(a,b){return a.dif-b.dif;}).slice(0,3);
+    if(sobe.length){
+      var mxs=sobe.reduce(function(m,l){return Math.max(m,l.atual,l.ant);},1);
+      h+=entTitulo('🔴','Onde o gasto SUBIU','Estes foram os itens que mais pesaram a mais no período.')+entCard(sobe.map(function(l){return entLinhaItem(l,mxs,'#c0392b','Subiu');}).join('').replace('border-top:1px solid var(--border)','border-top:none'),'padding-top:4px');
+      txt.push('');txt.push('🔴 *Onde o gasto subiu:*');
+      sobe.forEach(function(l){txt.push('• '+l.nome+': '+fmtR(l.ant)+' → '+fmtR(l.atual)+' (subiu '+fmtR(l.dif)+')');});
+    }
+    if(desce.length){
+      var mxd=desce.reduce(function(m,l){return Math.max(m,l.atual,l.ant);},1);
+      h+=entTitulo('🟢','Onde GASTAMOS MENOS','Aqui houve economia em relação ao período anterior.')+entCard(desce.map(function(l){return entLinhaItem(l,mxd,'#2d7a3a','Economia de');}).join('').replace('border-top:1px solid var(--border)','border-top:none'),'padding-top:4px');
+      txt.push('');txt.push('🟢 *Onde gastamos menos:*');
+      desce.forEach(function(l){txt.push('• '+l.nome+': '+fmtR(l.ant)+' → '+fmtR(l.atual)+' (economia de '+fmtR(-l.dif)+')');});
+    }
+  }else{
+    h+=entCard('<div style="font-size:13px;color:var(--txt2)">Ainda não há meses anteriores carregados para comparar. Quando houver, aqui aparece o que subiu e o que diminuiu.</div>');
+  }
+  // 4. O que pode nao se repetir + projecao
+  entCands=entCandidatos(d,E);
+  if(entCands.length){
+    var off=0;entCands.forEach(function(c){if(!entOff[c.nome])off+=c.valor;});
+    var avgD=desp/nM,avgR=rec/nM,projD=Math.max(0,avgD-off/nM),sA=avgR-avgD,sP=avgR-projD;
+    h+=entTitulo('💡','O que pode NÃO se repetir','Gastos fora do comum. Se não voltarem nos próximos meses, a despesa cai. Desmarque o que você acha que vai se repetir.');
+    var lista=entCands.map(function(c,i){var on=!entOff[c.nome];return '<label style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--border);cursor:pointer"><input type="checkbox" '+(on?'checked ':'')+'onchange="entToggle('+i+')" style="width:22px;height:22px;margin-top:2px;flex-shrink:0"><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:10px"><div style="font-size:15px;font-weight:700">'+escC(c.nome)+'</div><div style="font-size:15px;font-weight:800;color:var(--warn);flex-shrink:0">'+fmtR(c.valor)+'</div></div><div style="font-size:12px;color:var(--txt2);margin-top:3px;line-height:1.4">'+escC(c.motivo)+'</div></div></label>';}).join('');
+    h+=entCard(lista,'padding-top:4px');
+    var mxp=Math.max(avgD,projD,1);
+    var proj='<div style="font-size:15px;font-weight:700;margin-bottom:10px">Gasto por mês</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:62px;font-size:13px">Hoje</div><div style="flex:1">'+entBarra(avgD,mxp,'#c0392b')+'</div><div style="width:92px;text-align:right;font-weight:700;font-size:13px">'+fmtR(avgD)+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px"><div style="width:62px;font-size:13px">Projeção</div><div style="flex:1">'+entBarra(projD,mxp,'#2d7a3a')+'</div><div style="width:92px;text-align:right;font-weight:700;font-size:13px">'+fmtR(projD)+'</div></div>';
+    if(off>0)proj+='<div style="margin-top:12px;font-size:16px;font-weight:800;color:var(--ok)">✅ Se isso se confirmar, o gasto cai '+fmtR(off/nM)+' por mês ('+Math.round(off/nM/(avgD||1)*100)+'%), cerca de '+fmtR(off/nM*12)+' em 12 meses.</div>';
+    if(rec>0){
+      proj+='<div style="margin-top:10px;font-size:14px;line-height:1.5">Sobra por mês: <b>'+(sA>=0?fmtR(sA):'faltam '+fmtR(-sA))+'</b> hoje &rarr; <b style="color:'+(sP>=0?'var(--ok)':'var(--bad)')+'">'+(sP>=0?fmtR(sP):'faltam '+fmtR(-sP))+'</b> na projeção.</div>';
+      var prox='';for(var k=1;k<=3;k++){prox+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px dashed var(--border)"><span>'+mesLabel(E.L+k)+'</span><span>gasto previsto <b>'+fmtR(projD)+'</b></span><span style="color:'+(sP>=0?'var(--ok)':'var(--bad)')+';font-weight:700">'+(sP>=0?'sobra '+fmtR(sP):'falta '+fmtR(-sP))+'</span></div>';}
+      proj+='<div style="margin-top:10px">'+prox+'</div>';
+    }
+    proj+='<div style="margin-top:10px;font-size:11px;color:var(--txt3);line-height:1.4">Projeção é uma estimativa baseada no histórico carregado. Não é garantia: depende de os gastos marcados realmente não voltarem.</div>';
+    h+=entCard(proj);
+    txt.push('');txt.push('💡 *Gastos que podem não se repetir:*');
+    entCands.forEach(function(c){if(!entOff[c.nome])txt.push('• '+c.nome+': '+fmtR(c.valor));});
+    if(off>0)txt.push('Se não voltarem, o gasto mensal cai de '+fmtR(avgD)+' para '+fmtR(projD)+' (economia de '+fmtR(off/nM*12)+' em 12 meses).');
+  }
+  // 5. Onde podemos aliviar
+  var nomesCand={};entCands.forEach(function(c){nomesCand[c.nome]=1;});
+  var cmp2=temAnt?calcComparativo(d,entN,'item').linhas:[];var mapa={};cmp2.forEach(function(l){mapa[l.nome]=l;});
+  var fixos=d.itens.map(function(it){var s=0;E.at.forEach(function(m){s+=valMes(it,m);});return{nome:it.nome,soma:s,l:mapa[it.nome]};}).filter(function(x){return x.soma>0&&!nomesCand[x.nome];}).sort(function(a,b){return b.soma-a.soma;}).slice(0,5);
+  if(fixos.length){
+    var mxf=fixos[0].soma;
+    h+=entTitulo('🎯','Onde podemos aliviar','Estes são os maiores gastos fixos do condomínio. Negociar contratos ou rever o consumo aqui rende muito, mesmo com pouca porcentagem.');
+    h+=entCard(fixos.map(function(f,i){var tag=f.l&&f.l.dif>0&&f.l.pct!==null&&f.l.pct>=10?'<span style="font-size:11px;font-weight:700;color:var(--bad);background:#fdecea;border-radius:99px;padding:2px 8px;margin-left:6px">subiu '+Math.round(f.l.pct)+'%</span>':'';return '<div style="padding:11px 0;'+(i?'border-top:1px solid var(--border)':'')+'"><div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px"><div style="font-size:15px;font-weight:700">'+escC(f.nome)+tag+'</div><div style="font-size:14px;font-weight:800;flex-shrink:0">'+fmtR(f.soma/nM)+' / mês</div></div>'+entBarra(f.soma,mxf,'#1a3a5c')+'<div style="font-size:12px;color:var(--txt3);margin-top:4px">'+(desp>0?Math.round(f.soma/desp*100)+'% de tudo que o condomínio gastou no período':'')+'</div></div>';}).join(''),'padding-top:4px');
+    txt.push('');txt.push('🎯 *Maiores gastos fixos (onde podemos aliviar):*');fixos.forEach(function(f){txt.push('• '+f.nome+': '+fmtR(f.soma/nM)+' por mês');});
+  }
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 4px"><button onclick="entWhats()" style="flex:1;min-width:160px;padding:12px 16px;border-radius:12px;border:none;background:#25a244;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Enviar no WhatsApp</button><button id="ent-copiar" onclick="entCopiar()" style="padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--azul);font-size:14px;font-weight:600;cursor:pointer">Copiar texto</button></div>';
+  entTexto=txt.join('\n');
+  el.innerHTML=h;
+  if(keep)document.getElementById('ent-modal').scrollTop=scroll;
+}
+function entWhats(){window.open('https://wa.me/?text='+encodeURIComponent(entTexto),'_blank');}
+function entCopiar(){var b=document.getElementById('ent-copiar');try{navigator.clipboard.writeText(entTexto).then(function(){if(b){b.textContent='Copiado!';setTimeout(function(){b.textContent='Copiar texto';},1800);}});}catch(e){}}
+/* ===== FIM ENTENDA ===== */
 
 function filtrarCat(cat,btn){filtroAtual=cat;document.querySelectorAll('.filter-bar .fbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');var d=merge();if(d)renderItens(d);}
 
@@ -1033,6 +1184,6 @@ function renderItens(d){
   }).join('');
 }
 </script>
-<!-- v1.40.0 -->
+<!-- v1.41.0 -->
 </body>
 </html>
