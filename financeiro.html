@@ -108,6 +108,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
       </div>
       <div id="meses-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
+    <button id="btn-comp" onclick="abrirComparativo()" style="display:none;align-items:center;gap:8px;margin:12px 0 14px;padding:10px 18px;border-radius:99px;border:1px solid var(--azul);background:var(--azul);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📈 Comparar gastos por período</button>
     <div class="card">
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;font-size:12px">
         <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#2d7a3a;display:inline-block"></span>Receitas</span>
@@ -118,7 +119,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
     </div>
     <div class="sec">Top 10 maiores despesas</div>
     <div class="card" id="top10" style="padding:0 16px"></div>
-    <button id="btn-comp" onclick="abrirComparativo()" style="display:none;align-items:center;justify-content:center;gap:8px;width:100%;margin:6px 0 4px;padding:14px 16px;border-radius:12px;border:1px solid var(--azul);background:var(--azul);color:#fff;font-size:14px;font-weight:600;cursor:pointer">📈 Comparar gastos por período</button>
     <div id="comp-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:1000;overflow:auto;padding:14px" onclick="if(event.target===this)fecharComparativo()">
     <div class="card" id="comparativo" style="max-width:760px;margin:16px auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:16px;font-weight:700;color:var(--azul)">Comparativo de gastos</div><button onclick="fecharComparativo()" aria-label="Fechar" style="border:none;background:#f0efe8;border-radius:99px;width:32px;height:32px;font-size:16px;cursor:pointer;color:var(--txt2)">✕</button></div>
@@ -858,7 +858,7 @@ function fraseComp(r,c){
 function periodoTxt(l){return l.length?(l.length>1?l[0]+' a '+l[l.length-1]:l[0]):'—';}
 function renderComparativo(){
   var box=document.getElementById('comparativo');if(!box)return;
-  var d=merge();var bt=document.getElementById('btn-comp');if(bt)bt.style.display=(d&&d.meses.length)?'flex':'none';
+  var d=merge();var bt=document.getElementById('btn-comp');if(bt)bt.style.display=(d&&d.meses.length)?'inline-flex':'none';
   var md=document.getElementById('comp-modal');if(!d||!d.meses.length||!md||md.style.display==='none')return;
   document.querySelectorAll('#comp-janelas .fbtn').forEach(function(b){b.classList.toggle('on',parseInt(b.getAttribute('data-n'),10)===compN);});
   document.querySelectorAll('#comp-modos .fbtn').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-m')===compModo);});
