@@ -129,6 +129,7 @@ textarea.fi{height:75px;resize:vertical}
 <div class="nav-wrap"><div class="nav">
   <button class="nb on" onclick="nav('inicio')">Início</button>
   <button class="nb" onclick="nav('realizacoes')">Realizações</button>
+  <button class="nb" onclick="nav('fotos')">Fotos</button>
   <button class="nb" onclick="nav('tarefas')">Tarefas</button>
   <button class="nb" onclick="nav('projetos')">Projetos</button>
   <button class="nb admin-only" id="nav-orcamentos" style="display:none" onclick="nav('orcamentos')">Orçamentos</button>
@@ -161,6 +162,7 @@ textarea.fi{height:75px;resize:vertical}
   <div class="grid2" id="grid-acesso-rapido">
     <div class="gcard" id="gcard-sam" style="display:none" onclick="nav('sam')"><div class="gico" style="background:#e3f0fb">💬</div><div><div style="font-weight:600;font-size:13px">SAM</div><div style="font-size:11px;color:var(--txt3)">Tire suas dúvidas</div></div></div>
     <div class="gcard" onclick="nav('realizacoes')"><div class="gico" style="background:#e8f5e9">✅</div><div><div style="font-weight:600;font-size:13px">Realizações</div><div style="font-size:11px;color:var(--txt3)">Histórico de ações</div></div></div>
+    <div class="gcard" onclick="nav('fotos')"><div class="gico" style="background:#f0eeff">📷</div><div><div style="font-weight:600;font-size:13px">Fotos</div><div style="font-size:11px;color:var(--txt3)">Antes e depois</div></div></div>
     <div class="gcard" onclick="nav('tarefas')"><div class="gico" style="background:#fff3e0">📌</div><div><div style="font-weight:600;font-size:13px">Tarefas</div><div style="font-size:11px;color:var(--txt3)">Ordem de prioridade</div></div></div>
     <div class="gcard" onclick="nav('projetos')"><div class="gico" style="background:#fff3e0">🔨</div><div><div style="font-weight:600;font-size:13px">Projetos</div><div style="font-size:11px;color:var(--txt3)">Em andamento</div></div></div>
     <div class="gcard admin-only" style="display:none" onclick="nav('orcamentos')"><div class="gico" style="background:#e8f5e9">💰</div><div><div style="font-weight:600;font-size:13px">Orçamentos</div><div style="font-size:11px;color:var(--txt3)">Propostas e cotações</div></div></div>
@@ -189,6 +191,12 @@ textarea.fi{height:75px;resize:vertical}
   <input type="email" name="usuario-login-atual" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
   <input id="busca-realizacoes" type="search" autocomplete="off" placeholder="🔍 Buscar em todas as realizações..." oninput="filtrarRealizacoes(this.value)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-bottom:12px;font-family:inherit">
   <div class="card" id="lista-realizacoes"></div>
+</div>
+
+<!-- FOTOS -->
+<div id="pg-fotos" class="pg">
+  <div class="sec">Registro fotográfico — antes e depois</div>
+  <div id="lista-fotos"></div>
 </div>
 
 <!-- PROJETOS -->
@@ -573,7 +581,7 @@ auth.onAuthStateChanged(function(user){
     if(usuarioAtual.perfil!=='admin') _trackInit(user.uid);
     carregarTodosOsDados(function(){
       migrarTarefasConcluidas();
-      renderAlertas();renderRealizacoes();renderProjetosAdmin();renderContratosAdmin();
+      renderAlertas();renderRealizacoes();if(typeof renderFotos==='function')renderFotos();renderProjetosAdmin();renderContratosAdmin();
       renderPrestadores();renderOrcamentos();renderTarefas();sincronizarFinanceiro();renderDocumentos();renderAssembleias();renderContatosPublico();carregarChamados();carregarSugestoes();
       carregarResumosFinanceiros(function(){renderCiclos();});
       renderSam();
@@ -1766,7 +1774,7 @@ function adicionarContatoGenerico(arrNome,formPrefix){
   nomeEl.value='';telEl.value='';nomeEl.focus();
   salvarContatosGenerico(arrNome);
 }
-var NAV_IDS=['inicio','realizacoes','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','sam','mapa'];
+var NAV_IDS=['inicio','realizacoes','fotos','tarefas','projetos','orcamentos','contratos','churrasqueira','financeiro','ciclos','documentos','prestadores','assembleias','defeitos','sugestoes','sam','mapa'];
 var BNAV_IDS=['inicio','sugestoes','prestadores','','defeitos'];
 var adminLogado=false;
 
@@ -1784,6 +1792,7 @@ function nav(id){
   var j=BNAV_IDS.indexOf(id); if(j>=0) document.querySelectorAll('.bni')[j].classList.add('on');
   window.scrollTo(0,0);
   if(id==='sam'&&typeof renderSam==='function') renderSam();
+  if(id==='fotos'&&typeof renderFotos==='function') renderFotos();
 }
 
 function chamarWA(){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Olá! Entrei em contato pelo Portal Altos Santa Izabel.'));}
@@ -3143,7 +3152,7 @@ function migrarTarefasConcluidas(){
   var dataStr=meses[hoje.getMonth()]+'/'+hoje.getFullYear();
   var alertasParaRemover=[];
   concluidas.forEach(function(item){
-    dadosAdmin.realizacoes.unshift({data:dataStr,txt:item.txt,foto:''});
+    dadosAdmin.realizacoes.unshift({data:dataStr,txt:item.txt,foto:'',fotoAntes:item.fotoAntes||'',antesEm:item.fotoAntesEm||'',concluidaEm:new Date().toISOString()});
     if(item.alertaId) alertasParaRemover.push(item.alertaId);
   });
   if(alertasParaRemover.length){
@@ -3164,9 +3173,13 @@ function renderTarefas(){
       '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
         '<input id="nova-tar-txt" placeholder="Descrição da tarefa..." style="flex:1;min-width:160px;font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit" onkeydown="if(event.key===\'Enter\')addTarefaRapida()">'+
         '<select id="nova-tar-status" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-family:inherit"><option value="gray">Pendente</option><option value="blue">Em andamento</option></select>'+
+        '<button type="button" onclick="escolherFotoTarefa(-1)" style="padding:6px 10px;border-radius:7px;border:1px solid #bbdefb;background:#fff;color:var(--azul);font-size:12px;cursor:pointer">📷 Foto do antes</button>'+
         '<button onclick="addTarefaRapida()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--azul);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Adicionar</button>'+
       '</div>'+
-    '</div>'
+      '<div id="prev-antes-novo" style="margin-top:8px">'+previewFotoPendente(fotoAntesNova,'removerFotoAntesNova()')+'</div>'+
+      '<div style="font-size:10px;color:var(--txt3);margin-top:4px">A foto do antes é opcional. Na conclusão será pedida a foto do depois (também opcional).</div>'+
+    '</div>'+
+    '<input type="file" id="inp-foto-tarefa" accept="image/*" style="display:none" onchange="onFotoTarefaSelecionada(this)">'
   );
   el.innerHTML=formAdd+'<div class="card" style="padding:0 15px">'+idxFiltrados.map(function(i,pos){
     var t=tarefas[i];
@@ -3174,6 +3187,7 @@ function renderTarefas(){
       return '<div class="file-row">'+
         '<div class="file-ico" style="background:'+(t.status==='blue'?'#e3f0fb':'#fff3e0')+';font-weight:700;color:var(--azul);font-size:13px">'+(pos+1)+'º</div>'+
         '<div style="flex:1"><div style="font-weight:500">'+t.txt+'</div><div style="font-size:11px;color:var(--txt3)">'+t.sub+'</div></div>'+
+        (t.fotoAntes?'<img src="'+fotoThumb(t.fotoAntes)+'" alt="Antes" onclick="abrirLightbox([{url:\''+t.fotoAntes+'\',rot:\'Antes\'}],0,\''+esc(t.txt).replace(/'/g,'')+'\')" style="width:34px;height:34px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0">':'')+
         '<span class="badge '+t.status+'">'+stLabel[t.status]+'</span></div>';
     }
     return '<div class="file-row" data-tarefa-idx="'+i+'" style="flex-wrap:wrap;gap:6px">'+
@@ -3188,6 +3202,7 @@ function renderTarefas(){
       '<select onchange="onStatusChangeTarefa('+i+',this.value)" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit">'+
         ['gray','blue','ok'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+stLabel[s]+'</option>';}).join('')+
       '</select>'+
+      '<button onclick="escolherFotoTarefa('+i+')" title="'+(t.fotoAntes?'Trocar foto do antes':'Adicionar foto do antes')+'" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid '+(t.fotoAntes?'#a5d6a7':'var(--border)')+';cursor:pointer;background:'+(t.fotoAntes?'#e8f5e9':'#f8f8f4')+';flex-shrink:0">'+(t.fotoAntes?'<img src="'+fotoThumb(t.fotoAntes)+'" style="width:18px;height:18px;object-fit:cover;border-radius:3px;vertical-align:middle">':'📷')+'</button>'+
       '<button onclick="toggleAlertaTarefa('+i+','+(!t.temAlerta)+')" title="'+(t.temAlerta?'Remover alerta vinculado':'Criar alerta vinculado a esta tarefa')+'" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid '+(t.temAlerta?'#ffd699':'var(--border)')+';cursor:pointer;background:'+(t.temAlerta?'#fff3e0':'#f8f8f4')+';color:'+(t.temAlerta?'#b8630a':'#999')+';flex-shrink:0">🚩</button>'+
       '<button onclick="excluirTarefaDireto('+i+')" style="background:#fdecea;color:#c0392b;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;flex-shrink:0">✕</button>'+
     '</div>';
@@ -3263,35 +3278,217 @@ function renderTarefasAdmin(){
 function addTarefa(){tarefas.push({txt:'Nova tarefa',sub:'',status:'gray'});renderTarefasAdmin();}
 function onStatusChangeTarefa(i,val){
   if(!tarefas[i]) return;
-  if(val==='ok'){
-    if(!confirm('Marcar "'+tarefas[i].txt+'" como concluída?\n\nEla vai sair da lista de Tarefas e entrar em Realizações.')){
-      renderTarefasAdmin();
-      return;
-    }
-    var item=tarefas.splice(i,1)[0];
-    var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    var hoje=new Date();
-    var dataStr=meses[hoje.getMonth()]+'/'+hoje.getFullYear();
-    dadosAdmin.realizacoes.unshift({data:dataStr,txt:item.txt,foto:''});
-    salvarNoFirestore('realizacoes',dadosAdmin.realizacoes,function(){renderRealizacoes();});
-    if(item.alertaId){
-      dadosAdmin.alertas=dadosAdmin.alertas.filter(function(a){return a.origemTarefaId!==item.alertaId;});
-      salvarNoFirestore('alertas',dadosAdmin.alertas,function(){renderAlertas();});
-    }
-    salvarTarefas();
-    renderTarefasAdmin();
-    renderTarefas();
-    return;
-  }
+  if(val==='ok'){ abrirModalConcluirTarefa(i); return; }
   tarefas[i].status=val;
   renderTarefasAdmin();
   renderTarefas();
 }
+function concluirTarefa(i,fotoDepois){
+  var item=tarefas.splice(i,1)[0];
+  var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var hoje=new Date();
+  var dataStr=meses[hoje.getMonth()]+'/'+hoje.getFullYear();
+  var real={data:dataStr,txt:item.txt,foto:'',concluidaEm:hoje.toISOString()};
+  if(item.fotoAntes){real.fotoAntes=item.fotoAntes;real.antesEm=item.fotoAntesEm||'';}
+  if(fotoDepois) real.fotoDepois=fotoDepois;
+  dadosAdmin.realizacoes.unshift(real);
+  salvarNoFirestore('realizacoes',dadosAdmin.realizacoes,function(){renderRealizacoes();renderFotos();});
+  if(item.alertaId){
+    dadosAdmin.alertas=dadosAdmin.alertas.filter(function(a){return a.origemTarefaId!==item.alertaId;});
+    salvarNoFirestore('alertas',dadosAdmin.alertas,function(){renderAlertas();});
+  }
+  salvarTarefas();
+  renderTarefasAdmin();
+  renderTarefas();
+}
+
+// ===== FOTOS (antes/depois) =====
+var fotoAntesNova='', fotoTarefaAlvo=-1, fotoDepoisPendente='', fotoEnviando=false;
+function fotoThumb(u){return (u||'').indexOf('/upload/')>0?u.replace('/upload/','/upload/w_300,h_300,c_fill,q_auto,f_auto/'):u;}
+function fotoGrande(u){return (u||'').indexOf('/upload/')>0?u.replace('/upload/','/upload/w_1600,q_auto,f_auto/'):u;}
+function uploadFotoTarefa(file,ok,erro){
+  if(!file||file.type.indexOf('image')!==0){alert('Selecione uma imagem.');return;}
+  var form=new FormData();
+  form.append('file',file);
+  form.append('upload_preset','pafrestaizabel');
+  fetch('https://api.cloudinary.com/v1_1/odiwvd9n/auto/upload',{method:'POST',body:form})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.secure_url)ok(d.secure_url);else erro('Erro ao enviar a foto.');})
+    .catch(function(e){erro('Erro ao enviar: '+e.message);});
+}
+function previewFotoPendente(url,fnRemover){
+  if(!url) return '';
+  return '<div style="position:relative;display:inline-block"><img src="'+fotoThumb(url)+'" style="width:70px;height:70px;object-fit:cover;border-radius:8px">'+
+    '<button type="button" onclick="'+fnRemover+'" style="position:absolute;top:-7px;right:-7px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:11px">✕</button></div>';
+}
+function removerFotoAntesNova(){fotoAntesNova='';var e=document.getElementById('prev-antes-novo');if(e)e.innerHTML='';}
+function escolherFotoTarefa(i){
+  fotoTarefaAlvo=i;
+  var inp=document.getElementById('inp-foto-tarefa');
+  if(inp){inp.value='';inp.click();}
+}
+function onFotoTarefaSelecionada(input){
+  var file=input.files&&input.files[0];
+  if(!file) return;
+  var i=fotoTarefaAlvo;
+  var prev=document.getElementById('prev-antes-novo');
+  if(i<0&&prev) prev.innerHTML='<span style="font-size:12px;color:var(--txt3)">⏳ Enviando foto...</span>';
+  uploadFotoTarefa(file,function(url){
+    if(i<0){
+      fotoAntesNova=url;
+      if(prev) prev.innerHTML=previewFotoPendente(url,'removerFotoAntesNova()');
+    } else if(tarefas[i]){
+      tarefas[i].fotoAntes=url;
+      tarefas[i].fotoAntesEm=new Date().toISOString();
+      salvarTarefasSilencioso();
+    }
+  },function(msg){
+    if(prev) prev.innerHTML='<span style="font-size:12px;color:var(--bad)">'+msg+'</span>'; else alert(msg);
+  });
+}
+function abrirModalConcluirTarefa(i){
+  var t=tarefas[i]; if(!t) return;
+  fotoDepoisPendente=''; fotoEnviando=false;
+  var m=document.createElement('div');
+  m.id='modal-concluir-tarefa';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:18px">'+
+    '<div style="font-weight:700;font-size:15px;margin-bottom:4px">Concluir tarefa</div>'+
+    '<div style="font-size:13px;color:var(--txt2);margin-bottom:12px">"'+(t.txt||'').replace(/</g,'&lt;')+'" vai sair da lista de Tarefas e entrar em Realizações.</div>'+
+    (t.fotoAntes?'<div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Foto do antes</div><img src="'+fotoThumb(t.fotoAntes)+'" style="width:70px;height:70px;object-fit:cover;border-radius:8px;margin-bottom:10px">':'')+
+    '<div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Foto do depois (opcional)</div>'+
+    '<input type="file" id="inp-foto-depois" accept="image/*" style="display:none">'+
+    '<button type="button" id="btn-foto-depois" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:#f8f8f4;font-size:12px;cursor:pointer">📷 Adicionar foto do depois</button>'+
+    '<div id="prev-depois" style="margin-top:8px"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">'+
+      '<button type="button" id="btn-cancelar-conc" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px">Cancelar</button>'+
+      '<button type="button" id="btn-confirmar-conc" style="padding:8px 14px;border-radius:8px;border:none;background:var(--azul);color:#fff;cursor:pointer;font-size:13px;font-weight:600">Concluir sem foto</button>'+
+    '</div></div>';
+  document.body.appendChild(m);
+  var inp=document.getElementById('inp-foto-depois'),btn=document.getElementById('btn-confirmar-conc'),prev=document.getElementById('prev-depois');
+  function fechar(){m.remove();}
+  document.getElementById('btn-foto-depois').onclick=function(){inp.value='';inp.click();};
+  document.getElementById('btn-cancelar-conc').onclick=function(){fechar();renderTarefasAdmin();renderTarefas();};
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0]; if(!f) return;
+    fotoEnviando=true; btn.disabled=true; btn.style.opacity='.6';
+    prev.innerHTML='<span style="font-size:12px;color:var(--txt3)">⏳ Enviando foto...</span>';
+    uploadFotoTarefa(f,function(url){
+      fotoEnviando=false; fotoDepoisPendente=url; btn.disabled=false; btn.style.opacity='1'; btn.textContent='Concluir';
+      prev.innerHTML=previewFotoPendente(url,'removerFotoDepoisPendente()');
+    },function(msg){
+      fotoEnviando=false; btn.disabled=false; btn.style.opacity='1';
+      prev.innerHTML='<span style="font-size:12px;color:var(--bad)">'+msg+'</span>';
+    });
+  };
+  btn.onclick=function(){
+    if(fotoEnviando) return;
+    var foto=fotoDepoisPendente; fotoDepoisPendente='';
+    fechar();
+    concluirTarefa(i,foto);
+  };
+}
+function removerFotoDepoisPendente(){
+  fotoDepoisPendente='';
+  var p=document.getElementById('prev-depois');if(p)p.innerHTML='';
+  var b=document.getElementById('btn-confirmar-conc');if(b)b.textContent='Concluir sem foto';
+}
+
+var MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var MESES_ABREV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function _chaveMes(iso,dataStr){
+  var d=iso?new Date(iso):null;
+  if(d&&!isNaN(d)) return d.getFullYear()*100+d.getMonth();
+  var p=(dataStr||'').split('/');
+  var mi=MESES_ABREV.indexOf(p[0]);
+  if(mi>=0&&parseInt(p[1],10)) return parseInt(p[1],10)*100+mi;
+  return 0;
+}
+function renderFotos(){
+  var el=document.getElementById('lista-fotos'); if(!el) return;
+  var itens=[];
+  (dadosAdmin.realizacoes||[]).forEach(function(r){
+    if(!r.fotoAntes&&!r.fotoDepois) return;
+    itens.push({txt:r.txt,antes:r.fotoAntes||'',depois:r.fotoDepois||'',chave:_chaveMes(r.concluidaEm,r.data),ts:r.concluidaEm||'',andamento:false});
+  });
+  tarefas.forEach(function(t){
+    if(!t.fotoAntes) return;
+    itens.push({txt:t.txt,antes:t.fotoAntes,depois:'',chave:_chaveMes(t.fotoAntesEm,''),ts:t.fotoAntesEm||'',andamento:true});
+  });
+  if(!itens.length){
+    el.innerHTML='<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;padding:24px">Nenhuma foto registrada ainda. As fotos de antes e depois das tarefas aparecem aqui.</div>';
+    return;
+  }
+  var grupos={};
+  itens.forEach(function(it){(grupos[it.chave]=grupos[it.chave]||[]).push(it);});
+  window._fotosItens=[];
+  var html=Object.keys(grupos).map(Number).sort(function(a,b){return b-a;}).map(function(k){
+    var lista=grupos[k].sort(function(a,b){return (b.ts||'').localeCompare(a.ts||'');});
+    var titulo=k?MESES_NOME[k%100]+' de '+Math.floor(k/100):'Sem data';
+    return '<div class="sec" style="margin-top:14px">'+titulo+'</div>'+lista.map(function(it){
+      var idx=window._fotosItens.push(it)-1;
+      function thumb(url,rot,pos){
+        if(!url) return '<div style="flex:0 1 150px;min-width:100px"><div style="font-size:10px;font-weight:700;color:var(--txt3);margin-bottom:3px;text-transform:uppercase">'+rot+'</div><div style="aspect-ratio:1;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--txt3)">'+(it.andamento&&rot==='Depois'?'Em andamento':'Sem foto')+'</div></div>';
+        return '<div style="flex:0 1 150px;min-width:100px"><div style="font-size:10px;font-weight:700;color:var(--txt3);margin-bottom:3px;text-transform:uppercase">'+rot+'</div>'+
+          '<img src="'+fotoThumb(url)+'" alt="'+rot+'" loading="lazy" onclick="abrirLightboxFoto('+idx+','+pos+')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;display:block"></div>';
+      }
+      var pos=0;
+      var a=thumb(it.antes,'Antes',0);
+      var d=thumb(it.depois,'Depois',it.antes?1:0);
+      return '<div class="card" style="margin-bottom:10px"><div style="font-weight:600;font-size:13px;margin-bottom:8px">'+(it.txt||'').replace(/</g,'&lt;')+'</div><div style="display:flex;gap:8px">'+a+d+'</div></div>';
+    }).join('');
+  }).join('');
+  el.innerHTML=html;
+}
+function abrirLightboxFoto(idx,pos){
+  var it=window._fotosItens[idx]; if(!it) return;
+  var imgs=[];
+  if(it.antes) imgs.push({url:it.antes,rot:'Antes'});
+  if(it.depois) imgs.push({url:it.depois,rot:'Depois'});
+  abrirLightbox(imgs,pos,it.txt);
+}
+var _lbImgs=[],_lbPos=0;
+function abrirLightbox(imgs,pos,legenda){
+  _lbImgs=imgs;_lbPos=pos||0;
+  var m=document.getElementById('lightbox-fotos');
+  if(m) m.remove();
+  m=document.createElement('div');
+  m.id='lightbox-fotos';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px';
+  m.onclick=function(e){if(e.target===m)fecharLightbox();};
+  m.innerHTML='<button onclick="fecharLightbox()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer" aria-label="Fechar">✕</button>'+
+    '<div id="lb-rot" style="color:#fff;font-weight:700;font-size:13px;margin-bottom:8px"></div>'+
+    '<img id="lb-img" style="max-width:100%;max-height:72vh;border-radius:8px;object-fit:contain">'+
+    '<div id="lb-leg" style="color:#ddd;font-size:13px;margin-top:10px;text-align:center;max-width:600px"></div>'+
+    '<div id="lb-nav" style="display:flex;gap:10px;margin-top:12px"></div>';
+  document.body.appendChild(m);
+  document.getElementById('lb-leg').textContent=legenda||'';
+  lbMostrar(_lbPos);
+}
+function lbMostrar(p){
+  _lbPos=p;
+  var im=_lbImgs[p]; if(!im) return;
+  document.getElementById('lb-img').src=fotoGrande(im.url);
+  document.getElementById('lb-rot').textContent=_lbImgs.length>1?im.rot:'';
+  document.getElementById('lb-nav').innerHTML=_lbImgs.length>1?_lbImgs.map(function(x,j){
+    return '<button onclick="lbMostrar('+j+')" style="padding:7px 16px;border-radius:20px;border:1px solid #fff;background:'+(j===p?'#fff':'transparent')+';color:'+(j===p?'#000':'#fff')+';cursor:pointer;font-size:13px">'+x.rot+'</button>';
+  }).join(''):'';
+}
+function fecharLightbox(){var m=document.getElementById('lightbox-fotos');if(m)m.remove();}
+document.addEventListener('keydown',function(e){
+  if(!document.getElementById('lightbox-fotos')) return;
+  if(e.key==='Escape') fecharLightbox();
+  if(e.key==='ArrowRight'&&_lbPos<_lbImgs.length-1) lbMostrar(_lbPos+1);
+  if(e.key==='ArrowLeft'&&_lbPos>0) lbMostrar(_lbPos-1);
+});
 function addTarefaRapida(){
   var txt=document.getElementById('nova-tar-txt').value.trim();
   if(!txt){alert('Informe a descrição.');return;}
   var status=document.getElementById('nova-tar-status').value;
-  tarefas.push({txt:txt,sub:'',status:status});
+  var nova={txt:txt,sub:'',status:status};
+  if(fotoAntesNova){nova.fotoAntes=fotoAntesNova;nova.fotoAntesEm=new Date().toISOString();}
+  fotoAntesNova='';
+  tarefas.push(nova);
   document.getElementById('nova-tar-txt').value='';
   document.getElementById('nova-tar-txt').focus();
   renderTarefasAdmin();
